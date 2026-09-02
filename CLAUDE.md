@@ -17,14 +17,15 @@ von einem `.dc.html`-Design-Component in eine eigenständige, deploybare Site
 überführt. **Markup, CSS und Verhalten stammen unverändert aus dem Design.**
 Alles was ich ergänzt habe, ist unten in §5 einzeln aufgeführt.
 
-Deployment: GitHub Pages, Repo-Root ist die Seite.
+Deployment: GitHub Pages über `.github/workflows/pages.yml` — der Workflow lädt
+ein gefiltertes `_site/` hoch, **nicht** das Repo-Root (siehe §6a Nr. 1).
 
 ---
 
 ## 2. Repo-Aufbau
 
 ```
-/                      ← GitHub Pages Root (das ist die Website)
+/                      ← Projektwurzel; alles außer build/, src/, CLAUDE.md wird publiziert
 ├── index.html         ← generiert aus src/HSK Performance Center.dc.html
 ├── impressum.html     ← generiert aus src/Impressum.dc.html
 ├── datenschutz.html   ← generiert aus src/Datenschutz.dc.html
@@ -36,15 +37,18 @@ Deployment: GitHub Pages, Repo-Root ist die Seite.
 │   ├── favicon.svg · apple-touch-icon.png
 │   └── js/
 │       ├── site.js    ← GENERIERT. Nicht direkt editieren.
+│       ├── impressum.js · datenschutz.js  ← GENERIERT (ausgelagert wegen CSP)
 │       ├── mobile.js  ← Handmade: Mobile-Dock
 │       └── consent.js ← Handmade: Karten-Consent
+├── .github/workflows/pages.yml  ← Deploy (filtert Internes heraus)
 ├── build/             ← die Pipeline (siehe §3)
 ├── src/               ← die drei .dc.html Originale + support.js (Provenienz)
 └── CLAUDE.md · README.md
 ```
 
 **Wichtig:** `index.html`, `impressum.html`, `datenschutz.html`, `assets/js/site.js`,
-`404.html`, `robots.txt`, `sitemap.xml`, `site.webmanifest` sind **Build-Artefakte**.
+`assets/js/impressum.js`, `assets/js/datenschutz.js`, `404.html`, `robots.txt`,
+`sitemap.xml`, `site.webmanifest` sind **Build-Artefakte**.
 Änderungen daran gehen beim nächsten Build verloren. Immer in `build/` oder `src/`
 ändern und neu bauen.
 
@@ -78,7 +82,7 @@ Was der Build macht:
 4. `<sc-if value="{{ x }}">` → `<div data-if="x">` (siehe §4.2).
 5. Extrahiert die `class Component extends DCLogic` in `assets/js/site.js` und
    hängt einen ~40-Zeilen-Shim an, der die Design-Runtime ersetzt.
-6. Patcht die Logik an 4 Stellen (alle mit `HSK-PATCH` markiert, siehe §5).
+6. Patcht die Logik an 7 Stellen (alle mit `HSK-PATCH` markiert, siehe §5 und §6a).
 7. Erzeugt die statischen Nebendateien.
 
 ---

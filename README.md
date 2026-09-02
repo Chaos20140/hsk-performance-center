@@ -9,7 +9,8 @@ Statische Seite, keine Datenbank, kein Server, keine externen Tracker.
 
 ## Aufbau
 
-Das Repository-Root **ist** die Website (GitHub Pages, Deploy from branch `main`, `/`).
+Der Deploy läuft über GitHub Actions (`.github/workflows/pages.yml`). Der Workflow
+veröffentlicht alles außer `build/`, `src/` und den internen Notizen.
 
 | Pfad | Inhalt |
 |---|---|
@@ -17,8 +18,8 @@ Das Repository-Root **ist** die Website (GitHub Pages, Deploy from branch `main`
 | `impressum.html`, `datenschutz.html` | Rechtliches |
 | `404.html` | Fehlerseite |
 | `assets/` | Bilder, Videos, Schriften, Icons, JavaScript |
-| `build/` | Build-Skript und Zusatz-Layer |
-| `src/` | Die Design-Originale, aus denen gebaut wird |
+| `build/` | Build-Skript und Zusatz-Layer (nicht veröffentlicht) |
+| `src/` | Die Design-Originale, aus denen gebaut wird (nicht veröffentlicht) |
 
 `index.html`, `impressum.html`, `datenschutz.html` und `assets/js/site.js` sind
 **generiert**. Nicht direkt bearbeiten — Änderungen in `build/` bzw. `src/` machen
