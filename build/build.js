@@ -121,6 +121,46 @@ const HEAD_EXTRA = (canonical, title, desc) => `
 <link rel="preload" as="font" type="font/woff2" href="assets/fonts/instrument-serif-normal-400.woff2" crossorigin />
 `.trim();
 
+/* Ein Abschnitt, herausgeschnitten samt seinem Markup. Abschnitte sind nie
+   ineinander verschachtelt, deshalb reicht der erste schließende Tag. */
+function cutSection(html, opener, label) {
+  const start = html.indexOf(opener);
+  must(start > -1, 'section not found: ' + label);
+  const end = html.indexOf('</section>', start);
+  must(end > start, 'section end not found: ' + label);
+  const block = html.slice(start, end + '</section>'.length);
+  return { html: html.slice(0, start) + html.slice(end + '</section>'.length), block };
+}
+
+/* Termine — aus build/events.json gerendert.
+   Die Liste ist bewusst Daten, kein Markup: neue Termine sind ein Eintrag in
+   der JSON-Datei, niemand muss dafür HTML anfassen. */
+function renderTermine() {
+  const events = JSON.parse(fs.readFileSync(path.join(__dirname, 'events.json'), 'utf8'));
+  must(Array.isArray(events) && events.length, 'events.json is empty');
+
+  const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+  const rows = events.map((e) => `
+      <article data-termin>
+        <div data-termin-wann>
+          <span data-termin-tag>${esc(e.wann)}</span>
+          <span data-termin-zusatz>${esc(e.zusatz || '')}</span>
+        </div>
+        <div data-termin-body>
+          <h3>${esc(e.titel)}</h3>
+          <p>${esc(e.text)}</p>
+        </div>
+        <div data-termin-tail>
+          ${e.status ? `<span data-termin-status><span></span>${esc(e.status)}</span>` : ''}
+          ${e.ctaHref ? `<a href="${esc(e.ctaHref)}" data-termin-cta>${esc(e.ctaText || 'Mehr')}<span aria-hidden="true">&#8594;</span></a>` : ''}
+        </div>
+      </article>`).join('\n');
+
+  return fs.readFileSync(path.join(__dirname, 'termine.html'), 'utf8')
+    .replace('<!--TERMINE-->', rows);
+}
+
 /* =========================================================== main page === */
 
 function buildIndex() {
@@ -263,6 +303,36 @@ function buildIndex() {
     '      </div>\n' +
     '    </div>\n' + gateAnchor);
 
+  // ---- Reihenfolge nach dem Verkaufsweg, nicht nach der Entstehung.
+  // Der Besucher wird über die Seite geführt — Studio, Ausstattung, Galerie,
+  // Stimmen — und soll erst überzeugt sein, bevor er zur Mitgliedschaft kommt.
+  // Also: Mitgliedschaft ans Ende, der Standort direkt darüber (wer sich
+  // entscheidet, will als Nächstes wissen, wo das Studio steht).
+  {
+    let cut;
+    cut = cutSection(html, '<section id="mitglied"', '#mitglied'); html = cut.html;
+    const mitglied = cut.block;
+    cut = cutSection(html, '<section id="kontakt"', '#kontakt'); html = cut.html;
+    const kontakt = cut.block;
+    cut = cutSection(html, '<section data-screen-label="FAQ"', 'FAQ'); html = cut.html;
+    const faq = cut.block;
+
+    const footerAnchor = '<footer data-screen-label="Footer"';
+    must(html.indexOf(footerAnchor) > -1, 'footer anchor not found');
+    html = html.replace(footerAnchor, faq + '\n' + kontakt + '\n' + mitglied + '\n' + footerAnchor);
+
+    // Reihenfolge festnageln, damit ein späterer Umbau nicht still danebengeht
+    const order = (html.match(/data-screen-label="([^"]+)"/g) || []).map(s => s.slice(19, -1));
+    const soll = ['Hero', 'Ticker', 'Warum HSK', 'Trainingsbereiche', 'Ausstattung', 'Zitat',
+                  'Coaching', 'Galerie', 'Bewertungen', 'Drop-in', 'Termine', 'Partner',
+                  'FAQ', 'Anfahrt', 'Mitglied werden', 'Footer'];
+    // Termine und Partner werden weiter unten eingesetzt — hier nur der Rest prüfen
+    const ist = order.filter(l => l !== 'Termine' && l !== 'Partner');
+    const erwartet = soll.filter(l => l !== 'Termine' && l !== 'Partner');
+    must(ist.join('|') === erwartet.join('|'),
+      'unerwartete Abschnittsreihenfolge:\n  ist:      ' + ist.join(' , ') + '\n  erwartet: ' + erwartet.join(' , '));
+  }
+
   // ---- Partner-Abschnitt, direkt vor dem Footer.
   // Bewusst nur ein benannter Partner: Wellhub ist der einzige, der sich aus
   // dem Bestand belegen lässt (steht schon im Drop-in-Abschnitt). Weitere Namen
@@ -270,10 +340,11 @@ function buildIndex() {
   // keine Behauptung.
   {
     const partnerHtml = fs.readFileSync(path.join(__dirname, 'partner.html'), 'utf8');
-    const footerAnchor = '<footer data-screen-label="Footer"';
-    must(html.indexOf(footerAnchor) > -1, 'footer anchor not found');
-    html = html.replace(footerAnchor, partnerHtml + '\n' + footerAnchor);
+    const faqAnchor = '<section data-screen-label="FAQ"';
+    must(html.indexOf(faqAnchor) > -1, 'FAQ anchor not found');
+    html = html.replace(faqAnchor, renderTermine() + '\n' + partnerHtml + '\n' + faqAnchor);
     must(/id="partner"/.test(html), 'partner section not inserted');
+    must(/id="termine"/.test(html), 'termine section not inserted');
 
     // Der Footer verlinkt „Studio" zweimal auf denselben Anker — der zweite
     // Eintrag zeigt jetzt auf den neuen Abschnitt.
@@ -319,15 +390,42 @@ function buildIndex() {
       ov = ov.replace(re, '');
     }
 
+    // Die Nummern fliegen raus. Sie waren an die Abschnittsnummern angelehnt,
+    // stimmen nach dem Umsortieren nicht mehr damit überein — und ein Menü ist
+    // ohnehin keine Reihenfolge, die man abarbeitet. Ohne sie bekommt die
+    // Schrift den Platz, den sie auf einem Telefon braucht.
     let n = 0;
-    ov = ov.replace(/(width:3ch">)(\d{2})(<\/span>)/g,
-      (_, a, __, c) => a + String(++n).padStart(2, '0') + c);
-    must(n === 5, 'expected 5 overlay items, got ' + n);
+    ov = ov.replace(/<span style="font-size:11px;font-weight:500;letter-spacing:\.2em;color:#B8B8BF;[^"]*width:3ch">\d{2}<\/span>\s*/g,
+      () => { n++; return ''; });
+    must(n === 5, 'expected 5 overlay item numbers to remove, got ' + n);
+    must(!/width:3ch/.test(ov), 'overlay item numbers left');
+
+    // Öffnungsstatus ins Menü. bootStatus() bedient ausdrücklich alle Elemente
+    // mit diesen Haken, der Eintrag aktualisiert sich also von selbst mit.
+    const footAnchor = '<div data-ov-foot ';
+    must(ov.indexOf(footAnchor) > -1, 'overlay foot anchor not found');
+    ov = ov.replace(footAnchor,
+      '<div data-ov-status data-status-chip>' +
+      '<span data-status-dot></span>' +
+      '<span data-status-text>Öffnungszeiten 06 — 24 Uhr</span>' +
+      '</div>\n    ' + footAnchor);
 
     html = html.slice(0, navStart) + ov + html.slice(navEnd);
   }
 
   const extraCss = fs.readFileSync(path.join(__dirname, 'extra.css'), 'utf8');
+
+  // ---- Abschnittsnummern nach dem Umbau neu vergeben.
+  // Die Zahlen stehen fest im Markup („01 — Warum HSK"). Nach dem Umsortieren
+  // stimmten sie nicht mehr; sie werden deshalb in DOM-Reihenfolge neu
+  // geschrieben. Der Termine-Abschnitt trägt dafür den Platzhalter „00".
+  {
+    let n = 0;
+    html = html.replace(/(<\/span>)(\d{2})( — )/g, (_, a, __, c) => a + String(++n).padStart(2, '0') + c);
+    must(n === 12, 'expected 12 numbered eyebrows, got ' + n);
+    must(/<\/span>11 — Öffnungszeiten/.test(html), 'Anfahrt should be 11 after reorder');
+    must(/<\/span>12 — Loslegen/.test(html), 'Loslegen should be 12 (last) after reorder');
+  }
 
   // Schlussprüfung: extractHover() läuft weit oben. Alles, was danach eingefügt
   // wird, muss seine Hover-Zustände selbst mitbringen (Regel in extra.css) —

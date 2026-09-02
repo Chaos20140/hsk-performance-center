@@ -29,9 +29,43 @@
       setTimeout(function () { gate.style.display = 'none'; }, 600);
     }
 
+    /* Ein Klick auf die Karte soll die Karten-App öffnen — den Ort, nicht eine
+       Route. Das eingebettete iframe schluckt Klicks selbst, also liegt eine
+       durchsichtige Fläche darüber. Auf Apple-Geräten führt der Weg zu Apple
+       Karten, sonst zu Google Maps. */
+    function mapsUrl() {
+      var q = 'HSK Performance Center, Strackestraße 22, 59929 Brilon';
+      var apple = false;
+      try { apple = /Apple/.test(navigator.vendor || ''); } catch (e) {}
+      return apple
+        ? 'https://maps.apple.com/?q=' + encodeURIComponent(q)
+        : 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(q);
+    }
+
+    function armMapLink() {
+      var wrap = frame.parentElement;
+      if (!wrap || wrap.querySelector('[data-map-open]')) return;
+      var a = document.createElement('a');
+      a.setAttribute('data-map-open', '');
+      a.href = mapsUrl();
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      a.setAttribute('aria-label', 'Standort in der Karten-App öffnen');
+      // Ohne innerHTML aufgebaut — hier steht zwar nur fester Text, aber die
+      // Gewohnheit gehört gar nicht erst in die Datei.
+      var label = document.createElement('span');
+      label.textContent = 'In Karten öffnen';
+      var arrow = document.createElement('span');
+      arrow.textContent = '↗';
+      arrow.setAttribute('aria-hidden', 'true');
+      a.appendChild(label);
+      a.appendChild(arrow);
+      wrap.appendChild(a);
+    }
+
     var remembered = false;
     try { remembered = window.localStorage.getItem(KEY) === '1'; } catch (e) {}
-    if (remembered) { load(); return; }
+    if (remembered) { load(); armMapLink(); return; }
 
     var btn = gate.querySelector('[data-map-accept]');
     if (btn) {
@@ -40,6 +74,7 @@
         e.stopPropagation();
         try { window.localStorage.setItem(KEY, '1'); } catch (err) {}
         load();
+        armMapLink();
       });
     }
   });

@@ -220,6 +220,25 @@ html { -webkit-tap-highlight-color: transparent; }
     padding-right: 0 !important;
   }
 
+  /* Ohne Pille läuft der Inhalt beim Scrollen direkt durch Zeichen und Burger.
+     Ein Verlauf über die oberen 170 px löst ihn auf, bevor er dort ankommt —
+     die Leiste bleibt schwebend, der Text darunter verschwindet ruhig.
+     Als Pseudoelement der Leiste, damit es deren Stapelkontext erbt und nie
+     über den Bedienelementen liegt. */
+  [data-nav]::before {
+    content: "";
+    position: fixed; top: 0; left: 0; right: 0; height: 170px;
+    background: linear-gradient(180deg,
+      rgba(4, 4, 5, .95) 0%,
+      rgba(4, 4, 5, .82) 34%,
+      rgba(4, 4, 5, .46) 66%,
+      rgba(4, 4, 5, 0) 100%);
+    pointer-events: none;
+    z-index: -1;
+  }
+  /* Im offenen Menü wäre der Verlauf doppelt gemoppelt */
+  html[data-menu="open"] [data-nav]::before { opacity: 0; }
+
   /* Der Burger ist auf dem Telefon die einzige Navigation. Im Design hat er
      eine Eintrittsanimation, die erst nach dem Ladevorhang startet und ihn bis
      dahin auf opacity:0 hält — gemessen war er noch nach fünf Sekunden
@@ -234,14 +253,43 @@ html { -webkit-tap-highlight-color: transparent; }
 
 /* --- Vollbildmenü ----------------------------------------------------------
    Die Liste beginnt direkt unter der Leiste statt in der Mitte zu schweben —
-   sonst steht sie auf einem hohen Display zwischen zwei großen Leerflächen. */
+   sonst steht sie auf einem hohen Display zwischen zwei großen Leerflächen.
+
+   Die Schriftgröße im Design war `clamp(26px, min(6vw,8vh), 92px)`. Auf einem
+   390er-Telefon ergibt min(6vw,8vh) = 23 px, es greift also immer der untere
+   Anschlag: 26 px. Deshalb wirkten die Einträge so klein. Auf dem Telefon
+   skaliert es jetzt an der Breite, nicht am Minimum von Breite und Höhe. */
 @media (max-width: 819px) {
   [data-ov-nav] {
     justify-content: flex-start !important;
     padding-top: calc(clamp(84px, 12vh, 120px) + env(safe-area-inset-top, 0px)) !important;
-    padding-bottom: calc(clamp(32px, 6vh, 64px) + env(safe-area-inset-bottom, 0px)) !important;
+    padding-bottom: calc(clamp(28px, 5vh, 56px) + env(safe-area-inset-bottom, 0px)) !important;
+    gap: 0 !important;
   }
+  [data-ov-text] { font-size: clamp(38px, 11.5vw, 64px) !important; }
+  [data-ov-item] { padding: clamp(11px, 1.8vh, 20px) 0 clamp(15px, 2.4vh, 26px) !important; }
 }
+/* Querformat: acht Zeilen mal 60 px passen nicht in 400 px Höhe */
+@media (max-width: 819px) and (max-height: 560px) {
+  [data-ov-text] { font-size: clamp(26px, 6.5vh, 40px) !important; }
+  [data-ov-item] { padding: 8px 0 11px !important; }
+}
+
+/* Öffnungsstatus im Menü — dieselben Haken wie die Chips auf der Seite, also
+   schreibt bootStatus() ihn automatisch mit. */
+[data-ov-status] {
+  flex: 0 0 auto;
+  display: inline-flex; align-self: flex-start; align-items: center; gap: 12px;
+  margin-top: clamp(22px, 4vh, 44px);
+  padding: 13px 20px; border-radius: 100px;
+  background: rgba(74, 158, 46, .12); border: 1px solid rgba(74, 158, 46, .3);
+}
+[data-ov-status] > span:first-child {
+  width: 7px; height: 7px; border-radius: 50%; flex: 0 0 auto;
+  background: #4A9E2E; box-shadow: 0 0 12px rgba(74, 158, 46, .9);
+  animation: hs-pulse 2.8s ease-in-out infinite;
+}
+[data-ov-status] [data-status-text] { font-size: 13px; color: #F4F2EF; }
 @media (max-width: 819px) {
   /* Kontaktblock an den unteren Rand, statt direkt unter der Liste zu kleben
      und darunter eine große Leerfläche zu lassen. */
@@ -297,6 +345,111 @@ html[data-brand="mark"] [data-brand-logo] { height: 21px !important; }
 /* Ohne Skript bleibt die Wortmarke einfach stehen — kein leerer Platz. */
 @media (prefers-reduced-motion: reduce) {
   [data-brand-word] { transition-duration: .001ms; }
+}
+
+/* ============================================================================
+   AUSSTATTUNG — Abschluss-Karte
+   Das Raster stand fest auf „Text | Knopf". Auf einem Telefon bleiben dem Text
+   dann 65 px und er bricht Wort für Wort um. Unter 860 px gestapelt.
+   ========================================================================== */
+@media (max-width: 860px) {
+  [data-eqcta] { grid-template-columns: minmax(0, 1fr) !important; gap: clamp(22px, 4vw, 32px) !important; }
+  [data-eqcta] > a { justify-self: start !important; }
+}
+
+/* ============================================================================
+   TERMINE
+   Aufbau wie eine Startliste: links wann, in der Mitte was, rechts der Zustand.
+   ========================================================================== */
+[data-termine-liste] { display: flex; flex-direction: column; }
+[data-termin] {
+  display: grid;
+  grid-template-columns: minmax(0, .22fr) minmax(0, 1fr) auto;
+  align-items: start;
+  gap: clamp(18px, 2.6vw, 40px);
+  padding: clamp(24px, 2.8vw, 34px) 0;
+  border-top: 1px solid rgba(255, 255, 255, .11);
+  animation: hs-rise .9s cubic-bezier(.16, 1, .3, 1) both;
+  animation-timeline: view();
+  animation-range: entry 2% cover 26%;
+}
+[data-termin]:last-child { border-bottom: 1px solid rgba(255, 255, 255, .11); }
+[data-termin-wann] { display: flex; flex-direction: column; gap: 7px; }
+[data-termin-tag] {
+  font-family: 'Bricolage Grotesque', Manrope, sans-serif;
+  font-weight: 700; font-variation-settings: 'opsz' 96, 'wdth' 100;
+  font-size: clamp(17px, 1.5vw, 22px); line-height: 1.1; letter-spacing: -.02em; color: #FFFFFF;
+  text-shadow: 0 1px 12px rgba(0,0,0,.9);
+}
+[data-termin-zusatz] { font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: #9A9AA2; text-shadow: 0 1px 12px rgba(0,0,0,.9); }
+[data-termin-body] h3 {
+  margin: 0 0 10px;
+  font-family: 'Bricolage Grotesque', Manrope, sans-serif;
+  font-weight: 700; font-variation-settings: 'opsz' 96, 'wdth' 100;
+  font-size: clamp(21px, 2vw, 30px); line-height: 1.1; letter-spacing: -.03em; color: #FFFFFF;
+  text-shadow: 0 2px 18px rgba(0,0,0,.75);
+}
+[data-termin-body] p { margin: 0; max-width: 52ch; font-size: 14.5px; line-height: 1.78; color: #C4C4CA; text-shadow: 0 1px 12px rgba(0,0,0,.9); text-wrap: pretty; }
+[data-termin-tail] { display: flex; flex-direction: column; align-items: flex-end; gap: 14px; }
+[data-termin-status] {
+  display: inline-flex; align-items: center; gap: 9px;
+  font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: #CCCCD2; text-shadow: 0 1px 12px rgba(0,0,0,.9); white-space: nowrap;
+}
+[data-termin-status] > span { width: 6px; height: 6px; border-radius: 50%; background: #4A9E2E; box-shadow: 0 0 10px rgba(74, 158, 46, .9); }
+[data-termin-cta] {
+  display: inline-flex; align-items: center; gap: 10px; white-space: nowrap;
+  padding: 12px 22px; border-radius: 100px; border: 1px solid rgba(255, 255, 255, .18);
+  font-size: 11px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; color: #F4F2EF;
+  transition: border-color .4s ease, background .4s ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  [data-termin-cta]:hover { border-color: var(--acc, #E10600); background: rgba(225, 6, 0, .1); }
+  [data-termine-fb]:hover { border-color: var(--acc, #E10600); background: rgba(225, 6, 0, .1); }
+}
+@media (max-width: 980px) {
+  [data-termine-wrap] { grid-template-columns: minmax(0, 1fr) !important; }
+}
+@media (max-width: 640px) {
+  [data-termin] { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  [data-termin-tail] { align-items: flex-start; flex-direction: row; flex-wrap: wrap; gap: 12px; }
+}
+
+/* ============================================================================
+   „JETZT ANFANGEN" — das laute Band vor der Mitgliedschaft
+   Vorher: dunkelrote Schrift auf fast schwarzem Grund bei 72 % Deckkraft — die
+   Zeile ging schlicht unter. Jetzt volle Akzentfläche mit ausgesparter Schrift.
+   Das ist der einzige Ort auf der Seite, an dem die Marke voll aufdreht.
+   ========================================================================== */
+[data-banner] {
+  opacity: 1 !important;
+  background: var(--acc, #E10600) !important;
+  border-top: 1px solid rgba(0, 0, 0, .38) !important;
+  border-bottom: 1px solid rgba(0, 0, 0, .38) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .26), 0 22px 60px rgba(225, 6, 0, .3) !important;
+}
+[data-banner] span { color: #FBF7F5 !important; text-shadow: 0 2px 0 rgba(120, 0, 0, .22) !important; }
+
+/* Klickfläche über der Karte: das iframe schluckt Klicks selbst, deshalb liegt
+   der Link darüber. Er öffnet den Standort, keine Route. */
+[data-map-open] {
+  position: absolute; inset: 0; z-index: 2;
+  display: flex; align-items: flex-start; justify-content: flex-start;
+  gap: 9px; padding: clamp(14px, 1.6vw, 22px);
+  font-size: 11px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase;
+  color: #F4F2EF; text-decoration: none;
+}
+[data-map-open] > span:first-child {
+  padding: 10px 16px; border-radius: 100px;
+  background: rgba(6, 6, 8, .78);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, .14);
+  transition: border-color .4s ease, background .4s ease;
+}
+[data-map-open] > span:last-child {
+  align-self: center; margin-left: -2px; color: var(--acc, #E10600); font-size: 13px;
+}
+@media (hover: hover) and (pointer: fine) {
+  [data-map-open]:hover > span:first-child { border-color: var(--acc, #E10600); background: rgba(225, 6, 0, .16); }
 }
 
 /* --- Partner ----------------------------------------------------------------
@@ -532,26 +685,22 @@ html[data-brand="mark"] [data-brand-logo] { height: 21px !important; }
 
   <nav data-ov-nav style="position:relative;height:100%;display:flex;flex-direction:column;justify-content:center;gap:clamp(2px,.6vh,8px);padding:clamp(96px,14vh,150px) clamp(18px,4vw,60px) clamp(40px,8vh,90px)">
     <a href="#training" data-ov-item data-ov-src="assets/p-functional.jpg" style="position:relative;flex:0 0 auto;display:flex;align-items:baseline;gap:clamp(14px,2vw,30px);padding:clamp(6px,1vh,14px) 0 clamp(10px,1.6vh,22px);border-bottom:1px solid rgba(255,255,255,.09);overflow:hidden">
-      <span style="font-size:11px;font-weight:500;letter-spacing:.2em;color:#B8B8BF;text-shadow:0 1px 12px rgba(0,0,0,.9);flex:0 0 auto;width:3ch">01</span>
       <span data-ov-text style="display:block;font-family:'Bricolage Grotesque',Manrope,sans-serif;font-weight:800;font-variation-settings:'opsz' 96,'wdth' 100;font-size:clamp(26px,min(6vw,8vh),92px);line-height:.98;letter-spacing:-.035em;color:#F4F2EF;transition:transform .6s cubic-bezier(.16,1,.3,1),color .5s ease;will-change:transform">Training</span>
     </a>
     <a href="#coaching" data-ov-item data-ov-src="assets/eq-machines.jpg" style="position:relative;flex:0 0 auto;display:flex;align-items:baseline;gap:clamp(14px,2vw,30px);padding:clamp(6px,1vh,14px) 0 clamp(10px,1.6vh,22px);border-bottom:1px solid rgba(255,255,255,.09);overflow:hidden">
-      <span style="font-size:11px;font-weight:500;letter-spacing:.2em;color:#B8B8BF;text-shadow:0 1px 12px rgba(0,0,0,.9);flex:0 0 auto;width:3ch">02</span>
       <span data-ov-text style="display:block;font-family:'Bricolage Grotesque',Manrope,sans-serif;font-weight:800;font-variation-settings:'opsz' 96,'wdth' 100;font-size:clamp(26px,min(6vw,8vh),92px);line-height:.98;letter-spacing:-.035em;color:#F4F2EF;transition:transform .6s cubic-bezier(.16,1,.3,1),color .5s ease;will-change:transform">Coaching</span>
     </a>
     <a href="#galerie" data-ov-item data-ov-src="assets/gal-hall.jpg" style="position:relative;flex:0 0 auto;display:flex;align-items:baseline;gap:clamp(14px,2vw,30px);padding:clamp(6px,1vh,14px) 0 clamp(10px,1.6vh,22px);border-bottom:1px solid rgba(255,255,255,.09);overflow:hidden">
-      <span style="font-size:11px;font-weight:500;letter-spacing:.2em;color:#B8B8BF;text-shadow:0 1px 12px rgba(0,0,0,.9);flex:0 0 auto;width:3ch">03</span>
       <span data-ov-text style="display:block;font-family:'Bricolage Grotesque',Manrope,sans-serif;font-weight:800;font-variation-settings:'opsz' 96,'wdth' 100;font-size:clamp(26px,min(6vw,8vh),92px);line-height:.98;letter-spacing:-.035em;color:#F4F2EF;transition:transform .6s cubic-bezier(.16,1,.3,1),color .5s ease;will-change:transform">Galerie</span>
     </a>
     <a href="#mitglied" data-ov-item data-ov-src="assets/p-kraft.jpg" style="position:relative;flex:0 0 auto;display:flex;align-items:baseline;gap:clamp(14px,2vw,30px);padding:clamp(6px,1vh,14px) 0 clamp(10px,1.6vh,22px);border-bottom:1px solid rgba(255,255,255,.09);overflow:hidden">
-      <span style="font-size:11px;font-weight:500;letter-spacing:.2em;color:#B8B8BF;text-shadow:0 1px 12px rgba(0,0,0,.9);flex:0 0 auto;width:3ch">04</span>
       <span data-ov-text style="display:block;font-family:'Bricolage Grotesque',Manrope,sans-serif;font-weight:800;font-variation-settings:'opsz' 96,'wdth' 100;font-size:clamp(26px,min(6vw,8vh),92px);line-height:.98;letter-spacing:-.035em;color:#F4F2EF;transition:transform .6s cubic-bezier(.16,1,.3,1),color .5s ease;will-change:transform">Mitglied werden</span>
     </a>
     <a href="#kontakt" data-ov-item data-ov-src="assets/reception.jpg" style="position:relative;flex:0 0 auto;display:flex;align-items:baseline;gap:clamp(14px,2vw,30px);padding:clamp(6px,1vh,14px) 0 clamp(10px,1.6vh,22px);border-bottom:1px solid rgba(255,255,255,.09);overflow:hidden">
-      <span style="font-size:11px;font-weight:500;letter-spacing:.2em;color:#B8B8BF;text-shadow:0 1px 12px rgba(0,0,0,.9);flex:0 0 auto;width:3ch">05</span>
       <span data-ov-text style="display:block;font-family:'Bricolage Grotesque',Manrope,sans-serif;font-weight:800;font-variation-settings:'opsz' 96,'wdth' 100;font-size:clamp(26px,min(6vw,8vh),92px);line-height:.98;letter-spacing:-.035em;color:#F4F2EF;transition:transform .6s cubic-bezier(.16,1,.3,1),color .5s ease;will-change:transform">Kontakt</span>
     </a>
 
+    <div data-ov-status data-status-chip><span data-status-dot></span><span data-status-text>Öffnungszeiten 06 — 24 Uhr</span></div>
     <div data-ov-foot style="flex:0 0 auto;display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap;margin-top:clamp(20px,4vh,48px)">
       <div style="display:flex;flex-direction:column;gap:7px">
         <a href="tel:+4916090285812" style="font-size:14.5px;color:#DCDCE2;text-shadow:0 1px 12px rgba(0,0,0,.9)">0160 90285812</a>
@@ -1160,6 +1309,220 @@ html[data-brand="mark"] [data-brand-logo] { height: 21px !important; }
   <p style="max-width:1400px;margin:clamp(26px,3vw,42px) auto 0;padding:0 clamp(18px,4vw,64px);font-size:11.5px;color:#8E8E96">Auszüge aus öffentlichen Google-Rezensionen des HSK Performance Center.</p>
 </section>
 
+
+
+<section data-screen-label="Drop-in" style="position:relative;z-index:3;background:linear-gradient(180deg,rgba(0,0,0,.5) 0%,rgba(0,0,0,.32) 50%,rgba(0,0,0,.54) 100%);border-top:1px solid rgba(255,255,255,.09);padding:clamp(85px,10vw,160px) clamp(18px,4vw,64px)">
+  <div data-two data-cols="minmax(0,.52fr) minmax(0,.48fr)" style="max-width:1400px;margin:0 auto;display:grid;grid-template-columns:minmax(0,.52fr) minmax(0,.48fr);gap:clamp(34px,5vw,86px);align-items:center">
+    <div data-parallax="-24" style="position:relative;aspect-ratio:16/10;overflow:hidden;will-change:transform;border-top:1px solid rgba(255,255,255,.11);border-bottom:1px solid rgba(255,255,255,.11)">
+      <img src="assets/reception.jpg" alt="Empfangsbereich des HSK Performance Center mit rotem Lichtband" loading="lazy" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover" />
+      <div style="position:absolute;top:0;left:0;right:0;bottom:0;background:linear-gradient(180deg,rgba(0,0,0,.04) 0%,rgba(0,0,0,.3) 62%,rgba(0,0,0,.78) 100%)"></div>
+      <span style="position:absolute;left:clamp(16px,1.8vw,24px);bottom:clamp(14px,1.6vw,20px);font-size:11px;font-weight:500;letter-spacing:.22em;text-transform:uppercase;color:#D8D8DE;text-shadow:0 1px 12px rgba(0,0,0,.9)">Empfang · Musterbild</span>
+    </div>
+    <div>
+      <div style="display:inline-flex;align-items:center;gap:12px;font-size:11px;font-weight:500;letter-spacing:.26em;text-transform:uppercase;color:#CCCCD2;text-shadow:0 1px 12px rgba(0,0,0,.9);margin-bottom:24px;animation:hs-rise .9s cubic-bezier(.16,1,.3,1) both;animation-timeline:view();animation-range:entry 0% cover 18%">
+        <span style="display:block;width:22px;height:1px;background:var(--acc,#E10600);transform-origin:left;animation:hs-rule 1.1s cubic-bezier(.16,1,.3,1) both;animation-timeline:view();animation-range:entry 0% cover 16%"></span>07 — Gäste &amp; Drop-in
+      </div>
+      <h2 style="margin:0 0 clamp(20px,2.4vw,32px);font-family:'Bricolage Grotesque',Manrope,sans-serif;font-weight:800;font-variation-settings:'opsz' 96,'wdth' 100;font-size:clamp(32px,4vw,66px);line-height:.96;letter-spacing:-.035em;color:#FFFFFF;text-shadow:0 2px 30px rgba(0,0,0,.55);text-wrap:balance"><span style="display:block"><span style="display:inline-block;animation:hs-word .9s cubic-bezier(.16,1,.3,1) both;animation-timeline:view();animation-range:entry 3.0% cover 24.0%">Zu</span> <span style="display:inline-block;animation:hs-word .9s cubic-bezier(.16,1,.3,1) both;animation-timeline:view();animation-range:entry 5.4% cover 26.4%">Gast</span> <span style="display:inline-block;animation:hs-word .9s cubic-bezier(.16,1,.3,1) both;animation-timeline:view();animation-range:entry 7.8% cover 28.8%">im</span> <span style="display:inline-block;font-family:'Instrument Serif',Georgia,serif;font-style:italic;font-weight:400;font-size:1.06em;color:var(--acc,#E10600);letter-spacing:-.01em;line-height:.9;animation:hs-wordi 1s cubic-bezier(.16,1,.3,1) both;animation-timeline:view();animation-range:entry 10.2% cover 31.2%">Sauerland?</span></span></h2>
+      <p style="margin:0 0 clamp(28px,3.4vw,44px);max-width:46ch;font-size:16px;line-height:1.68;color:#DCDCE2;text-shadow:0 1px 12px rgba(0,0,0,.9)">Unkompliziert: kurz anrufen oder direkt vorbeikommen. Die Tageskarte gibt es vor Ort.</p>
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:22px;padding:17px 0;border-top:1px solid rgba(255,255,255,.13)">
+        <span style="font-size:16px;color:#F4F2EF;text-shadow:0 1px 12px rgba(0,0,0,.9)">Tageskarte</span>
+        <span style="font-size:13.5px;text-align:right;max-width:28ch;color:#C4C4CA;text-shadow:0 1px 12px rgba(0,0,0,.9)">Ohne Anmeldung · vor Ort · bitte Bargeld</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:22px;padding:17px 0;border-top:1px solid rgba(255,255,255,.13)">
+        <span style="font-size:16px;color:#F4F2EF;text-shadow:0 1px 12px rgba(0,0,0,.9)">Wellhub</span>
+        <span style="font-size:13.5px;text-align:right;max-width:28ch;color:#C4C4CA;text-shadow:0 1px 12px rgba(0,0,0,.9)">Partnerstudio ab Silver-Paket</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:22px;padding:17px 0;border-top:1px solid rgba(255,255,255,.13);border-bottom:1px solid rgba(255,255,255,.13)">
+        <span style="font-size:16px;color:#F4F2EF;text-shadow:0 1px 12px rgba(0,0,0,.9)">Kurz anrufen</span>
+        <a href="tel:+4916090285812" style="font-size:13.5px;color:#C4C4CA;text-shadow:0 1px 12px rgba(0,0,0,.9)">0160 90285812</a>
+      </div>
+    </div>
+  </div>
+
+
+  <div style="max-width:1400px;margin:clamp(46px,5vw,78px) auto 0">
+    <div style="display:inline-flex;align-items:center;gap:12px;font-size:11px;font-weight:500;letter-spacing:.26em;text-transform:uppercase;color:#CCCCD2;text-shadow:0 1px 12px rgba(0,0,0,.9);margin-bottom:clamp(20px,2.2vw,30px)">
+      <span style="display:block;width:22px;height:1px;background:var(--acc,#E10600)"></span>So findest du uns
+    </div>
+    <div data-arrival style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(10px,1.2vw,16px)">
+      <div style="padding:clamp(24px,2.4vw,34px);border-radius:20px;background:rgba(9,9,11,.5);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border:1px solid rgba(255,255,255,.09);transition:border-color .45s ease,background .45s ease,transform .55s cubic-bezier(.16,1,.3,1)" data-hh="h15">
+        <div style="display:flex;align-items:center;gap:10px;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#CCCCD2;margin-bottom:12px"><span style="display:block;width:14px;height:1px;flex:0 0 auto;background:var(--acc,#E10600)"></span>Mit dem Auto</div>
+        <p style="margin:0;font-size:14.5px;line-height:1.72;color:#C4C4CA;text-wrap:pretty">Kostenfreie Parkplätze direkt vor dem Studio. Von der B7 sind es keine drei Minuten.</p>
+      </div>
+      <div style="padding:clamp(24px,2.4vw,34px);border-radius:20px;background:rgba(9,9,11,.5);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border:1px solid rgba(255,255,255,.09);transition:border-color .45s ease,background .45s ease,transform .55s cubic-bezier(.16,1,.3,1)" data-hh="h16">
+        <div style="display:flex;align-items:center;gap:10px;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#CCCCD2;margin-bottom:12px"><span style="display:block;width:14px;height:1px;flex:0 0 auto;background:var(--acc,#E10600)"></span>Zu Fuß</div>
+        <p style="margin:0;font-size:14.5px;line-height:1.72;color:#C4C4CA;text-wrap:pretty">Rund zehn Gehminuten vom Marktplatz Brilon, am Rand der Innenstadt.</p>
+      </div>
+      <div style="padding:clamp(24px,2.4vw,34px);border-radius:20px;background:rgba(9,9,11,.5);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border:1px solid rgba(255,255,255,.09);transition:border-color .45s ease,background .45s ease,transform .55s cubic-bezier(.16,1,.3,1)" data-hh="h17">
+        <div style="display:flex;align-items:center;gap:10px;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#CCCCD2;margin-bottom:12px"><span style="display:block;width:14px;height:1px;flex:0 0 auto;background:var(--acc,#E10600)"></span>Erster Besuch</div>
+        <p style="margin:0;font-size:14.5px;line-height:1.72;color:#C4C4CA;text-wrap:pretty">Einfach reinkommen. Wir zeigen dir die Fläche und du trainierst eine Einheit zur Probe.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+
+
+
+<section id="termine" data-screen-label="Termine" style="position:relative;z-index:3;background:linear-gradient(180deg,rgba(0,0,0,.68) 0%,rgba(0,0,0,.54) 46%,rgba(0,0,0,.72) 100%);border-top:1px solid rgba(255,255,255,.09);padding:clamp(85px,10vw,158px) clamp(18px,4vw,64px)">
+  <div data-termine-wrap style="max-width:1400px;margin:0 auto;display:grid;grid-template-columns:minmax(0,.34fr) minmax(0,.66fr);gap:clamp(34px,5vw,88px);align-items:start">
+
+    <div>
+      <div style="display:inline-flex;align-items:center;gap:12px;font-size:11px;font-weight:500;letter-spacing:.26em;text-transform:uppercase;color:#CCCCD2;text-shadow:0 1px 12px rgba(0,0,0,.9);margin-bottom:24px;animation:hs-rise .9s cubic-bezier(.16,1,.3,1) both;animation-timeline:view();animation-range:entry 0% cover 18%">
+        <span style="display:block;width:22px;height:1px;background:var(--acc,#E10600);transform-origin:left;animation:hs-rule 1.1s cubic-bezier(.16,1,.3,1) both;animation-timeline:view();animation-range:entry 0% cover 16%"></span>08 — Termine
+      </div>
+      <h2 style="margin:0 0 clamp(22px,2.6vw,34px);font-family:'Bricolage Grotesque',Manrope,sans-serif;font-weight:800;font-variation-settings:'opsz' 96,'wdth' 100;font-size:clamp(32px,3.8vw,66px);line-height:.96;letter-spacing:-.035em;color:#FFFFFF;text-shadow:0 2px 30px rgba(0,0,0,.55);text-wrap:balance"><span style="display:block"><span style="display:inline-block;animation:hs-word .9s cubic-bezier(.16,1,.3,1) both;animation-timeline:view();animation-range:entry 3.0% cover 24.0%">Was</span> <span style="display:inline-block;font-family:'Instrument Serif',Georgia,serif;font-style:italic;font-weight:400;font-size:1.06em;color:var(--acc,#E10600);letter-spacing:-.01em;line-height:.9;animation:hs-wordi 1s cubic-bezier(.16,1,.3,1) both;animation-timeline:view();animation-range:entry 5.4% cover 26.4%">ansteht</span></span></h2>
+      <p style="margin:0 0 clamp(24px,3vw,36px);max-width:38ch;font-size:15px;line-height:1.78;color:#B4B4BB;text-wrap:pretty">Kurse, Wettkampfvorbereitung, offene Trainingsabende. Termine kündigen wir hier an — und kurzfristig auf Facebook.</p>
+      <a href="https://www.facebook.com/HSKPerformancecenter/" target="_blank" rel="noopener noreferrer" data-termine-fb style="display:inline-flex;align-items:center;gap:11px;padding:14px 24px;border-radius:100px;border:1px solid rgba(255,255,255,.18);font-size:11.5px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:#F4F2EF;white-space:nowrap">Auf Facebook folgen<span aria-hidden="true" style="color:var(--acc,#E10600)">&#8599;</span></a>
+    </div>
+
+    <div data-termine-liste>
+
+      <article data-termin>
+        <div data-termin-wann>
+          <span data-termin-tag>Jederzeit</span>
+          <span data-termin-zusatz>Täglich 06 — 24 Uhr</span>
+        </div>
+        <div data-termin-body>
+          <h3>Probetraining</h3>
+          <p>Ohne Termin vorbeikommen, die Fläche ansehen und eine Einheit mittrainieren. Wir zeigen dir die Geräte, du entscheidest danach.</p>
+        </div>
+        <div data-termin-tail>
+          <span data-termin-status><span></span>laufend</span>
+          <a href="#mitglied" data-termin-cta>Anfragen<span aria-hidden="true">&#8594;</span></a>
+        </div>
+      </article>
+    </div>
+
+  </div>
+</section>
+
+<section id="partner" data-screen-label="Partner" style="position:relative;z-index:3;background:linear-gradient(180deg,rgba(0,0,0,.66) 0%,rgba(0,0,0,.52) 50%,rgba(0,0,0,.74) 100%);border-top:1px solid rgba(255,255,255,.09);padding:clamp(85px,10vw,155px) clamp(18px,4vw,64px)">
+  <div style="max-width:1400px;margin:0 auto">
+
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:28px;flex-wrap:wrap;margin-bottom:clamp(34px,4.4vw,62px)">
+      <div>
+        <div style="display:inline-flex;align-items:center;gap:12px;font-size:11px;font-weight:500;letter-spacing:.26em;text-transform:uppercase;color:#CCCCD2;text-shadow:0 1px 12px rgba(0,0,0,.9);margin-bottom:24px;animation:hs-rise .9s cubic-bezier(.16,1,.3,1) both;animation-timeline:view();animation-range:entry 0% cover 18%">
+          <span style="display:block;width:22px;height:1px;background:var(--acc,#E10600);transform-origin:left;animation:hs-rule 1.1s cubic-bezier(.16,1,.3,1) both;animation-timeline:view();animation-range:entry 0% cover 16%"></span>09 — Partner
+        </div>
+        <h2 style="margin:0;max-width:16ch;font-family:'Bricolage Grotesque',Manrope,sans-serif;font-weight:800;font-variation-settings:'opsz' 96,'wdth' 100;font-size:clamp(32px,4.4vw,78px);line-height:.96;letter-spacing:-.035em;color:#FFFFFF;text-shadow:0 2px 30px rgba(0,0,0,.55);text-wrap:balance"><span style="display:block"><span style="display:inline-block;animation:hs-word .9s cubic-bezier(.16,1,.3,1) both;animation-timeline:view();animation-range:entry 3.0% cover 24.0%">Wer</span> <span style="display:inline-block;animation:hs-word .9s cubic-bezier(.16,1,.3,1) both;animation-timeline:view();animation-range:entry 5.4% cover 26.4%">mit</span> <span style="display:inline-block;animation:hs-word .9s cubic-bezier(.16,1,.3,1) both;animation-timeline:view();animation-range:entry 7.8% cover 28.8%">uns</span></span><span style="display:block"><span style="display:inline-block;font-family:'Instrument Serif',Georgia,serif;font-style:italic;font-weight:400;font-size:1.06em;color:var(--acc,#E10600);letter-spacing:-.01em;line-height:.9;animation:hs-wordi 1s cubic-bezier(.16,1,.3,1) both;animation-timeline:view();animation-range:entry 10.2% cover 31.2%">zusammen</span> <span style="display:inline-block;animation:hs-word .9s cubic-bezier(.16,1,.3,1) both;animation-timeline:view();animation-range:entry 12.6% cover 33.6%">arbeitet</span></span></h2>
+      </div>
+      <p style="margin:0;max-width:44ch;font-size:clamp(15px,1.2vw,17px);line-height:1.78;color:#C4C4CA;text-shadow:0 1px 12px rgba(0,0,0,.9);text-wrap:pretty;animation:hs-rise 1s cubic-bezier(.16,1,.3,1) both;animation-timeline:view();animation-range:entry 4% cover 30%">Kurze Wege, klare Absprachen. Wenn du eine Firma, einen Verein oder eine Praxis vertrittst und etwas gemeinsam aufziehen willst — meld dich einfach.</p>
+    </div>
+
+    <div data-partner style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(14px,1.6vw,24px)">
+
+      <article style="position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;gap:clamp(28px,3.4vw,48px);min-height:clamp(240px,26vw,320px);padding:clamp(28px,2.8vw,44px);border-radius:20px;background:rgba(9,9,11,.58);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.09);animation:hs-rise .9s cubic-bezier(.16,1,.3,1) both;animation-timeline:view();animation-range:entry 2% cover 26%">
+        <span style="position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--acc,#E10600),transparent)"></span>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:18px">
+          <span style="font-size:11px;font-weight:500;letter-spacing:.2em;text-transform:uppercase;color:#9A9AA2">Firmenfitness</span>
+          <span style="display:inline-flex;align-items:center;gap:8px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#CCCCD2"><span style="width:5px;height:5px;border-radius:50%;background:#4A9E2E;box-shadow:0 0 9px rgba(74,158,46,.9)"></span>Aktiv</span>
+        </div>
+        <div>
+          <div style="font-family:'Bricolage Grotesque',Manrope,sans-serif;font-weight:800;font-variation-settings:'opsz' 96,'wdth' 100;font-size:clamp(30px,3.4vw,54px);line-height:1;letter-spacing:-.035em;color:#FFFFFF;margin-bottom:16px">Wellhub</div>
+          <p style="margin:0;max-width:46ch;font-size:14.5px;line-height:1.78;color:#B4B4BB;text-wrap:pretty">Wir sind Partnerstudio. Wellhub-Mitglieder trainieren ab dem Silver-Paket bei uns — Karte mitbringen, reinkommen, loslegen.</p>
+        </div>
+      </article>
+
+      <article style="position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;gap:clamp(28px,3.4vw,48px);min-height:clamp(240px,26vw,320px);padding:clamp(28px,2.8vw,44px);border-radius:20px;background:linear-gradient(160deg,rgba(225,6,0,.13) 0%,rgba(9,9,11,.58) 55%);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(225,6,0,.28);animation:hs-rise .9s cubic-bezier(.16,1,.3,1) both;animation-timeline:view();animation-range:entry 2% cover 26%">
+        <span style="position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--acc,#E10600),transparent)"></span>
+        <span style="font-size:11px;font-weight:500;letter-spacing:.2em;text-transform:uppercase;color:#CCCCD2">Partner werden</span>
+        <div>
+          <h3 style="margin:0 0 14px;font-family:'Instrument Serif',Georgia,serif;font-weight:400;font-size:clamp(22px,2.4vw,38px);line-height:1.14;color:#FFFFFF">Firmen, Vereine, Praxen</h3>
+          <p style="margin:0 0 clamp(22px,2.6vw,32px);max-width:46ch;font-size:14.5px;line-height:1.78;color:#C4C4CA;text-wrap:pretty">Betriebliche Gesundheitsförderung, Mannschaftstraining in der Nebensaison, Anschlusstraining nach der Reha — sag uns, was ihr braucht.</p>
+          <a href="#mitglied" data-magnet style="display:inline-flex;align-items:center;gap:12px;background:var(--acc,#E10600);color:#FFFFFF;padding:16px 30px;border-radius:100px;font-size:12px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;white-space:nowrap;transition:box-shadow .4s ease,transform .4s cubic-bezier(.16,1,.3,1)" data-partner-cta>Anfrage senden<span style="opacity:.7">&#8594;</span></a>
+        </div>
+      </article>
+
+    </div>
+  </div>
+</section>
+
+<section data-screen-label="FAQ" style="position:relative;z-index:3;background:linear-gradient(180deg,rgba(0,0,0,.36) 0%,rgba(0,0,0,.5) 100%);padding:clamp(85px,9.5vw,150px) clamp(18px,4vw,64px);border-top:1px solid rgba(255,255,255,.09)">
+  <div data-two data-cols="minmax(0,.32fr) minmax(0,.68fr)" style="max-width:1400px;margin:0 auto;display:grid;grid-template-columns:minmax(0,.32fr) minmax(0,.68fr);gap:clamp(30px,5vw,92px);align-items:start">
+    <div>
+      <div style="display:inline-flex;align-items:center;gap:12px;font-size:11px;font-weight:500;letter-spacing:.26em;text-transform:uppercase;color:#CCCCD2;text-shadow:0 1px 12px rgba(0,0,0,.9);margin-bottom:24px;animation:hs-rise .9s cubic-bezier(.16,1,.3,1) both;animation-timeline:view();animation-range:entry 0% cover 18%">
+        <span style="display:block;width:22px;height:1px;background:var(--acc,#E10600);transform-origin:left;animation:hs-rule 1.1s cubic-bezier(.16,1,.3,1) both;animation-timeline:view();animation-range:entry 0% cover 16%"></span>10 — Häufige Fragen
+      </div>
+      <h2 style="margin:0;font-family:'Bricolage Grotesque',Manrope,sans-serif;font-weight:800;font-variation-settings:'opsz' 96,'wdth' 100;font-size:clamp(30px,3.5vw,60px);line-height:.96;letter-spacing:-.035em;color:#FFFFFF;text-shadow:0 2px 30px rgba(0,0,0,.55);text-wrap:balance"><span style="display:block"><span style="display:inline-block;animation:hs-word .9s cubic-bezier(.16,1,.3,1) both;animation-timeline:view();animation-range:entry 3.0% cover 24.0%">Kurz</span> <span style="display:inline-block;font-family:'Instrument Serif',Georgia,serif;font-style:italic;font-weight:400;font-size:1.06em;color:var(--acc,#E10600);letter-spacing:-.01em;line-height:.9;animation:hs-wordi 1s cubic-bezier(.16,1,.3,1) both;animation-timeline:view();animation-range:entry 5.4% cover 26.4%">geklärt</span></span></h2>
+    </div>
+    <div style="border-top:1px solid rgba(255,255,255,.14)">
+      <div data-faq style="border-bottom:1px solid rgba(255,255,255,.14)">
+        <div data-faq-head style="display:flex;justify-content:space-between;align-items:center;gap:24px;padding:27px 0;cursor:pointer;transition:color .35s ease" data-hh="h20"><h3 style="margin:0;font-size:clamp(15.5px,1.3vw,18px);font-weight:600;color:inherit">Kann ich das Studio vorher testen?</h3><span data-faq-icon style="flex:0 0 auto;font-size:22px;line-height:1;color:var(--acc,#E10600);transition:transform .45s cubic-bezier(.16,1,.3,1)">+</span></div>
+        <div data-faq-body style="max-height:0;overflow:hidden;transition:max-height .55s cubic-bezier(.16,1,.3,1)"><p style="margin:0 0 27px;max-width:64ch;font-size:15px;line-height:1.8;color:#CCCCD2;text-shadow:0 1px 12px rgba(0,0,0,.9);text-wrap:pretty">Ja. Komm einfach vorbei oder ruf kurz an. Wir zeigen dir die Fläche und du trainierst zur Probe.</p></div>
+      </div>
+      <div data-faq style="border-bottom:1px solid rgba(255,255,255,.14)">
+        <div data-faq-head style="display:flex;justify-content:space-between;align-items:center;gap:24px;padding:27px 0;cursor:pointer;transition:color .35s ease" data-hh="h21"><h3 style="margin:0;font-size:clamp(15.5px,1.3vw,18px);font-weight:600;color:inherit">Brauche ich für das Training einen Termin?</h3><span data-faq-icon style="flex:0 0 auto;font-size:22px;line-height:1;color:var(--acc,#E10600);transition:transform .45s cubic-bezier(.16,1,.3,1)">+</span></div>
+        <div data-faq-body style="max-height:0;overflow:hidden;transition:max-height .55s cubic-bezier(.16,1,.3,1)"><p style="margin:0 0 27px;max-width:64ch;font-size:15px;line-height:1.8;color:#CCCCD2;text-shadow:0 1px 12px rgba(0,0,0,.9);text-wrap:pretty">Zum Trainieren nicht. Für ein ausführliches Beratungs- oder Coachinggespräch ist ein Anruf vorab sinnvoll.</p></div>
+      </div>
+      <div data-faq style="border-bottom:1px solid rgba(255,255,255,.14)">
+        <div data-faq-head style="display:flex;justify-content:space-between;align-items:center;gap:24px;padding:27px 0;cursor:pointer;transition:color .35s ease" data-hh="h22"><h3 style="margin:0;font-size:clamp(15.5px,1.3vw,18px);font-weight:600;color:inherit">Wann habt ihr geöffnet?</h3><span data-faq-icon style="flex:0 0 auto;font-size:22px;line-height:1;color:var(--acc,#E10600);transition:transform .45s cubic-bezier(.16,1,.3,1)">+</span></div>
+        <div data-faq-body style="max-height:0;overflow:hidden;transition:max-height .55s cubic-bezier(.16,1,.3,1)"><p style="margin:0 0 27px;max-width:64ch;font-size:15px;line-height:1.8;color:#CCCCD2;text-shadow:0 1px 12px rgba(0,0,0,.9);text-wrap:pretty">Täglich von 06:00 bis 24:00 Uhr — auch samstags und sonntags.</p></div>
+      </div>
+      <div data-faq style="border-bottom:1px solid rgba(255,255,255,.14)">
+        <div data-faq-head style="display:flex;justify-content:space-between;align-items:center;gap:24px;padding:27px 0;cursor:pointer;transition:color .35s ease" data-hh="h23"><h3 style="margin:0;font-size:clamp(15.5px,1.3vw,18px);font-weight:600;color:inherit">Bin ich als Einsteiger hier richtig?</h3><span data-faq-icon style="flex:0 0 auto;font-size:22px;line-height:1;color:var(--acc,#E10600);transition:transform .45s cubic-bezier(.16,1,.3,1)">+</span></div>
+        <div data-faq-body style="max-height:0;overflow:hidden;transition:max-height .55s cubic-bezier(.16,1,.3,1)"><p style="margin:0 0 27px;max-width:64ch;font-size:15px;line-height:1.8;color:#CCCCD2;text-shadow:0 1px 12px rgba(0,0,0,.9);text-wrap:pretty">Ja. Du bekommst eine Einweisung und einen Plan, der zu deinem Stand passt — unabhängig davon, wie schwer die Scheiben nebenan sind.</p></div>
+      </div>
+      <div data-faq style="border-bottom:1px solid rgba(255,255,255,.14)">
+        <div data-faq-head style="display:flex;justify-content:space-between;align-items:center;gap:24px;padding:27px 0;cursor:pointer;transition:color .35s ease" data-hh="h24"><h3 style="margin:0;font-size:clamp(15.5px,1.3vw,18px);font-weight:600;color:inherit">Kann ich als Gast trainieren?</h3><span data-faq-icon style="flex:0 0 auto;font-size:22px;line-height:1;color:var(--acc,#E10600);transition:transform .45s cubic-bezier(.16,1,.3,1)">+</span></div>
+        <div data-faq-body style="max-height:0;overflow:hidden;transition:max-height .55s cubic-bezier(.16,1,.3,1)"><p style="margin:0 0 27px;max-width:64ch;font-size:15px;line-height:1.8;color:#CCCCD2;text-shadow:0 1px 12px rgba(0,0,0,.9);text-wrap:pretty">Drop-ins sind unkompliziert möglich. Die Tageskarte gibt es vor Ort, bitte Bargeld mitbringen. Wellhub-Mitglieder trainieren ab dem Silver-Paket.</p></div>
+      </div>
+      <div data-faq style="border-bottom:1px solid rgba(255,255,255,.14)">
+        <div data-faq-head style="display:flex;justify-content:space-between;align-items:center;gap:24px;padding:27px 0;cursor:pointer;transition:color .35s ease" data-hh="h25"><h3 style="margin:0;font-size:clamp(15.5px,1.3vw,18px);font-weight:600;color:inherit">Ist Chalk erlaubt?</h3><span data-faq-icon style="flex:0 0 auto;font-size:22px;line-height:1;color:var(--acc,#E10600);transition:transform .45s cubic-bezier(.16,1,.3,1)">+</span></div>
+        <div data-faq-body style="max-height:0;overflow:hidden;transition:max-height .55s cubic-bezier(.16,1,.3,1)"><p style="margin:0 0 27px;max-width:64ch;font-size:15px;line-height:1.8;color:#CCCCD2;text-shadow:0 1px 12px rgba(0,0,0,.9);text-wrap:pretty">Ja. Plattformen, Chalk und ernsthafte Lasten gehören hier ausdrücklich dazu.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+<section id="kontakt" data-screen-label="Anfahrt" style="position:relative;z-index:3;padding:clamp(76px,9vw,140px) clamp(18px,4vw,64px);border-top:1px solid rgba(255,255,255,.09);overflow:hidden;timeline-scope:--hs-card">
+  <div data-map-wrap style="position:absolute;top:0;left:0;right:0;bottom:0">
+    <iframe data-map-frame title="Karte: HSK Performance Center, Strackestraße 22, Brilon" data-src="https://www.google.com/maps?q=Strackestra%C3%9Fe%2022%2C%2059929%20Brilon&amp;output=embed" loading="lazy" style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;filter:invert(1) hue-rotate(180deg) saturate(.28) contrast(.9) brightness(.95);transform-origin:50% 50%;will-change:transform;animation:hs-map-settle 1s cubic-bezier(.16,1,.3,1) both;animation-timeline:--hs-card;animation-range:cover 0% cover 52%"></iframe>
+    <div data-map-pin aria-hidden="true" style="position:absolute;left:50%;top:50%;width:0;height:0;pointer-events:none;z-index:2;animation:hs-pin-pop 1s cubic-bezier(.16,1,.3,1) both;animation-timeline:--hs-card;animation-range:cover 22% cover 50%"><span style="position:absolute;left:0;top:0;width:96px;height:96px;margin:0;border-radius:50%;border:1px solid rgba(255,72,58,.7);animation:hs-ping 2.8s cubic-bezier(.16,1,.3,1) infinite"></span><span style="position:absolute;left:0;top:0;width:96px;height:96px;border-radius:50%;border:1px solid rgba(255,72,58,.55);animation:hs-ping 2.8s cubic-bezier(.16,1,.3,1) .9s infinite"></span><span style="position:absolute;left:0;top:0;width:96px;height:96px;border-radius:50%;border:1px solid rgba(255,72,58,.4);animation:hs-ping 2.8s cubic-bezier(.16,1,.3,1) 1.8s infinite"></span><svg viewBox="0 0 24 34" width="30" height="42" style="position:absolute;left:0;top:0;transform:translate(-50%,-100%);animation:hs-pin 2.8s ease-in-out infinite;filter:drop-shadow(0 0 14px rgba(255,72,58,.9))"><path d="M12 0C5.4 0 0 5.4 0 12c0 8.4 12 22 12 22s12-13.6 12-22c0-6.6-5.4-12-12-12z" fill="#FF483A"/><circle cx="12" cy="12" r="4.4" fill="#1A0304"/></svg></div>
+    <div data-map-gate>
+      <div data-map-gate-inner>
+        <span data-map-gate-kicker>Karte</span>
+        <p>Die Karte wird von Google Maps geladen. Dabei wird deine IP-Adresse an Google übertragen.</p>
+        <button data-map-accept type="button">Karte laden</button>
+        <a href="https://www.google.com/maps/search/?api=1&amp;query=Strackestra%C3%9Fe+22+59929+Brilon" target="_blank" rel="noopener noreferrer">In Google Maps öffnen &#8599;</a>
+      </div>
+    </div>
+    <div data-map-scrim style="position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none;background:linear-gradient(90deg,rgba(0,0,0,.94) 0%,rgba(0,0,0,.82) 24%,rgba(0,0,0,.4) 40%,rgba(0,0,0,.08) 54%,rgba(0,0,0,0) 66%)"></div>
+    <div data-map-veil style="position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none;background:#000;opacity:0;animation:hs-veil 1s cubic-bezier(.16,1,.3,1) both;animation-timeline:--hs-card;animation-range:cover 4% cover 40%"></div>
+    <div style="position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none;background:linear-gradient(180deg,rgba(0,0,0,.62) 0%,rgba(0,0,0,0) 20%,rgba(0,0,0,0) 82%,rgba(0,0,0,.55) 100%)"></div>
+  </div>
+
+  <div data-two data-cols="minmax(0,.42fr) minmax(0,.58fr)" style="position:relative;max-width:1400px;margin:0 auto;display:grid;grid-template-columns:minmax(0,.42fr) minmax(0,.58fr);gap:clamp(24px,3vw,52px);align-items:center">
+    <div data-slide style="padding:clamp(30px,3.2vw,52px);border-radius:24px;background:rgba(9,9,11,.62);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);border:1px solid rgba(225,6,0,.55);box-shadow:0 0 0 1px rgba(225,6,0,.14),0 0 32px rgba(225,6,0,.3),0 0 76px rgba(225,6,0,.16),0 34px 100px rgba(0,0,0,.62);will-change:transform,opacity;view-timeline-name:--hs-card;animation:hs-aside 1s cubic-bezier(.16,1,.3,1) both;animation-timeline:--hs-card;animation-range:cover 4% cover 40%">
+      <div style="display:inline-flex;align-items:center;gap:12px;font-size:11px;font-weight:500;letter-spacing:.26em;text-transform:uppercase;color:#CCCCD2;margin-bottom:24px;animation:hs-rise .9s cubic-bezier(.16,1,.3,1) both;animation-timeline:view();animation-range:entry 0% cover 18%">
+        <span style="display:block;width:22px;height:1px;background:var(--acc,#E10600);transform-origin:left;animation:hs-rule 1.1s cubic-bezier(.16,1,.3,1) both;animation-timeline:view();animation-range:entry 0% cover 16%"></span>11 — Öffnungszeiten &amp; Anfahrt
+      </div>
+      <h2 style="margin:0 0 10px;font-family:'Bricolage Grotesque',Manrope,sans-serif;font-weight:800;font-variation-settings:'opsz' 96,'wdth' 100;font-size:clamp(30px,3.5vw,60px);line-height:.96;letter-spacing:-.035em;color:#FFFFFF;text-shadow:0 2px 30px rgba(0,0,0,.55);text-wrap:balance"><span style="display:block"><span style="display:inline-block;animation:hs-word .9s cubic-bezier(.16,1,.3,1) both;animation-timeline:view();animation-range:entry 3.0% cover 24.0%">Strackestraße</span> <span style="display:inline-block;animation:hs-word .9s cubic-bezier(.16,1,.3,1) both;animation-timeline:view();animation-range:entry 5.4% cover 26.4%">22</span></span></h2>
+      <p style="margin:0 0 clamp(26px,3vw,40px);font-size:15px;line-height:1.7;color:#B4B4BB">59929 Brilon · Hochsauerlandkreis</p>
+      <div data-status-chip style="display:flex;align-items:center;gap:12px;padding:13px 18px;border-radius:100px;background:rgba(74,158,46,.12);border:1px solid rgba(74,158,46,.3);margin-bottom:clamp(22px,2.4vw,32px)">
+        <span data-status-dot style="width:7px;height:7px;border-radius:50%;background:#4A9E2E;box-shadow:0 0 12px rgba(74,158,46,.9);animation:hs-pulse 2.8s ease-in-out infinite"></span>
+        <span data-status-text style="font-size:13px;color:#F4F2EF">Öffnungszeiten 06 — 24 Uhr</span>
+      </div>
+          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:18px;padding:17px 0;border-top:1px solid rgba(255,255,255,.1)">
+            <span style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#9A9AA2">Mo — So</span>
+            <span style="font-family:'Instrument Serif',Georgia,serif;font-size:clamp(17px,1.5vw,22px);color:#FFFFFF">06:00 — 24:00</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:18px;padding:17px 0;border-top:1px solid rgba(255,255,255,.1)">
+            <span style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#9A9AA2">Telefon</span>
+            <a href="tel:+4916090285812" style="font-family:'Instrument Serif',Georgia,serif;font-size:clamp(17px,1.5vw,22px);color:#F7F5F2">0160 90285812</a>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:18px;padding:17px 0;border-top:1px solid rgba(255,255,255,.1)">
+            <span style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#9A9AA2">E-Mail</span>
+            <a href="mailto:sb@hsk.fitness" style="font-family:'Instrument Serif',Georgia,serif;font-size:clamp(17px,1.5vw,22px);color:#F7F5F2">sb@hsk.fitness</a>
+          </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:clamp(26px,3vw,38px)">
+        <a href="https://www.google.com/maps/search/?api=1&amp;query=Strackestra%C3%9Fe+22+59929+Brilon" target="_blank" rel="noopener" style="display:flex;align-items:center;justify-content:space-between;gap:14px;padding:16px 20px;border-radius:14px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#F4F2EF;font-size:12.5px;font-weight:500;transition:background .4s ease,border-color .4s ease,transform .45s cubic-bezier(.16,1,.3,1)" data-hh="h18">Route öffnen<span aria-hidden="true" style="color:var(--acc,#E10600)">&#8594;</span></a>
+        <a href="tel:+4916090285812" style="display:flex;align-items:center;justify-content:space-between;gap:14px;padding:16px 20px;border-radius:14px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#F4F2EF;font-size:12.5px;font-weight:500;transition:background .4s ease,border-color .4s ease,transform .45s cubic-bezier(.16,1,.3,1)" data-hh="h19">Anrufen<span aria-hidden="true" style="color:var(--acc,#E10600)">&#8594;</span></a>
+      </div>
+    </div>
+
+      </div>
+</section>
 <section id="mitglied" data-screen-label="Mitglied werden" style="position:relative;z-index:3;overflow:hidden;padding:clamp(95px,11vw,185px) clamp(18px,4vw,64px)">
   
 
@@ -1168,7 +1531,7 @@ html[data-brand="mark"] [data-brand-logo] { height: 21px !important; }
   <div style="position:relative;max-width:1080px;margin:0 auto">
     <div style="margin-bottom:clamp(42px,5.2vw,70px)">
       <div style="display:inline-flex;align-items:center;gap:12px;font-size:11px;font-weight:500;letter-spacing:.26em;text-transform:uppercase;color:#DCDCE2;text-shadow:0 1px 12px rgba(0,0,0,.9);margin-bottom:26px;animation:hs-rise .9s cubic-bezier(.16,1,.3,1) both;animation-timeline:view();animation-range:entry 0% cover 18%">
-        <span style="display:block;width:22px;height:1px;background:var(--acc,#E10600);transform-origin:left;animation:hs-rule 1.1s cubic-bezier(.16,1,.3,1) both;animation-timeline:view();animation-range:entry 0% cover 16%"></span>07 — Loslegen
+        <span style="display:block;width:22px;height:1px;background:var(--acc,#E10600);transform-origin:left;animation:hs-rule 1.1s cubic-bezier(.16,1,.3,1) both;animation-timeline:view();animation-range:entry 0% cover 16%"></span>12 — Loslegen
       </div>
       <h2 style="margin:0 0 24px;font-family:'Bricolage Grotesque',Manrope,sans-serif;font-weight:800;font-variation-settings:'opsz' 96,'wdth' 100;font-size:clamp(40px,6.2vw,116px);line-height:.96;letter-spacing:-.035em;color:#FFFFFF;text-shadow:0 2px 30px rgba(0,0,0,.55);text-wrap:balance"><span style="display:block"><span style="display:inline-block;animation:hs-word .9s cubic-bezier(.16,1,.3,1) both;animation-timeline:view();animation-range:entry 3.0% cover 24.0%">Fang</span> <span style="display:inline-block;animation:hs-word .9s cubic-bezier(.16,1,.3,1) both;animation-timeline:view();animation-range:entry 5.4% cover 26.4%">an,</span> <span style="display:inline-block;animation:hs-word .9s cubic-bezier(.16,1,.3,1) both;animation-timeline:view();animation-range:entry 7.8% cover 28.8%">bevor</span></span><span style="display:block"><span style="display:inline-block;animation:hs-word .9s cubic-bezier(.16,1,.3,1) both;animation-timeline:view();animation-range:entry 10.2% cover 31.2%">du</span> <span style="display:inline-block;font-family:'Instrument Serif',Georgia,serif;font-style:italic;font-weight:400;font-size:1.06em;color:var(--acc,#E10600);letter-spacing:-.01em;line-height:.9;animation:hs-wordi 1s cubic-bezier(.16,1,.3,1) both;animation-timeline:view();animation-range:entry 12.6% cover 33.6%">bereit</span> <span style="display:inline-block;animation:hs-word .9s cubic-bezier(.16,1,.3,1) both;animation-timeline:view();animation-range:entry 15.0% cover 36.0%">bist</span></span></h2>
       <p style="margin:0;max-width:52ch;font-size:clamp(15px,1.2vw,17px);line-height:1.78;color:#DCDCE2;text-shadow:0 1px 12px rgba(0,0,0,.9);text-wrap:pretty">Schreib kurz, was du vorhast. Wir melden uns persönlich und stimmen Probetraining und Mitgliedschaft in Ruhe ab.</p>
@@ -1222,184 +1585,6 @@ html[data-brand="mark"] [data-brand-logo] { height: 21px !important; }
     </div>
   </div>
 </section>
-
-<section data-screen-label="Drop-in" style="position:relative;z-index:3;background:linear-gradient(180deg,rgba(0,0,0,.5) 0%,rgba(0,0,0,.32) 50%,rgba(0,0,0,.54) 100%);border-top:1px solid rgba(255,255,255,.09);padding:clamp(85px,10vw,160px) clamp(18px,4vw,64px)">
-  <div data-two data-cols="minmax(0,.52fr) minmax(0,.48fr)" style="max-width:1400px;margin:0 auto;display:grid;grid-template-columns:minmax(0,.52fr) minmax(0,.48fr);gap:clamp(34px,5vw,86px);align-items:center">
-    <div data-parallax="-24" style="position:relative;aspect-ratio:16/10;overflow:hidden;will-change:transform;border-top:1px solid rgba(255,255,255,.11);border-bottom:1px solid rgba(255,255,255,.11)">
-      <img src="assets/reception.jpg" alt="Empfangsbereich des HSK Performance Center mit rotem Lichtband" loading="lazy" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover" />
-      <div style="position:absolute;top:0;left:0;right:0;bottom:0;background:linear-gradient(180deg,rgba(0,0,0,.04) 0%,rgba(0,0,0,.3) 62%,rgba(0,0,0,.78) 100%)"></div>
-      <span style="position:absolute;left:clamp(16px,1.8vw,24px);bottom:clamp(14px,1.6vw,20px);font-size:11px;font-weight:500;letter-spacing:.22em;text-transform:uppercase;color:#D8D8DE;text-shadow:0 1px 12px rgba(0,0,0,.9)">Empfang · Musterbild</span>
-    </div>
-    <div>
-      <div style="display:inline-flex;align-items:center;gap:12px;font-size:11px;font-weight:500;letter-spacing:.26em;text-transform:uppercase;color:#CCCCD2;text-shadow:0 1px 12px rgba(0,0,0,.9);margin-bottom:24px;animation:hs-rise .9s cubic-bezier(.16,1,.3,1) both;animation-timeline:view();animation-range:entry 0% cover 18%">
-        <span style="display:block;width:22px;height:1px;background:var(--acc,#E10600);transform-origin:left;animation:hs-rule 1.1s cubic-bezier(.16,1,.3,1) both;animation-timeline:view();animation-range:entry 0% cover 16%"></span>08 — Gäste &amp; Drop-in
-      </div>
-      <h2 style="margin:0 0 clamp(20px,2.4vw,32px);font-family:'Bricolage Grotesque',Manrope,sans-serif;font-weight:800;font-variation-settings:'opsz' 96,'wdth' 100;font-size:clamp(32px,4vw,66px);line-height:.96;letter-spacing:-.035em;color:#FFFFFF;text-shadow:0 2px 30px rgba(0,0,0,.55);text-wrap:balance"><span style="display:block"><span style="display:inline-block;animation:hs-word .9s cubic-bezier(.16,1,.3,1) both;animation-timeline:view();animation-range:entry 3.0% cover 24.0%">Zu</span> <span style="display:inline-block;animation:hs-word .9s cubic-bezier(.16,1,.3,1) both;animation-timeline:view();animation-range:entry 5.4% cover 26.4%">Gast</span> <span style="display:inline-block;animation:hs-word .9s cubic-bezier(.16,1,.3,1) both;animation-timeline:view();animation-range:entry 7.8% cover 28.8%">im</span> <span style="display:inline-block;font-family:'Instrument Serif',Georgia,serif;font-style:italic;font-weight:400;font-size:1.06em;color:var(--acc,#E10600);letter-spacing:-.01em;line-height:.9;animation:hs-wordi 1s cubic-bezier(.16,1,.3,1) both;animation-timeline:view();animation-range:entry 10.2% cover 31.2%">Sauerland?</span></span></h2>
-      <p style="margin:0 0 clamp(28px,3.4vw,44px);max-width:46ch;font-size:16px;line-height:1.68;color:#DCDCE2;text-shadow:0 1px 12px rgba(0,0,0,.9)">Unkompliziert: kurz anrufen oder direkt vorbeikommen. Die Tageskarte gibt es vor Ort.</p>
-      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:22px;padding:17px 0;border-top:1px solid rgba(255,255,255,.13)">
-        <span style="font-size:16px;color:#F4F2EF;text-shadow:0 1px 12px rgba(0,0,0,.9)">Tageskarte</span>
-        <span style="font-size:13.5px;text-align:right;max-width:28ch;color:#C4C4CA;text-shadow:0 1px 12px rgba(0,0,0,.9)">Ohne Anmeldung · vor Ort · bitte Bargeld</span>
-      </div>
-      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:22px;padding:17px 0;border-top:1px solid rgba(255,255,255,.13)">
-        <span style="font-size:16px;color:#F4F2EF;text-shadow:0 1px 12px rgba(0,0,0,.9)">Wellhub</span>
-        <span style="font-size:13.5px;text-align:right;max-width:28ch;color:#C4C4CA;text-shadow:0 1px 12px rgba(0,0,0,.9)">Partnerstudio ab Silver-Paket</span>
-      </div>
-      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:22px;padding:17px 0;border-top:1px solid rgba(255,255,255,.13);border-bottom:1px solid rgba(255,255,255,.13)">
-        <span style="font-size:16px;color:#F4F2EF;text-shadow:0 1px 12px rgba(0,0,0,.9)">Kurz anrufen</span>
-        <a href="tel:+4916090285812" style="font-size:13.5px;color:#C4C4CA;text-shadow:0 1px 12px rgba(0,0,0,.9)">0160 90285812</a>
-      </div>
-    </div>
-  </div>
-
-
-  <div style="max-width:1400px;margin:clamp(46px,5vw,78px) auto 0">
-    <div style="display:inline-flex;align-items:center;gap:12px;font-size:11px;font-weight:500;letter-spacing:.26em;text-transform:uppercase;color:#CCCCD2;text-shadow:0 1px 12px rgba(0,0,0,.9);margin-bottom:clamp(20px,2.2vw,30px)">
-      <span style="display:block;width:22px;height:1px;background:var(--acc,#E10600)"></span>So findest du uns
-    </div>
-    <div data-arrival style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(10px,1.2vw,16px)">
-      <div style="padding:clamp(24px,2.4vw,34px);border-radius:20px;background:rgba(9,9,11,.5);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border:1px solid rgba(255,255,255,.09);transition:border-color .45s ease,background .45s ease,transform .55s cubic-bezier(.16,1,.3,1)" data-hh="h15">
-        <div style="display:flex;align-items:center;gap:10px;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#CCCCD2;margin-bottom:12px"><span style="display:block;width:14px;height:1px;flex:0 0 auto;background:var(--acc,#E10600)"></span>Mit dem Auto</div>
-        <p style="margin:0;font-size:14.5px;line-height:1.72;color:#C4C4CA;text-wrap:pretty">Kostenfreie Parkplätze direkt vor dem Studio. Von der B7 sind es keine drei Minuten.</p>
-      </div>
-      <div style="padding:clamp(24px,2.4vw,34px);border-radius:20px;background:rgba(9,9,11,.5);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border:1px solid rgba(255,255,255,.09);transition:border-color .45s ease,background .45s ease,transform .55s cubic-bezier(.16,1,.3,1)" data-hh="h16">
-        <div style="display:flex;align-items:center;gap:10px;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#CCCCD2;margin-bottom:12px"><span style="display:block;width:14px;height:1px;flex:0 0 auto;background:var(--acc,#E10600)"></span>Zu Fuß</div>
-        <p style="margin:0;font-size:14.5px;line-height:1.72;color:#C4C4CA;text-wrap:pretty">Rund zehn Gehminuten vom Marktplatz Brilon, am Rand der Innenstadt.</p>
-      </div>
-      <div style="padding:clamp(24px,2.4vw,34px);border-radius:20px;background:rgba(9,9,11,.5);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border:1px solid rgba(255,255,255,.09);transition:border-color .45s ease,background .45s ease,transform .55s cubic-bezier(.16,1,.3,1)" data-hh="h17">
-        <div style="display:flex;align-items:center;gap:10px;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#CCCCD2;margin-bottom:12px"><span style="display:block;width:14px;height:1px;flex:0 0 auto;background:var(--acc,#E10600)"></span>Erster Besuch</div>
-        <p style="margin:0;font-size:14.5px;line-height:1.72;color:#C4C4CA;text-wrap:pretty">Einfach reinkommen. Wir zeigen dir die Fläche und du trainierst eine Einheit zur Probe.</p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section id="kontakt" data-screen-label="Anfahrt" style="position:relative;z-index:3;padding:clamp(76px,9vw,140px) clamp(18px,4vw,64px);border-top:1px solid rgba(255,255,255,.09);overflow:hidden;timeline-scope:--hs-card">
-  <div data-map-wrap style="position:absolute;top:0;left:0;right:0;bottom:0">
-    <iframe data-map-frame title="Karte: HSK Performance Center, Strackestraße 22, Brilon" data-src="https://www.google.com/maps?q=Strackestra%C3%9Fe%2022%2C%2059929%20Brilon&amp;output=embed" loading="lazy" style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;filter:invert(1) hue-rotate(180deg) saturate(.28) contrast(.9) brightness(.95);transform-origin:50% 50%;will-change:transform;animation:hs-map-settle 1s cubic-bezier(.16,1,.3,1) both;animation-timeline:--hs-card;animation-range:cover 0% cover 52%"></iframe>
-    <div data-map-pin aria-hidden="true" style="position:absolute;left:50%;top:50%;width:0;height:0;pointer-events:none;z-index:2;animation:hs-pin-pop 1s cubic-bezier(.16,1,.3,1) both;animation-timeline:--hs-card;animation-range:cover 22% cover 50%"><span style="position:absolute;left:0;top:0;width:96px;height:96px;margin:0;border-radius:50%;border:1px solid rgba(255,72,58,.7);animation:hs-ping 2.8s cubic-bezier(.16,1,.3,1) infinite"></span><span style="position:absolute;left:0;top:0;width:96px;height:96px;border-radius:50%;border:1px solid rgba(255,72,58,.55);animation:hs-ping 2.8s cubic-bezier(.16,1,.3,1) .9s infinite"></span><span style="position:absolute;left:0;top:0;width:96px;height:96px;border-radius:50%;border:1px solid rgba(255,72,58,.4);animation:hs-ping 2.8s cubic-bezier(.16,1,.3,1) 1.8s infinite"></span><svg viewBox="0 0 24 34" width="30" height="42" style="position:absolute;left:0;top:0;transform:translate(-50%,-100%);animation:hs-pin 2.8s ease-in-out infinite;filter:drop-shadow(0 0 14px rgba(255,72,58,.9))"><path d="M12 0C5.4 0 0 5.4 0 12c0 8.4 12 22 12 22s12-13.6 12-22c0-6.6-5.4-12-12-12z" fill="#FF483A"/><circle cx="12" cy="12" r="4.4" fill="#1A0304"/></svg></div>
-    <div data-map-gate>
-      <div data-map-gate-inner>
-        <span data-map-gate-kicker>Karte</span>
-        <p>Die Karte wird von Google Maps geladen. Dabei wird deine IP-Adresse an Google übertragen.</p>
-        <button data-map-accept type="button">Karte laden</button>
-        <a href="https://www.google.com/maps/search/?api=1&amp;query=Strackestra%C3%9Fe+22+59929+Brilon" target="_blank" rel="noopener noreferrer">In Google Maps öffnen &#8599;</a>
-      </div>
-    </div>
-    <div data-map-scrim style="position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none;background:linear-gradient(90deg,rgba(0,0,0,.94) 0%,rgba(0,0,0,.82) 24%,rgba(0,0,0,.4) 40%,rgba(0,0,0,.08) 54%,rgba(0,0,0,0) 66%)"></div>
-    <div data-map-veil style="position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none;background:#000;opacity:0;animation:hs-veil 1s cubic-bezier(.16,1,.3,1) both;animation-timeline:--hs-card;animation-range:cover 4% cover 40%"></div>
-    <div style="position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none;background:linear-gradient(180deg,rgba(0,0,0,.62) 0%,rgba(0,0,0,0) 20%,rgba(0,0,0,0) 82%,rgba(0,0,0,.55) 100%)"></div>
-  </div>
-
-  <div data-two data-cols="minmax(0,.42fr) minmax(0,.58fr)" style="position:relative;max-width:1400px;margin:0 auto;display:grid;grid-template-columns:minmax(0,.42fr) minmax(0,.58fr);gap:clamp(24px,3vw,52px);align-items:center">
-    <div data-slide style="padding:clamp(30px,3.2vw,52px);border-radius:24px;background:rgba(9,9,11,.62);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);border:1px solid rgba(225,6,0,.55);box-shadow:0 0 0 1px rgba(225,6,0,.14),0 0 32px rgba(225,6,0,.3),0 0 76px rgba(225,6,0,.16),0 34px 100px rgba(0,0,0,.62);will-change:transform,opacity;view-timeline-name:--hs-card;animation:hs-aside 1s cubic-bezier(.16,1,.3,1) both;animation-timeline:--hs-card;animation-range:cover 4% cover 40%">
-      <div style="display:inline-flex;align-items:center;gap:12px;font-size:11px;font-weight:500;letter-spacing:.26em;text-transform:uppercase;color:#CCCCD2;margin-bottom:24px;animation:hs-rise .9s cubic-bezier(.16,1,.3,1) both;animation-timeline:view();animation-range:entry 0% cover 18%">
-        <span style="display:block;width:22px;height:1px;background:var(--acc,#E10600);transform-origin:left;animation:hs-rule 1.1s cubic-bezier(.16,1,.3,1) both;animation-timeline:view();animation-range:entry 0% cover 16%"></span>09 — Öffnungszeiten &amp; Anfahrt
-      </div>
-      <h2 style="margin:0 0 10px;font-family:'Bricolage Grotesque',Manrope,sans-serif;font-weight:800;font-variation-settings:'opsz' 96,'wdth' 100;font-size:clamp(30px,3.5vw,60px);line-height:.96;letter-spacing:-.035em;color:#FFFFFF;text-shadow:0 2px 30px rgba(0,0,0,.55);text-wrap:balance"><span style="display:block"><span style="display:inline-block;animation:hs-word .9s cubic-bezier(.16,1,.3,1) both;animation-timeline:view();animation-range:entry 3.0% cover 24.0%">Strackestraße</span> <span style="display:inline-block;animation:hs-word .9s cubic-bezier(.16,1,.3,1) both;animation-timeline:view();animation-range:entry 5.4% cover 26.4%">22</span></span></h2>
-      <p style="margin:0 0 clamp(26px,3vw,40px);font-size:15px;line-height:1.7;color:#B4B4BB">59929 Brilon · Hochsauerlandkreis</p>
-      <div data-status-chip style="display:flex;align-items:center;gap:12px;padding:13px 18px;border-radius:100px;background:rgba(74,158,46,.12);border:1px solid rgba(74,158,46,.3);margin-bottom:clamp(22px,2.4vw,32px)">
-        <span data-status-dot style="width:7px;height:7px;border-radius:50%;background:#4A9E2E;box-shadow:0 0 12px rgba(74,158,46,.9);animation:hs-pulse 2.8s ease-in-out infinite"></span>
-        <span data-status-text style="font-size:13px;color:#F4F2EF">Öffnungszeiten 06 — 24 Uhr</span>
-      </div>
-          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:18px;padding:17px 0;border-top:1px solid rgba(255,255,255,.1)">
-            <span style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#9A9AA2">Mo — So</span>
-            <span style="font-family:'Instrument Serif',Georgia,serif;font-size:clamp(17px,1.5vw,22px);color:#FFFFFF">06:00 — 24:00</span>
-          </div>
-          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:18px;padding:17px 0;border-top:1px solid rgba(255,255,255,.1)">
-            <span style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#9A9AA2">Telefon</span>
-            <a href="tel:+4916090285812" style="font-family:'Instrument Serif',Georgia,serif;font-size:clamp(17px,1.5vw,22px);color:#F7F5F2">0160 90285812</a>
-          </div>
-          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:18px;padding:17px 0;border-top:1px solid rgba(255,255,255,.1)">
-            <span style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#9A9AA2">E-Mail</span>
-            <a href="mailto:sb@hsk.fitness" style="font-family:'Instrument Serif',Georgia,serif;font-size:clamp(17px,1.5vw,22px);color:#F7F5F2">sb@hsk.fitness</a>
-          </div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:clamp(26px,3vw,38px)">
-        <a href="https://www.google.com/maps/search/?api=1&amp;query=Strackestra%C3%9Fe+22+59929+Brilon" target="_blank" rel="noopener" style="display:flex;align-items:center;justify-content:space-between;gap:14px;padding:16px 20px;border-radius:14px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#F4F2EF;font-size:12.5px;font-weight:500;transition:background .4s ease,border-color .4s ease,transform .45s cubic-bezier(.16,1,.3,1)" data-hh="h18">Route öffnen<span aria-hidden="true" style="color:var(--acc,#E10600)">&#8594;</span></a>
-        <a href="tel:+4916090285812" style="display:flex;align-items:center;justify-content:space-between;gap:14px;padding:16px 20px;border-radius:14px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#F4F2EF;font-size:12.5px;font-weight:500;transition:background .4s ease,border-color .4s ease,transform .45s cubic-bezier(.16,1,.3,1)" data-hh="h19">Anrufen<span aria-hidden="true" style="color:var(--acc,#E10600)">&#8594;</span></a>
-      </div>
-    </div>
-
-      </div>
-</section>
-
-<section data-screen-label="FAQ" style="position:relative;z-index:3;background:linear-gradient(180deg,rgba(0,0,0,.36) 0%,rgba(0,0,0,.5) 100%);padding:clamp(85px,9.5vw,150px) clamp(18px,4vw,64px);border-top:1px solid rgba(255,255,255,.09)">
-  <div data-two data-cols="minmax(0,.32fr) minmax(0,.68fr)" style="max-width:1400px;margin:0 auto;display:grid;grid-template-columns:minmax(0,.32fr) minmax(0,.68fr);gap:clamp(30px,5vw,92px);align-items:start">
-    <div>
-      <div style="display:inline-flex;align-items:center;gap:12px;font-size:11px;font-weight:500;letter-spacing:.26em;text-transform:uppercase;color:#CCCCD2;text-shadow:0 1px 12px rgba(0,0,0,.9);margin-bottom:24px;animation:hs-rise .9s cubic-bezier(.16,1,.3,1) both;animation-timeline:view();animation-range:entry 0% cover 18%">
-        <span style="display:block;width:22px;height:1px;background:var(--acc,#E10600);transform-origin:left;animation:hs-rule 1.1s cubic-bezier(.16,1,.3,1) both;animation-timeline:view();animation-range:entry 0% cover 16%"></span>10 — Häufige Fragen
-      </div>
-      <h2 style="margin:0;font-family:'Bricolage Grotesque',Manrope,sans-serif;font-weight:800;font-variation-settings:'opsz' 96,'wdth' 100;font-size:clamp(30px,3.5vw,60px);line-height:.96;letter-spacing:-.035em;color:#FFFFFF;text-shadow:0 2px 30px rgba(0,0,0,.55);text-wrap:balance"><span style="display:block"><span style="display:inline-block;animation:hs-word .9s cubic-bezier(.16,1,.3,1) both;animation-timeline:view();animation-range:entry 3.0% cover 24.0%">Kurz</span> <span style="display:inline-block;font-family:'Instrument Serif',Georgia,serif;font-style:italic;font-weight:400;font-size:1.06em;color:var(--acc,#E10600);letter-spacing:-.01em;line-height:.9;animation:hs-wordi 1s cubic-bezier(.16,1,.3,1) both;animation-timeline:view();animation-range:entry 5.4% cover 26.4%">geklärt</span></span></h2>
-    </div>
-    <div style="border-top:1px solid rgba(255,255,255,.14)">
-      <div data-faq style="border-bottom:1px solid rgba(255,255,255,.14)">
-        <div data-faq-head style="display:flex;justify-content:space-between;align-items:center;gap:24px;padding:27px 0;cursor:pointer;transition:color .35s ease" data-hh="h20"><h3 style="margin:0;font-size:clamp(15.5px,1.3vw,18px);font-weight:600;color:inherit">Kann ich das Studio vorher testen?</h3><span data-faq-icon style="flex:0 0 auto;font-size:22px;line-height:1;color:var(--acc,#E10600);transition:transform .45s cubic-bezier(.16,1,.3,1)">+</span></div>
-        <div data-faq-body style="max-height:0;overflow:hidden;transition:max-height .55s cubic-bezier(.16,1,.3,1)"><p style="margin:0 0 27px;max-width:64ch;font-size:15px;line-height:1.8;color:#CCCCD2;text-shadow:0 1px 12px rgba(0,0,0,.9);text-wrap:pretty">Ja. Komm einfach vorbei oder ruf kurz an. Wir zeigen dir die Fläche und du trainierst zur Probe.</p></div>
-      </div>
-      <div data-faq style="border-bottom:1px solid rgba(255,255,255,.14)">
-        <div data-faq-head style="display:flex;justify-content:space-between;align-items:center;gap:24px;padding:27px 0;cursor:pointer;transition:color .35s ease" data-hh="h21"><h3 style="margin:0;font-size:clamp(15.5px,1.3vw,18px);font-weight:600;color:inherit">Brauche ich für das Training einen Termin?</h3><span data-faq-icon style="flex:0 0 auto;font-size:22px;line-height:1;color:var(--acc,#E10600);transition:transform .45s cubic-bezier(.16,1,.3,1)">+</span></div>
-        <div data-faq-body style="max-height:0;overflow:hidden;transition:max-height .55s cubic-bezier(.16,1,.3,1)"><p style="margin:0 0 27px;max-width:64ch;font-size:15px;line-height:1.8;color:#CCCCD2;text-shadow:0 1px 12px rgba(0,0,0,.9);text-wrap:pretty">Zum Trainieren nicht. Für ein ausführliches Beratungs- oder Coachinggespräch ist ein Anruf vorab sinnvoll.</p></div>
-      </div>
-      <div data-faq style="border-bottom:1px solid rgba(255,255,255,.14)">
-        <div data-faq-head style="display:flex;justify-content:space-between;align-items:center;gap:24px;padding:27px 0;cursor:pointer;transition:color .35s ease" data-hh="h22"><h3 style="margin:0;font-size:clamp(15.5px,1.3vw,18px);font-weight:600;color:inherit">Wann habt ihr geöffnet?</h3><span data-faq-icon style="flex:0 0 auto;font-size:22px;line-height:1;color:var(--acc,#E10600);transition:transform .45s cubic-bezier(.16,1,.3,1)">+</span></div>
-        <div data-faq-body style="max-height:0;overflow:hidden;transition:max-height .55s cubic-bezier(.16,1,.3,1)"><p style="margin:0 0 27px;max-width:64ch;font-size:15px;line-height:1.8;color:#CCCCD2;text-shadow:0 1px 12px rgba(0,0,0,.9);text-wrap:pretty">Täglich von 06:00 bis 24:00 Uhr — auch samstags und sonntags.</p></div>
-      </div>
-      <div data-faq style="border-bottom:1px solid rgba(255,255,255,.14)">
-        <div data-faq-head style="display:flex;justify-content:space-between;align-items:center;gap:24px;padding:27px 0;cursor:pointer;transition:color .35s ease" data-hh="h23"><h3 style="margin:0;font-size:clamp(15.5px,1.3vw,18px);font-weight:600;color:inherit">Bin ich als Einsteiger hier richtig?</h3><span data-faq-icon style="flex:0 0 auto;font-size:22px;line-height:1;color:var(--acc,#E10600);transition:transform .45s cubic-bezier(.16,1,.3,1)">+</span></div>
-        <div data-faq-body style="max-height:0;overflow:hidden;transition:max-height .55s cubic-bezier(.16,1,.3,1)"><p style="margin:0 0 27px;max-width:64ch;font-size:15px;line-height:1.8;color:#CCCCD2;text-shadow:0 1px 12px rgba(0,0,0,.9);text-wrap:pretty">Ja. Du bekommst eine Einweisung und einen Plan, der zu deinem Stand passt — unabhängig davon, wie schwer die Scheiben nebenan sind.</p></div>
-      </div>
-      <div data-faq style="border-bottom:1px solid rgba(255,255,255,.14)">
-        <div data-faq-head style="display:flex;justify-content:space-between;align-items:center;gap:24px;padding:27px 0;cursor:pointer;transition:color .35s ease" data-hh="h24"><h3 style="margin:0;font-size:clamp(15.5px,1.3vw,18px);font-weight:600;color:inherit">Kann ich als Gast trainieren?</h3><span data-faq-icon style="flex:0 0 auto;font-size:22px;line-height:1;color:var(--acc,#E10600);transition:transform .45s cubic-bezier(.16,1,.3,1)">+</span></div>
-        <div data-faq-body style="max-height:0;overflow:hidden;transition:max-height .55s cubic-bezier(.16,1,.3,1)"><p style="margin:0 0 27px;max-width:64ch;font-size:15px;line-height:1.8;color:#CCCCD2;text-shadow:0 1px 12px rgba(0,0,0,.9);text-wrap:pretty">Drop-ins sind unkompliziert möglich. Die Tageskarte gibt es vor Ort, bitte Bargeld mitbringen. Wellhub-Mitglieder trainieren ab dem Silver-Paket.</p></div>
-      </div>
-      <div data-faq style="border-bottom:1px solid rgba(255,255,255,.14)">
-        <div data-faq-head style="display:flex;justify-content:space-between;align-items:center;gap:24px;padding:27px 0;cursor:pointer;transition:color .35s ease" data-hh="h25"><h3 style="margin:0;font-size:clamp(15.5px,1.3vw,18px);font-weight:600;color:inherit">Ist Chalk erlaubt?</h3><span data-faq-icon style="flex:0 0 auto;font-size:22px;line-height:1;color:var(--acc,#E10600);transition:transform .45s cubic-bezier(.16,1,.3,1)">+</span></div>
-        <div data-faq-body style="max-height:0;overflow:hidden;transition:max-height .55s cubic-bezier(.16,1,.3,1)"><p style="margin:0 0 27px;max-width:64ch;font-size:15px;line-height:1.8;color:#CCCCD2;text-shadow:0 1px 12px rgba(0,0,0,.9);text-wrap:pretty">Ja. Plattformen, Chalk und ernsthafte Lasten gehören hier ausdrücklich dazu.</p></div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section id="partner" data-screen-label="Partner" style="position:relative;z-index:3;background:linear-gradient(180deg,rgba(0,0,0,.5) 0%,rgba(0,0,0,.34) 50%,rgba(0,0,0,.6) 100%);border-top:1px solid rgba(255,255,255,.09);padding:clamp(85px,10vw,155px) clamp(18px,4vw,64px)">
-  <div style="max-width:1400px;margin:0 auto">
-
-    <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:28px;flex-wrap:wrap;margin-bottom:clamp(34px,4.4vw,62px)">
-      <div>
-        <div style="display:inline-flex;align-items:center;gap:12px;font-size:11px;font-weight:500;letter-spacing:.26em;text-transform:uppercase;color:#CCCCD2;text-shadow:0 1px 12px rgba(0,0,0,.9);margin-bottom:24px;animation:hs-rise .9s cubic-bezier(.16,1,.3,1) both;animation-timeline:view();animation-range:entry 0% cover 18%">
-          <span style="display:block;width:22px;height:1px;background:var(--acc,#E10600);transform-origin:left;animation:hs-rule 1.1s cubic-bezier(.16,1,.3,1) both;animation-timeline:view();animation-range:entry 0% cover 16%"></span>11 — Partner
-        </div>
-        <h2 style="margin:0;max-width:16ch;font-family:'Bricolage Grotesque',Manrope,sans-serif;font-weight:800;font-variation-settings:'opsz' 96,'wdth' 100;font-size:clamp(32px,4.4vw,78px);line-height:.96;letter-spacing:-.035em;color:#FFFFFF;text-shadow:0 2px 30px rgba(0,0,0,.55);text-wrap:balance"><span style="display:block"><span style="display:inline-block;animation:hs-word .9s cubic-bezier(.16,1,.3,1) both;animation-timeline:view();animation-range:entry 3.0% cover 24.0%">Wer</span> <span style="display:inline-block;animation:hs-word .9s cubic-bezier(.16,1,.3,1) both;animation-timeline:view();animation-range:entry 5.4% cover 26.4%">mit</span> <span style="display:inline-block;animation:hs-word .9s cubic-bezier(.16,1,.3,1) both;animation-timeline:view();animation-range:entry 7.8% cover 28.8%">uns</span></span><span style="display:block"><span style="display:inline-block;font-family:'Instrument Serif',Georgia,serif;font-style:italic;font-weight:400;font-size:1.06em;color:var(--acc,#E10600);letter-spacing:-.01em;line-height:.9;animation:hs-wordi 1s cubic-bezier(.16,1,.3,1) both;animation-timeline:view();animation-range:entry 10.2% cover 31.2%">zusammen</span> <span style="display:inline-block;animation:hs-word .9s cubic-bezier(.16,1,.3,1) both;animation-timeline:view();animation-range:entry 12.6% cover 33.6%">arbeitet</span></span></h2>
-      </div>
-      <p style="margin:0;max-width:44ch;font-size:clamp(15px,1.2vw,17px);line-height:1.78;color:#C4C4CA;text-shadow:0 1px 12px rgba(0,0,0,.9);text-wrap:pretty;animation:hs-rise 1s cubic-bezier(.16,1,.3,1) both;animation-timeline:view();animation-range:entry 4% cover 30%">Kurze Wege, klare Absprachen. Wenn du eine Firma, einen Verein oder eine Praxis vertrittst und etwas gemeinsam aufziehen willst — meld dich einfach.</p>
-    </div>
-
-    <div data-partner style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(14px,1.6vw,24px)">
-
-      <article style="position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;gap:clamp(28px,3.4vw,48px);min-height:clamp(240px,26vw,320px);padding:clamp(28px,2.8vw,44px);border-radius:20px;background:rgba(9,9,11,.58);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.09);animation:hs-rise .9s cubic-bezier(.16,1,.3,1) both;animation-timeline:view();animation-range:entry 2% cover 26%">
-        <span style="position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--acc,#E10600),transparent)"></span>
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:18px">
-          <span style="font-size:11px;font-weight:500;letter-spacing:.2em;text-transform:uppercase;color:#9A9AA2">Firmenfitness</span>
-          <span style="display:inline-flex;align-items:center;gap:8px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#CCCCD2"><span style="width:5px;height:5px;border-radius:50%;background:#4A9E2E;box-shadow:0 0 9px rgba(74,158,46,.9)"></span>Aktiv</span>
-        </div>
-        <div>
-          <div style="font-family:'Bricolage Grotesque',Manrope,sans-serif;font-weight:800;font-variation-settings:'opsz' 96,'wdth' 100;font-size:clamp(30px,3.4vw,54px);line-height:1;letter-spacing:-.035em;color:#FFFFFF;margin-bottom:16px">Wellhub</div>
-          <p style="margin:0;max-width:46ch;font-size:14.5px;line-height:1.78;color:#B4B4BB;text-wrap:pretty">Wir sind Partnerstudio. Wellhub-Mitglieder trainieren ab dem Silver-Paket bei uns — Karte mitbringen, reinkommen, loslegen.</p>
-        </div>
-      </article>
-
-      <article style="position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;gap:clamp(28px,3.4vw,48px);min-height:clamp(240px,26vw,320px);padding:clamp(28px,2.8vw,44px);border-radius:20px;background:linear-gradient(160deg,rgba(225,6,0,.13) 0%,rgba(9,9,11,.58) 55%);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(225,6,0,.28);animation:hs-rise .9s cubic-bezier(.16,1,.3,1) both;animation-timeline:view();animation-range:entry 2% cover 26%">
-        <span style="position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--acc,#E10600),transparent)"></span>
-        <span style="font-size:11px;font-weight:500;letter-spacing:.2em;text-transform:uppercase;color:#CCCCD2">Partner werden</span>
-        <div>
-          <h3 style="margin:0 0 14px;font-family:'Instrument Serif',Georgia,serif;font-weight:400;font-size:clamp(22px,2.4vw,38px);line-height:1.14;color:#FFFFFF">Firmen, Vereine, Praxen</h3>
-          <p style="margin:0 0 clamp(22px,2.6vw,32px);max-width:46ch;font-size:14.5px;line-height:1.78;color:#C4C4CA;text-wrap:pretty">Betriebliche Gesundheitsförderung, Mannschaftstraining in der Nebensaison, Anschlusstraining nach der Reha — sag uns, was ihr braucht.</p>
-          <a href="#mitglied" data-magnet style="display:inline-flex;align-items:center;gap:12px;background:var(--acc,#E10600);color:#FFFFFF;padding:16px 30px;border-radius:100px;font-size:12px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;white-space:nowrap;transition:box-shadow .4s ease,transform .4s cubic-bezier(.16,1,.3,1)" data-partner-cta>Anfrage senden<span style="opacity:.7">&#8594;</span></a>
-        </div>
-      </article>
-
-    </div>
-  </div>
-</section>
-
 <footer data-screen-label="Footer" style="position:relative;z-index:3;background:linear-gradient(180deg,rgba(0,0,0,.74) 0%,rgba(0,0,0,.84) 60%,rgba(0,0,0,.9) 100%);padding:clamp(64px,7vw,105px) clamp(18px,4vw,64px) 34px;border-top:1px solid rgba(255,255,255,.09)">
   <div style="max-width:1400px;margin:0 auto">
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:clamp(26px,3vw,52px);padding-bottom:clamp(42px,5vw,72px)">

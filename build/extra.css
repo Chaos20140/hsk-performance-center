@@ -101,6 +101,25 @@ html { -webkit-tap-highlight-color: transparent; }
     padding-right: 0 !important;
   }
 
+  /* Ohne Pille läuft der Inhalt beim Scrollen direkt durch Zeichen und Burger.
+     Ein Verlauf über die oberen 170 px löst ihn auf, bevor er dort ankommt —
+     die Leiste bleibt schwebend, der Text darunter verschwindet ruhig.
+     Als Pseudoelement der Leiste, damit es deren Stapelkontext erbt und nie
+     über den Bedienelementen liegt. */
+  [data-nav]::before {
+    content: "";
+    position: fixed; top: 0; left: 0; right: 0; height: 170px;
+    background: linear-gradient(180deg,
+      rgba(4, 4, 5, .95) 0%,
+      rgba(4, 4, 5, .82) 34%,
+      rgba(4, 4, 5, .46) 66%,
+      rgba(4, 4, 5, 0) 100%);
+    pointer-events: none;
+    z-index: -1;
+  }
+  /* Im offenen Menü wäre der Verlauf doppelt gemoppelt */
+  html[data-menu="open"] [data-nav]::before { opacity: 0; }
+
   /* Der Burger ist auf dem Telefon die einzige Navigation. Im Design hat er
      eine Eintrittsanimation, die erst nach dem Ladevorhang startet und ihn bis
      dahin auf opacity:0 hält — gemessen war er noch nach fünf Sekunden
@@ -115,14 +134,43 @@ html { -webkit-tap-highlight-color: transparent; }
 
 /* --- Vollbildmenü ----------------------------------------------------------
    Die Liste beginnt direkt unter der Leiste statt in der Mitte zu schweben —
-   sonst steht sie auf einem hohen Display zwischen zwei großen Leerflächen. */
+   sonst steht sie auf einem hohen Display zwischen zwei großen Leerflächen.
+
+   Die Schriftgröße im Design war `clamp(26px, min(6vw,8vh), 92px)`. Auf einem
+   390er-Telefon ergibt min(6vw,8vh) = 23 px, es greift also immer der untere
+   Anschlag: 26 px. Deshalb wirkten die Einträge so klein. Auf dem Telefon
+   skaliert es jetzt an der Breite, nicht am Minimum von Breite und Höhe. */
 @media (max-width: 819px) {
   [data-ov-nav] {
     justify-content: flex-start !important;
     padding-top: calc(clamp(84px, 12vh, 120px) + env(safe-area-inset-top, 0px)) !important;
-    padding-bottom: calc(clamp(32px, 6vh, 64px) + env(safe-area-inset-bottom, 0px)) !important;
+    padding-bottom: calc(clamp(28px, 5vh, 56px) + env(safe-area-inset-bottom, 0px)) !important;
+    gap: 0 !important;
   }
+  [data-ov-text] { font-size: clamp(38px, 11.5vw, 64px) !important; }
+  [data-ov-item] { padding: clamp(11px, 1.8vh, 20px) 0 clamp(15px, 2.4vh, 26px) !important; }
 }
+/* Querformat: acht Zeilen mal 60 px passen nicht in 400 px Höhe */
+@media (max-width: 819px) and (max-height: 560px) {
+  [data-ov-text] { font-size: clamp(26px, 6.5vh, 40px) !important; }
+  [data-ov-item] { padding: 8px 0 11px !important; }
+}
+
+/* Öffnungsstatus im Menü — dieselben Haken wie die Chips auf der Seite, also
+   schreibt bootStatus() ihn automatisch mit. */
+[data-ov-status] {
+  flex: 0 0 auto;
+  display: inline-flex; align-self: flex-start; align-items: center; gap: 12px;
+  margin-top: clamp(22px, 4vh, 44px);
+  padding: 13px 20px; border-radius: 100px;
+  background: rgba(74, 158, 46, .12); border: 1px solid rgba(74, 158, 46, .3);
+}
+[data-ov-status] > span:first-child {
+  width: 7px; height: 7px; border-radius: 50%; flex: 0 0 auto;
+  background: #4A9E2E; box-shadow: 0 0 12px rgba(74, 158, 46, .9);
+  animation: hs-pulse 2.8s ease-in-out infinite;
+}
+[data-ov-status] [data-status-text] { font-size: 13px; color: #F4F2EF; }
 @media (max-width: 819px) {
   /* Kontaktblock an den unteren Rand, statt direkt unter der Liste zu kleben
      und darunter eine große Leerfläche zu lassen. */
@@ -178,6 +226,111 @@ html[data-brand="mark"] [data-brand-logo] { height: 21px !important; }
 /* Ohne Skript bleibt die Wortmarke einfach stehen — kein leerer Platz. */
 @media (prefers-reduced-motion: reduce) {
   [data-brand-word] { transition-duration: .001ms; }
+}
+
+/* ============================================================================
+   AUSSTATTUNG — Abschluss-Karte
+   Das Raster stand fest auf „Text | Knopf". Auf einem Telefon bleiben dem Text
+   dann 65 px und er bricht Wort für Wort um. Unter 860 px gestapelt.
+   ========================================================================== */
+@media (max-width: 860px) {
+  [data-eqcta] { grid-template-columns: minmax(0, 1fr) !important; gap: clamp(22px, 4vw, 32px) !important; }
+  [data-eqcta] > a { justify-self: start !important; }
+}
+
+/* ============================================================================
+   TERMINE
+   Aufbau wie eine Startliste: links wann, in der Mitte was, rechts der Zustand.
+   ========================================================================== */
+[data-termine-liste] { display: flex; flex-direction: column; }
+[data-termin] {
+  display: grid;
+  grid-template-columns: minmax(0, .22fr) minmax(0, 1fr) auto;
+  align-items: start;
+  gap: clamp(18px, 2.6vw, 40px);
+  padding: clamp(24px, 2.8vw, 34px) 0;
+  border-top: 1px solid rgba(255, 255, 255, .11);
+  animation: hs-rise .9s cubic-bezier(.16, 1, .3, 1) both;
+  animation-timeline: view();
+  animation-range: entry 2% cover 26%;
+}
+[data-termin]:last-child { border-bottom: 1px solid rgba(255, 255, 255, .11); }
+[data-termin-wann] { display: flex; flex-direction: column; gap: 7px; }
+[data-termin-tag] {
+  font-family: 'Bricolage Grotesque', Manrope, sans-serif;
+  font-weight: 700; font-variation-settings: 'opsz' 96, 'wdth' 100;
+  font-size: clamp(17px, 1.5vw, 22px); line-height: 1.1; letter-spacing: -.02em; color: #FFFFFF;
+  text-shadow: 0 1px 12px rgba(0,0,0,.9);
+}
+[data-termin-zusatz] { font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: #9A9AA2; text-shadow: 0 1px 12px rgba(0,0,0,.9); }
+[data-termin-body] h3 {
+  margin: 0 0 10px;
+  font-family: 'Bricolage Grotesque', Manrope, sans-serif;
+  font-weight: 700; font-variation-settings: 'opsz' 96, 'wdth' 100;
+  font-size: clamp(21px, 2vw, 30px); line-height: 1.1; letter-spacing: -.03em; color: #FFFFFF;
+  text-shadow: 0 2px 18px rgba(0,0,0,.75);
+}
+[data-termin-body] p { margin: 0; max-width: 52ch; font-size: 14.5px; line-height: 1.78; color: #C4C4CA; text-shadow: 0 1px 12px rgba(0,0,0,.9); text-wrap: pretty; }
+[data-termin-tail] { display: flex; flex-direction: column; align-items: flex-end; gap: 14px; }
+[data-termin-status] {
+  display: inline-flex; align-items: center; gap: 9px;
+  font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: #CCCCD2; text-shadow: 0 1px 12px rgba(0,0,0,.9); white-space: nowrap;
+}
+[data-termin-status] > span { width: 6px; height: 6px; border-radius: 50%; background: #4A9E2E; box-shadow: 0 0 10px rgba(74, 158, 46, .9); }
+[data-termin-cta] {
+  display: inline-flex; align-items: center; gap: 10px; white-space: nowrap;
+  padding: 12px 22px; border-radius: 100px; border: 1px solid rgba(255, 255, 255, .18);
+  font-size: 11px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; color: #F4F2EF;
+  transition: border-color .4s ease, background .4s ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  [data-termin-cta]:hover { border-color: var(--acc, #E10600); background: rgba(225, 6, 0, .1); }
+  [data-termine-fb]:hover { border-color: var(--acc, #E10600); background: rgba(225, 6, 0, .1); }
+}
+@media (max-width: 980px) {
+  [data-termine-wrap] { grid-template-columns: minmax(0, 1fr) !important; }
+}
+@media (max-width: 640px) {
+  [data-termin] { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  [data-termin-tail] { align-items: flex-start; flex-direction: row; flex-wrap: wrap; gap: 12px; }
+}
+
+/* ============================================================================
+   „JETZT ANFANGEN" — das laute Band vor der Mitgliedschaft
+   Vorher: dunkelrote Schrift auf fast schwarzem Grund bei 72 % Deckkraft — die
+   Zeile ging schlicht unter. Jetzt volle Akzentfläche mit ausgesparter Schrift.
+   Das ist der einzige Ort auf der Seite, an dem die Marke voll aufdreht.
+   ========================================================================== */
+[data-banner] {
+  opacity: 1 !important;
+  background: var(--acc, #E10600) !important;
+  border-top: 1px solid rgba(0, 0, 0, .38) !important;
+  border-bottom: 1px solid rgba(0, 0, 0, .38) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .26), 0 22px 60px rgba(225, 6, 0, .3) !important;
+}
+[data-banner] span { color: #FBF7F5 !important; text-shadow: 0 2px 0 rgba(120, 0, 0, .22) !important; }
+
+/* Klickfläche über der Karte: das iframe schluckt Klicks selbst, deshalb liegt
+   der Link darüber. Er öffnet den Standort, keine Route. */
+[data-map-open] {
+  position: absolute; inset: 0; z-index: 2;
+  display: flex; align-items: flex-start; justify-content: flex-start;
+  gap: 9px; padding: clamp(14px, 1.6vw, 22px);
+  font-size: 11px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase;
+  color: #F4F2EF; text-decoration: none;
+}
+[data-map-open] > span:first-child {
+  padding: 10px 16px; border-radius: 100px;
+  background: rgba(6, 6, 8, .78);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, .14);
+  transition: border-color .4s ease, background .4s ease;
+}
+[data-map-open] > span:last-child {
+  align-self: center; margin-left: -2px; color: var(--acc, #E10600); font-size: 13px;
+}
+@media (hover: hover) and (pointer: fine) {
+  [data-map-open]:hover > span:first-child { border-color: var(--acc, #E10600); background: rgba(225, 6, 0, .16); }
 }
 
 /* --- Partner ----------------------------------------------------------------

@@ -42,7 +42,8 @@ ein gefiltertes `_site/` hoch, **nicht** das Repo-Root (siehe §6a Nr. 1).
 │       ├── marquee.js ← Handmade: Laufschriften lückenlos halten
 │       └── consent.js ← Handmade: Karten-Consent
 ├── .github/workflows/pages.yml  ← Deploy (filtert Internes heraus)
-├── build/             ← die Pipeline (siehe §3)
+├── build/             ← die Pipeline (siehe §3), inkl. events.json für die Termine
+│                        (neuer Termin = ein Eintrag dort, kein HTML anfassen)
 ├── src/               ← die drei .dc.html Originale + support.js (Provenienz)
 └── CLAUDE.md · README.md
 ```
@@ -246,7 +247,21 @@ Alles einzeln, damit man es rückgängig machen kann.
    Weitere Partner: einfach eine `<article>` in `partner.html` ergänzen.
    Im Footer zeigt der zweite „Studio"-Link (er ging doppelt auf `#studio`)
    jetzt hierher.
-4. **Kopfleiste auf dem Telefon** ohne Pille: kein Hintergrund, kein Rahmen,
+4. **Termine** (`build/termine.html` + `build/events.json`). Aus Daten
+   gerendert: ein neuer Termin ist ein Objekt in der JSON-Datei. Enthält
+   bewusst nur den belegbaren Dauereintrag (Probetraining ohne Termin) plus
+   den echten Facebook-Verweis — erfundene Veranstaltungen haben auf einer
+   Kundenseite nichts zu suchen.
+5. **„Jetzt anfangen"-Band**: volle Akzentfläche mit ausgesparter Schrift.
+   Vorher dunkelrote Schrift auf fast Schwarz bei 72 % Deckkraft — die Zeile
+   ging unter. Das ist jetzt der einzige Ort, an dem die Marke voll aufdreht.
+6. **Öffnungsstatus im Menü**: dieselben Haken wie die Chips auf der Seite,
+   `bootStatus()` schreibt ihn automatisch mit. Das Menü sagt damit, ob gerade
+   trainiert werden kann.
+7. **Kartenklick** öffnet den Standort in der Karten-App (Apple Karten auf
+   Apple-Geräten, sonst Google Maps) — den Ort, keine Route. Die Fläche liegt
+   als Link über dem iframe, weil das iframe Klicks selbst schluckt.
+8. **Kopfleiste auf dem Telefon** ohne Pille: kein Hintergrund, kein Rahmen,
    kein Schatten — nur Zeichen und Burger über dem Film. Die `!important` sind
    nötig, weil `syncDom()` Hintergrund und Rahmenfarbe beim Scrollen inline
    nachzieht.
@@ -416,6 +431,27 @@ Damit ich nicht zweimal dieselbe Stunde verliere.
     → Eigenes Markup bringt seine Hover-Regeln in `extra.css` mit, und am Ende
     von `buildIndex()` steht eine Schlussprüfung auf `style-hover=`.
 
+18. **`[data-eqcta]` war auf dem Telefon zerlegt**
+    Das Raster stand fest auf `minmax(0,1fr) auto`. Der Knopf beansprucht
+    ~209 px, dem Text blieben **65 px — sieben Zeichen pro Zeile über 15
+    Zeilen**. `applyResponsive()` kennt `[data-two]`, `[data-three]`,
+    `[data-arrival]` und weitere, aber dieses Raster nicht.
+    → Unter 860 px gestapelt. **Merke:** beim nächsten Umbau alle mehrspaltigen
+    Raster gegen 390 px prüfen, nicht nur die, die `applyResponsive()` kennt.
+    Der Prüfschnipsel dafür steht in §8.
+
+19. **Menüschrift war rechnerisch immer am unteren Anschlag**
+    `clamp(26px, min(6vw,8vh), 92px)`: auf einem 390er ergibt min(6vw,8vh)
+    = 23 px, es griff also immer die 26 px. Deshalb wirkten die Einträge so
+    klein — es sah nach Absicht aus, war aber ein Rechenfehler im Design.
+    → Auf dem Telefon an der Breite skaliert: `clamp(38px, 11.5vw, 64px)`.
+
+20. **Reihenfolge folgt jetzt dem Verkaufsweg**
+    Mitgliedschaft stand mitten auf der Seite. Sie steht jetzt am Ende, der
+    Standort direkt darüber. Die Abschnittsnummern sind fest im Markup und
+    werden nach dem Umsortieren **im Build neu vergeben** (12 Stück, in
+    DOM-Reihenfolge) — sonst zeigen sie die alte Position.
+
 ---
 
 ## 6a. Audit-Befunde (Runde 2) — alle behoben
@@ -503,6 +539,15 @@ cd build && HSK_CANONICAL="…" node build.js     # muss "OK" sagen
 cd .. && node --check assets/js/site.js
 grep -c 'HSK-PATCH' assets/js/site.js            # muss 8 sein
 grep -oE 'https?://[^"]+' index.html | sort -u   # nichts darf ungefragt laden
+```
+
+Und im Browser bei 390 px gegen gequetschte Raster prüfen:
+
+```js
+[...document.querySelectorAll('*')].filter(e=>getComputedStyle(e).display==='grid')
+  .map(e=>({el:[...e.attributes].map(a=>a.name).filter(n=>n!=='style').join(','),
+            t:getComputedStyle(e).gridTemplateColumns}))
+  .filter(x=>x.t.split(' ').length>1 && Math.min(...x.t.split(' ').map(parseFloat))<160)
 ```
 
 Dann lokal servieren und mit **Playwright** (nicht dem Browser-Pane) ansehen:
