@@ -296,6 +296,101 @@ html[data-brand="mark"] [data-brand-logo] { height: 21px !important; }
 }
 
 /* ============================================================================
+   DER KOPF DAHINTER
+   Bewusst ohne Foto: das Porträt steht schon einen Abschnitt höher im
+   Coaching-Block. Hier tragen Zahlen und Qualifikationen.
+   ========================================================================== */
+[data-trainer-quals] li {
+  padding: 9px 16px;
+  border-radius: 100px;
+  border: 1px solid rgba(255, 255, 255, .14);
+  background: rgba(0, 0, 0, .34);
+  font-size: 12px; letter-spacing: .06em; color: #DCDCE2;
+  text-shadow: 0 1px 12px rgba(0, 0, 0, .9);
+  white-space: nowrap;
+}
+@media (max-width: 900px) {
+  [data-trainer] { grid-template-columns: minmax(0, 1fr) !important; }
+}
+@media (max-width: 520px) {
+  [data-trainer-fakten] { grid-template-columns: minmax(0, 1fr) !important; }
+  [data-trainer-quals] li { white-space: normal; }
+}
+
+/* ============================================================================
+   PREISE
+   Alle drei Modelle enthalten dasselbe — sie unterscheiden sich nur in
+   Laufzeit und Monatspreis. Deshalb stehen die Leistungen einmal darunter
+   statt dreimal nebeneinander; die Karten tragen nur, was wirklich variiert.
+   ========================================================================== */
+[data-preis] {
+  position: relative;
+  display: flex; flex-direction: column;
+  padding: clamp(26px, 2.8vw, 40px);
+  border-radius: 20px;
+  background: rgba(9, 9, 11, .58);
+  -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, .09);
+}
+[data-preis-best] {
+  background: linear-gradient(160deg, rgba(225, 6, 0, .14) 0%, rgba(9, 9, 11, .6) 58%);
+  border-color: rgba(225, 6, 0, .42);
+  box-shadow: 0 0 0 1px rgba(225, 6, 0, .1), 0 0 40px rgba(225, 6, 0, .14);
+}
+[data-preis-flag] {
+  align-self: flex-start;
+  margin-bottom: 18px; padding: 7px 14px; border-radius: 100px;
+  background: var(--acc, #E10600); color: #FFFFFF;
+  font-size: 10px; font-weight: 600; letter-spacing: .18em; text-transform: uppercase;
+}
+[data-preis-name] {
+  font-size: 11px; font-weight: 600; letter-spacing: .22em; text-transform: uppercase;
+  color: #CCCCD2; text-shadow: 0 1px 12px rgba(0, 0, 0, .9);
+  margin-bottom: clamp(20px, 2.4vw, 30px);
+}
+[data-preis-zahl] {
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-size: clamp(44px, 5vw, 76px); line-height: .92; color: #FFFFFF;
+  font-variant-numeric: tabular-nums; letter-spacing: -.01em;
+}
+[data-preis-zahl] span { font-size: .46em; color: var(--acc, #E10600); margin-left: .12em; vertical-align: super; }
+[data-preis-takt] {
+  margin-top: 12px; font-size: 12.5px; line-height: 1.6; color: #9A9AA2;
+  text-shadow: 0 1px 12px rgba(0, 0, 0, .9);
+}
+[data-preis-cta] {
+  margin-top: clamp(24px, 3vw, 38px);
+  display: inline-flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 15px 22px; border-radius: 100px;
+  border: 1px solid rgba(255, 255, 255, .16);
+  font-size: 11px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase;
+  color: #F4F2EF;
+  transition: border-color .4s ease, background .4s ease, transform .4s cubic-bezier(.16, 1, .3, 1);
+}
+[data-preis-best] [data-preis-cta] { background: var(--acc, #E10600); border-color: transparent; color: #FFFFFF; }
+@media (hover: hover) and (pointer: fine) {
+  [data-preis-cta]:hover { border-color: var(--acc, #E10600); background: rgba(225, 6, 0, .12); transform: translateY(-2px); }
+  [data-preis-best] [data-preis-cta]:hover { background: var(--acc, #E10600); color: #FFFFFF; box-shadow: 0 0 34px rgba(225, 6, 0, .5); }
+}
+[data-preis-spalten] h3 {
+  margin: 0 0 14px;
+  font-size: 14.5px; font-weight: 600; line-height: 1.35; color: #FFFFFF;
+}
+[data-preis-spalten] ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 11px; }
+[data-preis-spalten] li {
+  position: relative; padding-left: 20px;
+  font-size: 14px; line-height: 1.7; color: #B4B4BB; text-wrap: pretty;
+}
+[data-preis-spalten] li::before {
+  content: ""; position: absolute; left: 0; top: .62em;
+  width: 9px; height: 1px; background: var(--acc, #E10600);
+}
+@media (max-width: 900px) {
+  [data-preise] { grid-template-columns: minmax(0, 1fr) !important; }
+  [data-preis-spalten] { grid-template-columns: minmax(0, 1fr) !important; }
+}
+
+/* ============================================================================
    „JETZT ANFANGEN" — das laute Band vor der Mitgliedschaft
    Vorher: dunkelrote Schrift auf fast schwarzem Grund bei 72 % Deckkraft — die
    Zeile ging schlicht unter. Jetzt volle Akzentfläche mit ausgesparter Schrift.

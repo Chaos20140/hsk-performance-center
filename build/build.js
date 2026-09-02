@@ -324,11 +324,12 @@ function buildIndex() {
     // Reihenfolge festnageln, damit ein späterer Umbau nicht still danebengeht
     const order = (html.match(/data-screen-label="([^"]+)"/g) || []).map(s => s.slice(19, -1));
     const soll = ['Hero', 'Ticker', 'Warum HSK', 'Trainingsbereiche', 'Ausstattung', 'Zitat',
-                  'Coaching', 'Galerie', 'Bewertungen', 'Drop-in', 'Termine', 'Partner',
-                  'FAQ', 'Anfahrt', 'Mitglied werden', 'Footer'];
+                  'Coaching', 'Trainer', 'Galerie', 'Bewertungen', 'Drop-in', 'Termine',
+                  'Partner', 'Preise', 'FAQ', 'Anfahrt', 'Mitglied werden', 'Footer'];
     // Termine und Partner werden weiter unten eingesetzt — hier nur der Rest prüfen
-    const ist = order.filter(l => l !== 'Termine' && l !== 'Partner');
-    const erwartet = soll.filter(l => l !== 'Termine' && l !== 'Partner');
+    const spaeter = ['Termine', 'Partner', 'Preise', 'Trainer'];
+    const ist = order.filter(l => spaeter.indexOf(l) < 0);
+    const erwartet = soll.filter(l => spaeter.indexOf(l) < 0);
     must(ist.join('|') === erwartet.join('|'),
       'unerwartete Abschnittsreihenfolge:\n  ist:      ' + ist.join(' , ') + '\n  erwartet: ' + erwartet.join(' , '));
   }
@@ -342,9 +343,21 @@ function buildIndex() {
     const partnerHtml = fs.readFileSync(path.join(__dirname, 'partner.html'), 'utf8');
     const faqAnchor = '<section data-screen-label="FAQ"';
     must(html.indexOf(faqAnchor) > -1, 'FAQ anchor not found');
-    html = html.replace(faqAnchor, renderTermine() + '\n' + partnerHtml + '\n' + faqAnchor);
+    const preiseHtml = fs.readFileSync(path.join(__dirname, 'preise.html'), 'utf8');
+    html = html.replace(faqAnchor,
+      renderTermine() + '\n' + partnerHtml + '\n' + preiseHtml + '\n' + faqAnchor);
     must(/id="partner"/.test(html), 'partner section not inserted');
     must(/id="termine"/.test(html), 'termine section not inserted');
+    must(/id="preise"/.test(html), 'preise section not inserted');
+
+    // Der Kopf dahinter — direkt nach dem Coaching-Abschnitt: erst das Angebot,
+    // dann die Person, die dahintersteht. Die Zahlen und Qualifikationen sind
+    // von hsk.fitness/uber-uns übernommen, nichts davon ist erfunden.
+    const trainerHtml = fs.readFileSync(path.join(__dirname, 'trainer.html'), 'utf8');
+    const galerieAnchor = '<section id="galerie"';
+    must(html.indexOf(galerieAnchor) > -1, 'galerie anchor not found');
+    html = html.replace(galerieAnchor, trainerHtml + '\n' + galerieAnchor);
+    must(/id="trainer"/.test(html), 'trainer section not inserted');
 
     // Der Footer verlinkt „Studio" zweimal auf denselben Anker — der zweite
     // Eintrag zeigt jetzt auf den neuen Abschnitt.
@@ -422,9 +435,11 @@ function buildIndex() {
   {
     let n = 0;
     html = html.replace(/(<\/span>)(\d{2})( — )/g, (_, a, __, c) => a + String(++n).padStart(2, '0') + c);
-    must(n === 12, 'expected 12 numbered eyebrows, got ' + n);
-    must(/<\/span>11 — Öffnungszeiten/.test(html), 'Anfahrt should be 11 after reorder');
-    must(/<\/span>12 — Loslegen/.test(html), 'Loslegen should be 12 (last) after reorder');
+    must(n === 14, 'expected 14 numbered eyebrows, got ' + n);
+    must(/<\/span>05 — Der Kopf dahinter/.test(html), 'Trainer should be 05 (after Coaching)');
+    must(/<\/span>11 — Preise/.test(html), 'Preise should be 11 (before FAQ)');
+    must(/<\/span>13 — Öffnungszeiten/.test(html), 'Anfahrt should be 13 after reorder');
+    must(/<\/span>14 — Loslegen/.test(html), 'Loslegen should be 14 (last) after reorder');
   }
 
   // Schlussprüfung: extractHover() läuft weit oben. Alles, was danach eingefügt

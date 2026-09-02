@@ -261,7 +261,19 @@ Alles einzeln, damit man es rückgängig machen kann.
 7. **Kartenklick** öffnet den Standort in der Karten-App (Apple Karten auf
    Apple-Geräten, sonst Google Maps) — den Ort, keine Route. Die Fläche liegt
    als Link über dem iframe, weil das iframe Klicks selbst schluckt.
-8. **Kopfleiste auf dem Telefon** ohne Pille: kein Hintergrund, kein Rahmen,
+8. **Preise** (`build/preise.html`, „11 — Preise", vor der FAQ). Zahlen 1:1 von
+   hsk.fitness/uber-uns: 49,90 € (Jahr) · 59,90 € (Halbjahr) · 74,90 €
+   (monatlich kündbar), einmalig 129,00 € mit möglicher Kassenerstattung.
+   **Alle drei Modelle enthalten dasselbe** — deshalb stehen die Leistungen
+   einmal darunter statt dreimal nebeneinander, die Karten tragen nur, was
+   wirklich variiert (Laufzeit und Monatspreis).
+9. **Der Kopf dahinter** (`build/trainer.html`, „05 — Der Kopf dahinter", direkt
+   nach dem Coaching-Abschnitt). Bewusst **ohne Foto**: `coach.jpg` steht schon
+   einen Abschnitt höher, und der Upload `coach-portrait.png` ist derselbe
+   Ausschnitt. Alle Angaben (Trainer seit 2001, über 10.000 begleitete
+   Menschen, mehrfacher Deutscher Meister und Vizeeuropameister im Natural
+   Bodybuilding, die sieben Qualifikationen) stammen von hsk.fitness/uber-uns.
+10. **Kopfleiste auf dem Telefon** ohne Pille: kein Hintergrund, kein Rahmen,
    kein Schatten — nur Zeichen und Burger über dem Film. Die `!important` sind
    nötig, weil `syncDom()` Hintergrund und Rahmenfarbe beim Scrollen inline
    nachzieht.
@@ -510,6 +522,24 @@ herauskam, war ernster als erwartet:
   `assets/*`) oder Dateinamen-Versionierung.
 - Keine echten Security-Header (`frame-ancestors`, `X-Content-Type-Options`,
   `Permissions-Policy`).
+
+---
+
+## 6b. Widersprüche zur Altseite — bitte mit dem Kunden klären
+
+Beim Übernehmen der echten Daten von hsk.fitness aufgefallen:
+
+- **Parkplätze.** Die neue Seite sagt „Kostenfreie Parkplätze direkt vor dem
+  Studio". Die Altseite sagt: „Kostenfreie Parkplätze auf dem Parkdeck beim
+  Chinarestaurant (Einfahrt Kirchenstraße) oder **zeitlich begrenzt** direkt
+  vor der Tür." Die Altseite ist genauer — die neue Formulierung könnte
+  jemanden in die Irre führen. Nicht selbst geändert, weil es Inhalt ist.
+- **Persönliche Beratung vor Ort** ist auf der Altseite eigens ausgewiesen
+  (Mo–Sa 08–12 Uhr, Mo–Fr 15:30–20:30 Uhr) und fehlt auf der neuen Seite ganz.
+  Das ist eine echte Information — gehört in den Anfahrt-Abschnitt.
+- **Erfahrung.** Neue Seite: „über 25 Jahre Fachexpertise". Altseite: „seit fast
+  30 Jahren" beschäftigt, „Fitnesstrainer seit 2001". Beides lässt sich
+  vertreten, sollte aber auf der Seite nicht auseinanderlaufen.
 
 ---
 
