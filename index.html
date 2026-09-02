@@ -67,7 +67,7 @@ input:focus,textarea:focus,select:focus{outline:none}
 @keyframes hs-glowpulse{0%,100%{opacity:.28}50%{opacity:.6}}
 @keyframes hs-surge{0%{transform:scale(1);filter:drop-shadow(0 0 4px rgba(225,6,0,.4)) brightness(1)}30%{transform:scale(1.24);filter:drop-shadow(0 0 18px rgba(225,6,0,1)) brightness(1.9)}100%{transform:scale(1);filter:drop-shadow(0 0 4px rgba(225,6,0,.4)) brightness(1)}}
 @keyframes hs-roll{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
-@keyframes hs-glow{0%{opacity:0;transform:scale(.7)}60%{opacity:.72}100%{opacity:.5;transform:scale(1)}}
+@keyframes hs-glow{0%{opacity:0;transform:translate(-50%,-50%) scale(.7)}60%{opacity:.72}100%{opacity:.5;transform:translate(-50%,-50%) scale(1)}}
 @keyframes hs-slow{from{transform:scale(1.04)}to{transform:scale(1.11)}}
 </style>
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; form-action 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self'; font-src 'self'; manifest-src 'self'; connect-src 'none'; object-src 'none'; frame-src https://www.google.com" />
@@ -157,6 +157,22 @@ a:focus:not(:focus-visible), button:focus:not(:focus-visible) { outline: none; }
    animation the moment it takes ownership, so the normal case is untouched. */
 [data-loader] { animation: hs-loaderout 8s cubic-bezier(.16, 1, .3, 1) forwards; }
 
+/* ============================================================================
+   HINTERGRUNDFILM IN WEBKIT
+   Die Reel-Videos tragen filter:url(#filmgrade) — einen SVG-Referenzfilter.
+   WebKit zeichnet ein <video> mit so einem Filter nicht: es spielt (paused ist
+   false, currentTime läuft), aber die Fläche bleibt schwarz. Auf dem iPhone war
+   damit der komplette Hintergrund weg.
+
+   Ersatz ohne SVG. Der Filter ist eine Gamma-Kurve (R,G: 0.42, B: 0.44). Die
+   Werte unten sind kein Schätzwert: sie wurden gegen ein echtes Einzelbild aus
+   m-racks.mp4 eingemessen (Kleinste-Quadrate über alle Pixel), Mittelwert 103,1
+   gegen 102,9 im Original, Restfehler rund 5 %. Die beiden nachgestellten
+   Stufen saturate(1.16) contrast(1.02) sind dieselben wie im Design. */
+html[data-engine="webkit"] [data-reel-layer] {
+  filter: brightness(2.04) contrast(.59) saturate(1.16) contrast(1.02) !important;
+}
+
 /* --- touch ergonomics ------------------------------------------------------ */
 html { -webkit-tap-highlight-color: transparent; }
 @media (pointer: coarse) {
@@ -186,6 +202,34 @@ html { -webkit-tap-highlight-color: transparent; }
 /* Hero-Fußzeile über dem Home-Indicator halten */
 @media (max-width: 819px) {
   [data-hero-meta] { bottom: calc(clamp(24px, 3.6vh, 40px) + env(safe-area-inset-bottom, 0px)) !important; }
+}
+
+/* --- Kopfleiste auf dem Telefon --------------------------------------------
+   Ohne Pillen-Hintergrund: nur das Zeichen und der Burger stehen über dem Film.
+   Für die Lesbarkeit sorgt der ohnehin vorhandene Verlauf am oberen Rand.
+   !important, weil syncDom() Hintergrund und Rahmenfarbe beim Scrollen als
+   Inline-Style nachzieht — ein Selektor allein käme dagegen nicht an. */
+@media (max-width: 819px) {
+  [data-nav-bar] {
+    background: transparent !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  /* Der Burger ist auf dem Telefon die einzige Navigation. Im Design hat er
+     eine Eintrittsanimation, die erst nach dem Ladevorhang startet und ihn bis
+     dahin auf opacity:0 hält — gemessen war er noch nach fünf Sekunden
+     unsichtbar. Er steht jetzt einfach da. */
+  [data-menu-btn] {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+  }
 }
 
 /* --- Vollbildmenü ----------------------------------------------------------
@@ -421,8 +465,8 @@ html[data-brand="mark"] [data-brand-logo] { height: 21px !important; }
 <div data-reel data-shots-mobile="assets/m-racks.mp4,assets/m-platform.mp4,assets/m-cardio.mp4,assets/m-sprint.mp4" data-labels-mobile="Racks,Plattform,Ausdauer,Sprintbahn" data-shots="assets/cine-descent.mp4,assets/cine-push.mp4,assets/cine-lift.mp4,assets/cine-glide.mp4,assets/cine-sled.mp4,assets/cine-orbit.mp4,assets/cine-plates.mp4,assets/cine-rise.mp4,assets/v-crane.mp4,assets/cine-grip.mp4" data-labels="Abstieg,Halle,Kreuzheben,Spiegelwand,Sprintbahn,Plattform,Scheiben,Kathedrale,Weite,Griff" style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;overflow:hidden;background:#000">
   <div data-reel-inner style="position:absolute;top:0;left:0;width:100%;height:100%;will-change:transform">
     <img data-reel-poster src="assets/cine-descent-start.jpg" alt="Trainingsfläche des HSK Performance Center" width="1600" height="900" fetchpriority="high" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;transition:opacity 1s ease" />
-    <video data-reel-layer="0" muted="muted" playsinline="playsinline" preload="none" aria-hidden="true" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;filter:url(#filmgrade) saturate(1.16) contrast(1.02);opacity:0;transform:scale(1.07);transition:opacity 1.35s cubic-bezier(.4,0,.2,1),transform 1.7s cubic-bezier(.16,1,.3,1)"></video>
-    <video data-reel-layer="1" muted="muted" playsinline="playsinline" preload="none" aria-hidden="true" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;filter:url(#filmgrade) saturate(1.16) contrast(1.02);opacity:0;transform:scale(1.07);transition:opacity 1.35s cubic-bezier(.4,0,.2,1),transform 1.7s cubic-bezier(.16,1,.3,1)"></video>
+    <video data-reel-layer="0" autoplay="autoplay" muted="muted" playsinline="playsinline" preload="none" aria-hidden="true" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;filter:url(#filmgrade) saturate(1.16) contrast(1.02);opacity:0;transform:scale(1.07);transition:opacity 1.35s cubic-bezier(.4,0,.2,1),transform 1.7s cubic-bezier(.16,1,.3,1)"></video>
+    <video data-reel-layer="1" autoplay="autoplay" muted="muted" playsinline="playsinline" preload="none" aria-hidden="true" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;filter:url(#filmgrade) saturate(1.16) contrast(1.02);opacity:0;transform:scale(1.07);transition:opacity 1.35s cubic-bezier(.4,0,.2,1),transform 1.7s cubic-bezier(.16,1,.3,1)"></video>
   </div>
 </div>
 <div style="position:fixed;top:0;left:0;right:0;bottom:0;z-index:1;pointer-events:none;background:radial-gradient(128% 98% at 50% 46%,rgba(0,0,0,0) 0%,rgba(0,0,0,.14) 62%,rgba(0,0,0,.46) 100%)"></div>
@@ -473,36 +517,24 @@ html[data-brand="mark"] [data-brand-logo] { height: 21px !important; }
   </div>
 
   <nav data-ov-nav style="position:relative;height:100%;display:flex;flex-direction:column;justify-content:center;gap:clamp(2px,.6vh,8px);padding:clamp(96px,14vh,150px) clamp(18px,4vw,60px) clamp(40px,8vh,90px)">
-    <a href="#studio" data-ov-item data-ov-src="assets/cine-descent-poster.jpg" style="position:relative;flex:0 0 auto;display:flex;align-items:baseline;gap:clamp(14px,2vw,30px);padding:clamp(6px,1vh,14px) 0 clamp(10px,1.6vh,22px);border-bottom:1px solid rgba(255,255,255,.09);overflow:hidden">
-      <span style="font-size:11px;font-weight:500;letter-spacing:.2em;color:#B8B8BF;text-shadow:0 1px 12px rgba(0,0,0,.9);flex:0 0 auto;width:3ch">01</span>
-      <span data-ov-text style="display:block;font-family:'Bricolage Grotesque',Manrope,sans-serif;font-weight:800;font-variation-settings:'opsz' 96,'wdth' 100;font-size:clamp(26px,min(6vw,8vh),92px);line-height:.98;letter-spacing:-.035em;color:#F4F2EF;transition:transform .6s cubic-bezier(.16,1,.3,1),color .5s ease;will-change:transform">Studio</span>
-    </a>
     <a href="#training" data-ov-item data-ov-src="assets/p-functional.jpg" style="position:relative;flex:0 0 auto;display:flex;align-items:baseline;gap:clamp(14px,2vw,30px);padding:clamp(6px,1vh,14px) 0 clamp(10px,1.6vh,22px);border-bottom:1px solid rgba(255,255,255,.09);overflow:hidden">
-      <span style="font-size:11px;font-weight:500;letter-spacing:.2em;color:#B8B8BF;text-shadow:0 1px 12px rgba(0,0,0,.9);flex:0 0 auto;width:3ch">02</span>
+      <span style="font-size:11px;font-weight:500;letter-spacing:.2em;color:#B8B8BF;text-shadow:0 1px 12px rgba(0,0,0,.9);flex:0 0 auto;width:3ch">01</span>
       <span data-ov-text style="display:block;font-family:'Bricolage Grotesque',Manrope,sans-serif;font-weight:800;font-variation-settings:'opsz' 96,'wdth' 100;font-size:clamp(26px,min(6vw,8vh),92px);line-height:.98;letter-spacing:-.035em;color:#F4F2EF;transition:transform .6s cubic-bezier(.16,1,.3,1),color .5s ease;will-change:transform">Training</span>
     </a>
-    <a href="#ausstattung" data-ov-item data-ov-src="assets/eq-racks.jpg" style="position:relative;flex:0 0 auto;display:flex;align-items:baseline;gap:clamp(14px,2vw,30px);padding:clamp(6px,1vh,14px) 0 clamp(10px,1.6vh,22px);border-bottom:1px solid rgba(255,255,255,.09);overflow:hidden">
-      <span style="font-size:11px;font-weight:500;letter-spacing:.2em;color:#B8B8BF;text-shadow:0 1px 12px rgba(0,0,0,.9);flex:0 0 auto;width:3ch">03</span>
-      <span data-ov-text style="display:block;font-family:'Bricolage Grotesque',Manrope,sans-serif;font-weight:800;font-variation-settings:'opsz' 96,'wdth' 100;font-size:clamp(26px,min(6vw,8vh),92px);line-height:.98;letter-spacing:-.035em;color:#F4F2EF;transition:transform .6s cubic-bezier(.16,1,.3,1),color .5s ease;will-change:transform">Ausstattung</span>
-    </a>
     <a href="#coaching" data-ov-item data-ov-src="assets/eq-machines.jpg" style="position:relative;flex:0 0 auto;display:flex;align-items:baseline;gap:clamp(14px,2vw,30px);padding:clamp(6px,1vh,14px) 0 clamp(10px,1.6vh,22px);border-bottom:1px solid rgba(255,255,255,.09);overflow:hidden">
-      <span style="font-size:11px;font-weight:500;letter-spacing:.2em;color:#B8B8BF;text-shadow:0 1px 12px rgba(0,0,0,.9);flex:0 0 auto;width:3ch">04</span>
+      <span style="font-size:11px;font-weight:500;letter-spacing:.2em;color:#B8B8BF;text-shadow:0 1px 12px rgba(0,0,0,.9);flex:0 0 auto;width:3ch">02</span>
       <span data-ov-text style="display:block;font-family:'Bricolage Grotesque',Manrope,sans-serif;font-weight:800;font-variation-settings:'opsz' 96,'wdth' 100;font-size:clamp(26px,min(6vw,8vh),92px);line-height:.98;letter-spacing:-.035em;color:#F4F2EF;transition:transform .6s cubic-bezier(.16,1,.3,1),color .5s ease;will-change:transform">Coaching</span>
     </a>
     <a href="#galerie" data-ov-item data-ov-src="assets/gal-hall.jpg" style="position:relative;flex:0 0 auto;display:flex;align-items:baseline;gap:clamp(14px,2vw,30px);padding:clamp(6px,1vh,14px) 0 clamp(10px,1.6vh,22px);border-bottom:1px solid rgba(255,255,255,.09);overflow:hidden">
-      <span style="font-size:11px;font-weight:500;letter-spacing:.2em;color:#B8B8BF;text-shadow:0 1px 12px rgba(0,0,0,.9);flex:0 0 auto;width:3ch">05</span>
+      <span style="font-size:11px;font-weight:500;letter-spacing:.2em;color:#B8B8BF;text-shadow:0 1px 12px rgba(0,0,0,.9);flex:0 0 auto;width:3ch">03</span>
       <span data-ov-text style="display:block;font-family:'Bricolage Grotesque',Manrope,sans-serif;font-weight:800;font-variation-settings:'opsz' 96,'wdth' 100;font-size:clamp(26px,min(6vw,8vh),92px);line-height:.98;letter-spacing:-.035em;color:#F4F2EF;transition:transform .6s cubic-bezier(.16,1,.3,1),color .5s ease;will-change:transform">Galerie</span>
     </a>
-    <a href="#stimmen" data-ov-item data-ov-src="assets/gal-led.jpg" style="position:relative;flex:0 0 auto;display:flex;align-items:baseline;gap:clamp(14px,2vw,30px);padding:clamp(6px,1vh,14px) 0 clamp(10px,1.6vh,22px);border-bottom:1px solid rgba(255,255,255,.09);overflow:hidden">
-      <span style="font-size:11px;font-weight:500;letter-spacing:.2em;color:#B8B8BF;text-shadow:0 1px 12px rgba(0,0,0,.9);flex:0 0 auto;width:3ch">06</span>
-      <span data-ov-text style="display:block;font-family:'Bricolage Grotesque',Manrope,sans-serif;font-weight:800;font-variation-settings:'opsz' 96,'wdth' 100;font-size:clamp(26px,min(6vw,8vh),92px);line-height:.98;letter-spacing:-.035em;color:#F4F2EF;transition:transform .6s cubic-bezier(.16,1,.3,1),color .5s ease;will-change:transform">Stimmen</span>
-    </a>
     <a href="#mitglied" data-ov-item data-ov-src="assets/p-kraft.jpg" style="position:relative;flex:0 0 auto;display:flex;align-items:baseline;gap:clamp(14px,2vw,30px);padding:clamp(6px,1vh,14px) 0 clamp(10px,1.6vh,22px);border-bottom:1px solid rgba(255,255,255,.09);overflow:hidden">
-      <span style="font-size:11px;font-weight:500;letter-spacing:.2em;color:#B8B8BF;text-shadow:0 1px 12px rgba(0,0,0,.9);flex:0 0 auto;width:3ch">07</span>
+      <span style="font-size:11px;font-weight:500;letter-spacing:.2em;color:#B8B8BF;text-shadow:0 1px 12px rgba(0,0,0,.9);flex:0 0 auto;width:3ch">04</span>
       <span data-ov-text style="display:block;font-family:'Bricolage Grotesque',Manrope,sans-serif;font-weight:800;font-variation-settings:'opsz' 96,'wdth' 100;font-size:clamp(26px,min(6vw,8vh),92px);line-height:.98;letter-spacing:-.035em;color:#F4F2EF;transition:transform .6s cubic-bezier(.16,1,.3,1),color .5s ease;will-change:transform">Mitglied werden</span>
     </a>
     <a href="#kontakt" data-ov-item data-ov-src="assets/reception.jpg" style="position:relative;flex:0 0 auto;display:flex;align-items:baseline;gap:clamp(14px,2vw,30px);padding:clamp(6px,1vh,14px) 0 clamp(10px,1.6vh,22px);border-bottom:1px solid rgba(255,255,255,.09);overflow:hidden">
-      <span style="font-size:11px;font-weight:500;letter-spacing:.2em;color:#B8B8BF;text-shadow:0 1px 12px rgba(0,0,0,.9);flex:0 0 auto;width:3ch">08</span>
+      <span style="font-size:11px;font-weight:500;letter-spacing:.2em;color:#B8B8BF;text-shadow:0 1px 12px rgba(0,0,0,.9);flex:0 0 auto;width:3ch">05</span>
       <span data-ov-text style="display:block;font-family:'Bricolage Grotesque',Manrope,sans-serif;font-weight:800;font-variation-settings:'opsz' 96,'wdth' 100;font-size:clamp(26px,min(6vw,8vh),92px);line-height:.98;letter-spacing:-.035em;color:#F4F2EF;transition:transform .6s cubic-bezier(.16,1,.3,1),color .5s ease;will-change:transform">Kontakt</span>
     </a>
 

@@ -27,6 +27,19 @@
     else fn();
   }
 
+  /* WebKit (Safari, und auf iOS ausnahmslos jeder Browser) zeichnet ein
+     <video> nicht mehr, sobald ein SVG-Referenzfilter darauf liegt: das
+     Element spielt weiter — paused=false, currentTime läuft — malt aber nichts.
+     Auf dem iPhone blieb der Hintergrundfilm deshalb schwarz.
+     Das Kennzeichen hier schaltet in extra.css auf einen reinen CSS-Filter um,
+     der den Gamma-Filter nachbildet (eingemessen, siehe CLAUDE.md).
+     navigator.vendor ist der verlässlichste Weg: „Apple Computer, Inc." gilt
+     für Safari ebenso wie für Chrome und Firefox auf iOS, die alle WebKit
+     benutzen — genau die Menge, um die es geht. */
+  try {
+    if (/Apple/.test(navigator.vendor || '')) root.dataset.engine = 'webkit';
+  } catch (e) {}
+
   ready(function () {
     var overlay = document.querySelector('[data-overlay]');
     var burger = document.querySelector('[data-menu-btn]');

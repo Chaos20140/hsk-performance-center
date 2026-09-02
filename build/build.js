@@ -172,6 +172,33 @@ function buildIndex() {
   html = html.replace(wordmark, '<span data-brand-word aria-hidden="true" style=');
   must(/data-brand-word aria-hidden="true"/.test(html), 'wordmark not hidden from AT');
 
+  // ---- Der rote Schein hinter dem Markenzeichen ist mit
+  // transform:translate(-50%,-50%) zentriert. Das Keyframe hs-glow, das
+  // igniteBrand() darauf legt, setzt aber nur transform:scale() — und wirft die
+  // Zentrierung damit weg. Ergebnis: der Schein sitzt um seine halbe Breite
+  // (33 px) neben dem Zeichen. Auf der dunklen Pille fiel das nie auf, ohne sie
+  // schon. hs-shock am Ring macht es richtig, hs-glow ist schlicht vergessen
+  // worden. Ein Überschreiben per CSS ist chancenlos: igniteBrand() setzt die
+  // animation-Kurzform als Inline-Style mit !important. Also am Keyframe selbst.
+  {
+    const glowKf = '@keyframes hs-glow{0%{opacity:0;transform:scale(.7)}60%{opacity:.72}100%{opacity:.5;transform:scale(1)}}';
+    must(helmet.indexOf(glowKf) > -1, 'hs-glow keyframe anchor not found');
+    helmet = helmet.replace(glowKf,
+      '@keyframes hs-glow{0%{opacity:0;transform:translate(-50%,-50%) scale(.7)}60%{opacity:.72}100%{opacity:.5;transform:translate(-50%,-50%) scale(1)}}');
+  }
+
+  // ---- iOS startet stummgeschaltete Inline-Videos am zuverlässigsten über das
+  // autoplay-Attribut. Ein reiner play()-Aufruf aus einem loadeddata-Handler
+  // wird dort je nach Zustand verweigert, ohne dass ein Fehler ankommt.
+  {
+    const before = (html.match(/<video data-reel-layer/g) || []).length;
+    must(before === 2, 'expected 2 reel layers, got ' + before);
+    html = html.replace(/<video data-reel-layer="(\d)" muted="muted"/g,
+      '<video data-reel-layer="$1" autoplay="autoplay" muted="muted"');
+    must((html.match(/<video data-reel-layer="\d" autoplay="autoplay"/g) || []).length === 2,
+      'autoplay attribute not applied to both reel layers');
+  }
+
   // ---- portrait reel for phones.
   // The background film is 16:9; on a 9:16 screen object-fit:cover throws away
   // most of every frame. These clips were generated from the studio's own
@@ -256,16 +283,26 @@ function buildIndex() {
       .replace(/data-ov-src="[^"]*"/, 'data-ov-src="' + src + '"')
       .replace('>Studio</span>', '>' + label + '</span>');
 
+    // „Mitglied werden" war über das Menü gar nicht erreichbar — auf dem Telefon
+    // ist die CTA-Pille in der Leiste ausgeblendet, das Menü ist also der
+    // einzige Weg dorthin.
     const kontakt = '<a href="#kontakt" data-ov-item';
     must(ov.indexOf(kontakt) > -1, 'overlay kontakt item not found');
-    ov = ov.replace(kontakt,
-      item('#stimmen', 'assets/gal-led.jpg', 'Stimmen') + '\n    ' +
-      item('#mitglied', 'assets/p-kraft.jpg', 'Mitglied werden') + '\n    ' + kontakt);
+    ov = ov.replace(kontakt, item('#mitglied', 'assets/p-kraft.jpg', 'Mitglied werden') + '\n    ' + kontakt);
+
+    // Kurze Liste schlägt vollständige Liste: auf einem Telefonschirm wirken
+    // acht große Zeilen erschlagend. Diese drei Abschnitte sind über die Seite
+    // selbst gut erreichbar und fliegen aus dem Menü.
+    for (const href of ['#studio', '#ausstattung']) {
+      const re = new RegExp('<a href="' + href + '" data-ov-item[\\s\\S]*?</a>\\s*');
+      must(re.test(ov), 'overlay item ' + href + ' not found for removal');
+      ov = ov.replace(re, '');
+    }
 
     let n = 0;
     ov = ov.replace(/(width:3ch">)(\d{2})(<\/span>)/g,
       (_, a, __, c) => a + String(++n).padStart(2, '0') + c);
-    must(n === 8, 'expected 8 overlay items after insert, got ' + n);
+    must(n === 5, 'expected 5 overlay items, got ' + n);
 
     html = html.slice(0, navStart) + ov + html.slice(navEnd);
   }

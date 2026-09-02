@@ -38,6 +38,22 @@ a:focus:not(:focus-visible), button:focus:not(:focus-visible) { outline: none; }
    animation the moment it takes ownership, so the normal case is untouched. */
 [data-loader] { animation: hs-loaderout 8s cubic-bezier(.16, 1, .3, 1) forwards; }
 
+/* ============================================================================
+   HINTERGRUNDFILM IN WEBKIT
+   Die Reel-Videos tragen filter:url(#filmgrade) — einen SVG-Referenzfilter.
+   WebKit zeichnet ein <video> mit so einem Filter nicht: es spielt (paused ist
+   false, currentTime läuft), aber die Fläche bleibt schwarz. Auf dem iPhone war
+   damit der komplette Hintergrund weg.
+
+   Ersatz ohne SVG. Der Filter ist eine Gamma-Kurve (R,G: 0.42, B: 0.44). Die
+   Werte unten sind kein Schätzwert: sie wurden gegen ein echtes Einzelbild aus
+   m-racks.mp4 eingemessen (Kleinste-Quadrate über alle Pixel), Mittelwert 103,1
+   gegen 102,9 im Original, Restfehler rund 5 %. Die beiden nachgestellten
+   Stufen saturate(1.16) contrast(1.02) sind dieselben wie im Design. */
+html[data-engine="webkit"] [data-reel-layer] {
+  filter: brightness(2.04) contrast(.59) saturate(1.16) contrast(1.02) !important;
+}
+
 /* --- touch ergonomics ------------------------------------------------------ */
 html { -webkit-tap-highlight-color: transparent; }
 @media (pointer: coarse) {
@@ -67,6 +83,34 @@ html { -webkit-tap-highlight-color: transparent; }
 /* Hero-Fußzeile über dem Home-Indicator halten */
 @media (max-width: 819px) {
   [data-hero-meta] { bottom: calc(clamp(24px, 3.6vh, 40px) + env(safe-area-inset-bottom, 0px)) !important; }
+}
+
+/* --- Kopfleiste auf dem Telefon --------------------------------------------
+   Ohne Pillen-Hintergrund: nur das Zeichen und der Burger stehen über dem Film.
+   Für die Lesbarkeit sorgt der ohnehin vorhandene Verlauf am oberen Rand.
+   !important, weil syncDom() Hintergrund und Rahmenfarbe beim Scrollen als
+   Inline-Style nachzieht — ein Selektor allein käme dagegen nicht an. */
+@media (max-width: 819px) {
+  [data-nav-bar] {
+    background: transparent !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  /* Der Burger ist auf dem Telefon die einzige Navigation. Im Design hat er
+     eine Eintrittsanimation, die erst nach dem Ladevorhang startet und ihn bis
+     dahin auf opacity:0 hält — gemessen war er noch nach fünf Sekunden
+     unsichtbar. Er steht jetzt einfach da. */
+  [data-menu-btn] {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+  }
 }
 
 /* --- Vollbildmenü ----------------------------------------------------------

@@ -38,7 +38,7 @@ ein gefiltertes `_site/` hoch, **nicht** das Repo-Root (siehe §6a Nr. 1).
 │   └── js/
 │       ├── site.js    ← GENERIERT. Nicht direkt editieren.
 │       ├── impressum.js · datenschutz.js  ← GENERIERT (ausgelagert wegen CSP)
-│       ├── brand.js   ← Handmade: Auftritt der Wortmarke
+│       ├── brand.js   ← Handmade: Auftritt der Wortmarke + WebKit-Kennzeichen
 │       └── consent.js ← Handmade: Karten-Consent
 ├── .github/workflows/pages.yml  ← Deploy (filtert Internes heraus)
 ├── build/             ← die Pipeline (siehe §3)
@@ -230,12 +230,17 @@ Alles einzeln, damit man es rückgängig machen kann.
    Ohne Skript bleibt die volle Wortmarke stehen; bei reduzierter Bewegung wird
    sofort der Endzustand gesetzt. **Kein Dock am unteren Rand** — die gesamte
    Navigation liegt in der oberen Leiste (Burger → Vollbildmenü).
-2. **Vollbildmenü**: acht Einträge, lückenlos 01–08 (Studio, Training,
-   Ausstattung, Coaching, Galerie, Stimmen, Mitglied werden, Kontakt). Die
-   Einträge für Stimmen und Mitglied werden fügt der Build ein, die Nummern
-   schreibt er anschließend fortlaufend neu — vorher sprang die Liste von 05 auf
-   09 (sie zeigte die Abschnittsnummern der Seite, was im Menü wie ein Fehler
-   aussieht). Rechtslinks stehen bewusst **nicht** im Menü, sondern im Footer.
+2. **Vollbildmenü**: fünf Einträge, 01–05 — Training, Coaching, Galerie,
+   Mitglied werden, Kontakt. Der Build fügt „Mitglied werden" ein (war über das
+   Menü nicht erreichbar, weil die CTA-Pille auf dem Telefon ausgeblendet ist),
+   entfernt Studio und Ausstattung (zu voll auf einem Telefonschirm) und
+   nummeriert anschließend fortlaufend neu — die Vorlage sprang von 05 auf 09,
+   weil sie die Abschnittsnummern der Seite zeigte. Rechtslinks stehen bewusst
+   **nicht** im Menü, sondern im Footer.
+3. **Kopfleiste auf dem Telefon** ohne Pille: kein Hintergrund, kein Rahmen,
+   kein Schatten — nur Zeichen und Burger über dem Film. Die `!important` sind
+   nötig, weil `syncDom()` Hintergrund und Rahmenfarbe beim Scrollen inline
+   nachzieht.
 3. **Karten-Consent** (`consent.js` + Gate-Markup + CSS). Der Google-Maps-`<iframe>`
    trägt `data-src` statt `src` und lädt erst nach Klick. Grund: sonst geht die
    IP jedes Besuchers ungefragt an Google — für eine deutsche Seite nicht haltbar.
@@ -348,6 +353,39 @@ Damit ich nicht zweimal dieselbe Stunde verliere.
     Fiel die erste Berührung, bevor der Clip geladen war, war der Versuch
     verpufft und es gab keinen zweiten. → HSK-PATCH 7 hört weiter zu, bis
     wirklich etwas läuft, und hängt sich dann selbst aus.
+
+13. **SVG-Filter auf `<video>` = schwarzes Bild in WebKit** ← der iPhone-Fehler
+    Die Reel-Videos tragen `filter:url(#filmgrade)`. WebKit (Safari, und auf
+    iOS *jeder* Browser) zeichnet ein Video mit SVG-Referenzfilter nicht mehr:
+    `paused` ist false, `currentTime` läuft, die Fläche bleibt schwarz. In
+    Chromium fällt das nie auf — jeder JS-Check meldet „läuft".
+    → `brand.js` setzt `html[data-engine="webkit"]` (über `navigator.vendor`,
+    das auf allen Apple-WebKits „Apple Computer, Inc." meldet), und extra.css
+    schaltet dort auf einen reinen CSS-Filter um.
+    Die Werte sind **eingemessen**, nicht geschätzt: Kleinste-Quadrate-Fit der
+    Gamma-Kurve (R,G 0.42 / B 0.44) gegen ein echtes Einzelbild, danach beide
+    Ketten per `ctx.filter` auf dasselbe Bild angewandt und verglichen —
+    `brightness(2.04) contrast(.59)` liegt 1,2 % daneben (max. Kanalabweichung
+    3,1 von 255).
+    **Merke:** Aussagen wie „das Video läuft" aus `paused`/`currentTime` sagen
+    nichts darüber, ob etwas *gemalt* wird.
+
+14. **`hs-glow` warf die Zentrierung des Markenscheins weg**
+    `[data-brand-glow]` ist per `transform:translate(-50%,-50%)` zentriert.
+    `igniteBrand()` legt darauf das Keyframe `hs-glow`, das nur
+    `transform:scale()` setzt — der Translate ist damit weg und der Schein sitzt
+    um seine halbe Breite (33 px) neben dem Zeichen. `hs-shock` am Ring macht es
+    richtig, bei `hs-glow` wurde es vergessen. Sichtbar wurde es erst, als die
+    Pille auf dem Telefon verschwand.
+    → Keyframe im Build korrigiert. **Per CSS nicht überschreibbar**:
+    `igniteBrand()` setzt die `animation`-Kurzform inline mit `!important`, und
+    inline-`!important` schlägt jedes Stylesheet.
+
+15. **Der Burger war sekundenlang unsichtbar**
+    Er trägt die `hs-navin`-Eintrittsanimation mit `animation-play-state:paused`,
+    die erst `igniteBrand()` löst — gemessen war er nach fünf Sekunden noch auf
+    `opacity:0`. Auf dem Telefon ist er die einzige Navigation.
+    → Unter 820 px keine Animation, er steht einfach da.
 
 ---
 
