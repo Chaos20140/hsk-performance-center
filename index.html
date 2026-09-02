@@ -178,107 +178,81 @@ html { -webkit-tap-highlight-color: transparent; }
 }
 
 /* ============================================================================
-   MOBILE COMMAND DOCK
-   The desktop header collapses to a burger below ~1180px. On phones that
-   leaves the primary actions (call, route, join) two taps away, so they move
-   into a thumb-reachable dock pinned to the bottom edge.
+   MOBILE
+   Die Navigation lebt vollständig in der oberen Leiste: Burger -> Vollbildmenü.
+   Es gibt bewusst keine zweite Leiste am unteren Rand.
    ========================================================================== */
-[data-dock] {
-  position: fixed;
-  left: 0; right: 0; bottom: 0;
-  z-index: 53;
-  display: none;
-  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
-  align-items: stretch;
-  gap: 6px;
-  padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px));
-  background: rgba(6, 6, 8, .82);
-  -webkit-backdrop-filter: blur(22px) saturate(1.3);
-  backdrop-filter: blur(22px) saturate(1.3);
-  border-top: 1px solid rgba(225, 6, 0, .22);
-  box-shadow: 0 -18px 44px rgba(0, 0, 0, .55);
-  transform: translateY(0);
-  transition: transform .55s cubic-bezier(.16, 1, .3, 1), opacity .4s ease;
-}
-/* out of the way while the loading curtain is up */
-html[data-boot="loading"] [data-dock] { transform: translateY(115%); opacity: 0; }
 
-[data-dock] > * {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  min-height: 52px;
-  padding: 7px 6px;
-  border: 0;
-  border-radius: 14px;
-  background: transparent;
-  color: #D6D6DC;
-  font-family: inherit;
-  font-size: 9.5px;
-  font-weight: 600;
-  letter-spacing: .14em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  cursor: pointer;
-  transition: color .3s ease, background .3s ease;
-}
-[data-dock] svg { display: block; width: 19px; height: 19px; flex: 0 0 auto; }
-[data-dock] > *:active { background: rgba(255, 255, 255, .07); color: #FFF; }
-
-[data-dock-cta] {
-  flex-direction: row !important;
-  gap: 8px !important;
-  padding: 7px 18px !important;
-  background: var(--acc, #E10600) !important;
-  color: #FFF !important;
-  border-radius: 100px !important;
-  box-shadow: 0 0 22px rgba(225, 6, 0, .42);
-}
-[data-dock-cta]:active { color: #FFF !important; }
-
-/* burger -> X, mirroring the header button */
-[data-dock-bars] { display: flex; flex-direction: column; gap: 4px; width: 19px; height: 19px; align-items: center; justify-content: center; }
-[data-dock-bars] i { display: block; width: 17px; height: 1.6px; background: currentColor; transition: transform .45s cubic-bezier(.16,1,.3,1); }
-html[data-menu="open"] [data-dock-bars] i:first-child { transform: translateY(2.8px) rotate(45deg); }
-html[data-menu="open"] [data-dock-bars] i:last-child  { transform: translateY(-2.8px) rotate(-45deg); }
-html[data-menu="open"] [data-dock-menu] { color: #FFF; }
-
-/* The dock is the mobile treatment only — it appears at exactly the width
-   where the header gives up its inline navigation. */
+/* Hero-Fußzeile über dem Home-Indicator halten */
 @media (max-width: 819px) {
-  [data-dock] { display: grid; }
-  /* the menu overlay must not end underneath the dock */
-  [data-ov-nav] { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)) !important; }
-  /* neither must the footer */
-  body > [data-root] > footer { padding-bottom: calc(46px + env(safe-area-inset-bottom, 0px)) !important; }
-}
-@media (max-width: 819px) and (max-height: 460px) {
-  /* landscape phone: the dock would eat a third of the viewport */
-  [data-dock] { display: none; }
+  [data-hero-meta] { bottom: calc(clamp(24px, 3.6vh, 40px) + env(safe-area-inset-bottom, 0px)) !important; }
 }
 
-/* --- hero vs. dock ----------------------------------------------------------
-   The hero's two absolute rows are measured from the bottom edge, which the
-   dock now occupies. Lift both by the dock's height so the scroll cue and the
-   shot counter stay readable instead of sliding underneath it. */
+/* --- Vollbildmenü ----------------------------------------------------------
+   Die Liste beginnt direkt unter der Leiste statt in der Mitte zu schweben —
+   sonst steht sie auf einem hohen Display zwischen zwei großen Leerflächen. */
 @media (max-width: 819px) {
-  [data-hero-block] { bottom: calc(clamp(74px, 10.5vh, 112px) + 66px + env(safe-area-inset-bottom, 0px)) !important; }
-  [data-hero-meta]  { bottom: calc(clamp(24px, 3.6vh, 40px) + 66px + env(safe-area-inset-bottom, 0px)) !important; }
+  [data-ov-nav] {
+    justify-content: flex-start !important;
+    padding-top: calc(clamp(84px, 12vh, 120px) + env(safe-area-inset-top, 0px)) !important;
+    padding-bottom: calc(clamp(32px, 6vh, 64px) + env(safe-area-inset-bottom, 0px)) !important;
+  }
 }
-@media (max-width: 819px) and (max-height: 460px) {
-  /* no dock in landscape, so no lift either */
-  [data-hero-block] { bottom: clamp(74px, 10.5vh, 112px) !important; }
-  [data-hero-meta]  { bottom: clamp(24px, 3.6vh, 40px) !important; }
+@media (max-width: 819px) {
+  /* Kontaktblock an den unteren Rand, statt direkt unter der Liste zu kleben
+     und darunter eine große Leerfläche zu lassen. */
+  [data-ov-foot] {
+    margin-top: auto !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 14px !important;
+  }
+  [data-ov-foot] > span { text-align: left !important; }
 }
-/* The eyebrow is a flex row of [dot][text]. Below ~560px the text is wider than
-   the line, and as a flex item it wraps as a whole — leaving the pulse dot
-   stranded on a line of its own. Inline flow keeps the dot glued to the first
-   word and lets the label wrap where it should. */
+
+/* Auf dem Touchscreen gibt es kein Hover — der Tipp-Zustand übernimmt. */
+[data-ov-item]:active [data-ov-text] { color: var(--acc, #E10600); }
+[data-ov-item] { transition: border-color .4s ease; }
+[data-ov-item]:active { border-bottom-color: rgba(225, 6, 0, .55) !important; }
+
+/* Die Eyebrow ist eine Flex-Zeile [Punkt][Text]. Unter ~560px ist der Text als
+   ganzes Flex-Item zu breit und bricht komplett um — der Punkt bliebe allein in
+   der ersten Zeile stehen. Im Inline-Fluss klebt er am ersten Wort. */
 @media (max-width: 560px) {
   [data-hero-kicker] { display: block !important; line-height: 1.7; }
   [data-hero-kicker] > span { display: inline-block !important; vertical-align: middle; margin-right: 10px; }
+}
+
+/* ============================================================================
+   MARKENZEICHEN IN DER LEISTE
+   Auftritt: die Leiste öffnet sich, das HSK-Zeichen zündet, „PERFORMANCE CENTER"
+   detoniert Buchstabe für Buchstabe herein — und zieht sich danach wieder
+   zusammen. Was bleibt, ist das kurze Zeichen, mittig in der Leiste.
+   Die Kollaps-Regel steht auf !important, weil die Wortmarke ihre Polsterung
+   und die linke Trennlinie als Inline-Style trägt.
+   ========================================================================== */
+[data-brand-word] {
+  overflow: hidden;
+  white-space: nowrap;
+  max-width: 28ch;
+  transition:
+    max-width .9s cubic-bezier(.16, 1, .3, 1),
+    opacity .55s ease,
+    padding-left .9s cubic-bezier(.16, 1, .3, 1),
+    border-left-color .55s ease;
+}
+html[data-brand="mark"] [data-brand-word] {
+  max-width: 0 !important;
+  opacity: 0 !important;
+  padding-left: 0 !important;
+  border-left-color: transparent !important;
+}
+/* Allein in der Mitte darf das Zeichen etwas mehr Gewicht tragen. */
+[data-brand-logo] { transition: height .9s cubic-bezier(.16, 1, .3, 1); }
+html[data-brand="mark"] [data-brand-logo] { height: 21px !important; }
+/* Ohne Skript bleibt die Wortmarke einfach stehen — kein leerer Platz. */
+@media (prefers-reduced-motion: reduce) {
+  [data-brand-word] { transition-duration: .001ms; }
 }
 
 /* --- confirmation hand-off -------------------------------------------------- */
@@ -296,28 +270,6 @@ html[data-menu="open"] [data-dock-menu] { color: #FFF; }
 [data-sent-mail]:hover { box-shadow: 0 0 34px rgba(225, 6, 0, .55); transform: translateY(-2px); color: #FFF; }
 [data-sent-call] { border: 1px solid rgba(255, 255, 255, .24); color: #F4F2EF; }
 [data-sent-call]:hover { border-color: var(--acc, #E10600); background: rgba(225, 6, 0, .1); color: #F4F2EF; }
-
-/* --- mobile menu: legal + page links --------------------------------------- */
-[data-ov-legal] {
-  flex: 0 0 auto;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px 30px;
-  margin-top: clamp(18px, 3vh, 34px);
-  padding-top: clamp(14px, 2vh, 22px);
-  border-top: 1px solid rgba(255, 255, 255, .09);
-}
-[data-ov-legal] a {
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: .18em;
-  text-transform: uppercase;
-  color: #9A9AA2;
-  text-shadow: 0 1px 12px rgba(0, 0, 0, .9);
-  transition: color .35s ease;
-}
-[data-ov-legal] a:hover, [data-ov-legal] a:active { color: var(--acc, #E10600); }
 
 /* --- header safe areas (notched phones, landscape) -------------------------- */
 @media (max-width: 819px) {
@@ -410,7 +362,7 @@ html[data-menu="open"] [data-dock-menu] { color: #FFF; }
 
 /* --- print ------------------------------------------------------------------ */
 @media print {
-  [data-reel], [data-grain], [data-cursor], [data-loader], [data-dock],
+  [data-reel], [data-grain], [data-cursor], [data-loader],
   [data-overlay], [data-side-tab], [data-nav], [data-lbox] { display: none !important; }
   [data-root] { background: #fff !important; color: #000 !important; }
 }
@@ -541,16 +493,19 @@ html[data-menu="open"] [data-dock-menu] { color: #FFF; }
       <span style="font-size:11px;font-weight:500;letter-spacing:.2em;color:#B8B8BF;text-shadow:0 1px 12px rgba(0,0,0,.9);flex:0 0 auto;width:3ch">05</span>
       <span data-ov-text style="display:block;font-family:'Bricolage Grotesque',Manrope,sans-serif;font-weight:800;font-variation-settings:'opsz' 96,'wdth' 100;font-size:clamp(26px,min(6vw,8vh),92px);line-height:.98;letter-spacing:-.035em;color:#F4F2EF;transition:transform .6s cubic-bezier(.16,1,.3,1),color .5s ease;will-change:transform">Galerie</span>
     </a>
+    <a href="#stimmen" data-ov-item data-ov-src="assets/gal-led.jpg" style="position:relative;flex:0 0 auto;display:flex;align-items:baseline;gap:clamp(14px,2vw,30px);padding:clamp(6px,1vh,14px) 0 clamp(10px,1.6vh,22px);border-bottom:1px solid rgba(255,255,255,.09);overflow:hidden">
+      <span style="font-size:11px;font-weight:500;letter-spacing:.2em;color:#B8B8BF;text-shadow:0 1px 12px rgba(0,0,0,.9);flex:0 0 auto;width:3ch">06</span>
+      <span data-ov-text style="display:block;font-family:'Bricolage Grotesque',Manrope,sans-serif;font-weight:800;font-variation-settings:'opsz' 96,'wdth' 100;font-size:clamp(26px,min(6vw,8vh),92px);line-height:.98;letter-spacing:-.035em;color:#F4F2EF;transition:transform .6s cubic-bezier(.16,1,.3,1),color .5s ease;will-change:transform">Stimmen</span>
+    </a>
+    <a href="#mitglied" data-ov-item data-ov-src="assets/p-kraft.jpg" style="position:relative;flex:0 0 auto;display:flex;align-items:baseline;gap:clamp(14px,2vw,30px);padding:clamp(6px,1vh,14px) 0 clamp(10px,1.6vh,22px);border-bottom:1px solid rgba(255,255,255,.09);overflow:hidden">
+      <span style="font-size:11px;font-weight:500;letter-spacing:.2em;color:#B8B8BF;text-shadow:0 1px 12px rgba(0,0,0,.9);flex:0 0 auto;width:3ch">07</span>
+      <span data-ov-text style="display:block;font-family:'Bricolage Grotesque',Manrope,sans-serif;font-weight:800;font-variation-settings:'opsz' 96,'wdth' 100;font-size:clamp(26px,min(6vw,8vh),92px);line-height:.98;letter-spacing:-.035em;color:#F4F2EF;transition:transform .6s cubic-bezier(.16,1,.3,1),color .5s ease;will-change:transform">Mitglied werden</span>
+    </a>
     <a href="#kontakt" data-ov-item data-ov-src="assets/reception.jpg" style="position:relative;flex:0 0 auto;display:flex;align-items:baseline;gap:clamp(14px,2vw,30px);padding:clamp(6px,1vh,14px) 0 clamp(10px,1.6vh,22px);border-bottom:1px solid rgba(255,255,255,.09);overflow:hidden">
-      <span style="font-size:11px;font-weight:500;letter-spacing:.2em;color:#B8B8BF;text-shadow:0 1px 12px rgba(0,0,0,.9);flex:0 0 auto;width:3ch">09</span>
+      <span style="font-size:11px;font-weight:500;letter-spacing:.2em;color:#B8B8BF;text-shadow:0 1px 12px rgba(0,0,0,.9);flex:0 0 auto;width:3ch">08</span>
       <span data-ov-text style="display:block;font-family:'Bricolage Grotesque',Manrope,sans-serif;font-weight:800;font-variation-settings:'opsz' 96,'wdth' 100;font-size:clamp(26px,min(6vw,8vh),92px);line-height:.98;letter-spacing:-.035em;color:#F4F2EF;transition:transform .6s cubic-bezier(.16,1,.3,1),color .5s ease;will-change:transform">Kontakt</span>
     </a>
 
-    <div data-ov-legal>
-      <a href="#start">Startseite</a>
-      <a href="impressum.html">Impressum</a>
-      <a href="datenschutz.html">Datenschutz</a>
-    </div>
     <div data-ov-foot style="flex:0 0 auto;display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap;margin-top:clamp(20px,4vh,48px)">
       <div style="display:flex;flex-direction:column;gap:7px">
         <a href="tel:+4916090285812" style="font-size:14.5px;color:#DCDCE2;text-shadow:0 1px 12px rgba(0,0,0,.9)">0160 90285812</a>
@@ -1405,32 +1360,11 @@ html[data-menu="open"] [data-dock-menu] { color: #FFF; }
     </figcaption>
   </figure>
 </div>
-
-<!-- ===== Mobile-Kommandoleiste — nur auf Telefonen sichtbar (siehe [data-dock] im CSS) ===== -->
-<nav data-dock aria-label="Schnellzugriff">
-  <button data-dock-menu type="button" aria-controls="hsk-menu" aria-expanded="false">
-    <span data-dock-bars aria-hidden="true"><i></i><i></i></span>
-    <span data-dock-menu-label>Menü</span>
-  </button>
-  <a href="tel:+4916090285812">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.5 16.9v2.6a1.7 1.7 0 0 1-1.9 1.7 17 17 0 0 1-7.4-2.6 16.7 16.7 0 0 1-5.2-5.2A17 17 0 0 1 4.4 6a1.7 1.7 0 0 1 1.7-1.9h2.6a1.7 1.7 0 0 1 1.7 1.5c.1.9.3 1.7.6 2.5a1.7 1.7 0 0 1-.4 1.8l-1.1 1.1a13.7 13.7 0 0 0 5.1 5.1l1.1-1.1a1.7 1.7 0 0 1 1.8-.4c.8.3 1.6.5 2.5.6a1.7 1.7 0 0 1 1.5 1.7z"/></svg>
-    <span>Anrufen</span>
-  </a>
-  <a href="https://www.google.com/maps/search/?api=1&amp;query=Strackestra%C3%9Fe+22+59929+Brilon" target="_blank" rel="noopener noreferrer">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10.3c0 5.4-8 12.4-8 12.4s-8-7-8-12.4a8 8 0 1 1 16 0z"/><circle cx="12" cy="10.1" r="2.8"/></svg>
-    <span>Route</span>
-  </a>
-  <a data-dock-cta href="#mitglied">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-    <span>Mitglied</span>
-  </a>
-</nav>
-
 </div>
 
 
 <script src="assets/js/site.js"></script>
-<script src="assets/js/mobile.js"></script>
+<script src="assets/js/brand.js"></script>
 <script src="assets/js/consent.js"></script>
 </body>
 </html>

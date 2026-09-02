@@ -236,29 +236,46 @@ function buildIndex() {
     '      </div>\n' +
     '    </div>\n' + gateAnchor);
 
-  // menu overlay: reachable links to the legal pages, so the mobile menu really
-  // navigates the whole site and not just the sections of this one
-  const ovAnchor = '    <div data-ov-foot style="flex:0 0 auto;';
-  must(html.indexOf(ovAnchor) > -1, 'overlay foot anchor not found');
-  html = html.replace(ovAnchor,
-    '    <div data-ov-legal>\n' +
-    '      <a href="#start">Startseite</a>\n' +
-    '      <a href="impressum.html">Impressum</a>\n' +
-    '      <a href="datenschutz.html">Datenschutz</a>\n' +
-    '    </div>\n' + ovAnchor);
+  // ---- Vollbildmenü: vollständige Liste, fortlaufend nummeriert.
+  // Vorher fehlten „Stimmen" und „Mitglied werden" ganz, und die Nummern
+  // sprangen von 05 auf 09 (sie zeigten die Abschnittsnummern der Seite, was im
+  // Menü wie ein Fehler aussieht). Das Menü nummeriert jetzt seine eigenen
+  // Einträge — lückenlos.
+  {
+    const navStart = html.indexOf('<nav data-ov-nav ');
+    must(navStart > -1, 'overlay nav anchor not found');
+    const navEnd = html.indexOf('</nav>', navStart);
+    must(navEnd > navStart, 'overlay nav end not found');
+    let ov = html.slice(navStart, navEnd);
+
+    const template = ov.match(/<a href="#studio" data-ov-item[\s\S]*?<\/a>/);
+    must(template, 'overlay item template not found');
+
+    const item = (href, src, label) => template[0]
+      .replace('href="#studio"', 'href="' + href + '"')
+      .replace(/data-ov-src="[^"]*"/, 'data-ov-src="' + src + '"')
+      .replace('>Studio</span>', '>' + label + '</span>');
+
+    const kontakt = '<a href="#kontakt" data-ov-item';
+    must(ov.indexOf(kontakt) > -1, 'overlay kontakt item not found');
+    ov = ov.replace(kontakt,
+      item('#stimmen', 'assets/gal-led.jpg', 'Stimmen') + '\n    ' +
+      item('#mitglied', 'assets/p-kraft.jpg', 'Mitglied werden') + '\n    ' + kontakt);
+
+    let n = 0;
+    ov = ov.replace(/(width:3ch">)(\d{2})(<\/span>)/g,
+      (_, a, __, c) => a + String(++n).padStart(2, '0') + c);
+    must(n === 8, 'expected 8 overlay items after insert, got ' + n);
+
+    html = html.slice(0, navStart) + ov + html.slice(navEnd);
+  }
 
   const extraCss = fs.readFileSync(path.join(__dirname, 'extra.css'), 'utf8');
-  const mobileHtml = fs.readFileSync(path.join(__dirname, 'mobile.html'), 'utf8');
 
   // ------------------------------------------------------------- assemble
   const bodyStart = html.indexOf('<body>');
   must(bodyStart > -1, 'no <body>');
-  let body = html.slice(bodyStart + 6, html.lastIndexOf('</body>'));
-
-  // the mobile chrome lives inside [data-root] so it inherits --acc
-  const rootClose = body.lastIndexOf('</div>');
-  must(rootClose > -1, 'no [data-root] close');
-  body = body.slice(0, rootClose) + '\n' + mobileHtml + '\n' + body.slice(rootClose);
+  const body = html.slice(bodyStart + 6, html.lastIndexOf('</body>'));
 
   const page = `<!DOCTYPE html>
 <html lang="de">
@@ -284,7 +301,7 @@ ${extraCss}
 <a data-skip href="#start">Zum Inhalt springen</a>
 ${body}
 <script src="assets/js/site.js"></script>
-<script src="assets/js/mobile.js"></script>
+<script src="assets/js/brand.js"></script>
 <script src="assets/js/consent.js"></script>
 </body>
 </html>
@@ -377,7 +394,7 @@ ${patched.replace(/^/gm, '  ')}
 })();
 `;
   fs.mkdirSync(path.join(OUT, 'assets/js'), { recursive: true });
-  for (const f of ['mobile.js', 'consent.js']) {
+  for (const f of ['brand.js', 'consent.js']) {
     fs.copyFileSync(path.join(__dirname, f), path.join(OUT, 'assets/js', f));
   }
   fs.writeFileSync(path.join(OUT, 'assets/js/site.js'), js, 'utf8');
@@ -456,10 +473,39 @@ function patchLogic(js) {
     "    // HSK-PATCH: never pull video on a metered or very slow connection —\n" +
     "    // the poster frame stays and the page reads exactly the same\n" +
     "    const c = navigator.connection;\n" +
-    "    if (c && (c.saveData || /(^|-)2g$/.test(c.effectiveType || ''))) { r.armed = true; return; }\n" +
-    "    // HSK-PATCH: a full-screen film that plays for minutes is exactly what\n" +
-    "    // prefers-reduced-motion asks us not to do (WCAG 2.2.2). Poster only.\n" +
-    "    if (this.reduced) { r.armed = true; return; }");
+    "    if (c && (c.saveData || /(^|-)2g$/.test(c.effectiveType || ''))) { r.armed = true; return; }");
+
+  // 6) reduced motion: keep the film, drop the motion *effects*. The footage is
+  //    muted, decorative and behind heavy scrims; what triggers vestibular
+  //    discomfort is the scroll-driven zoom and drift, not the clip itself.
+  //    (An earlier version suppressed the film entirely — on a phone with
+  //    "Reduce Motion" on, that left the whole page on a still frame.)
+  const innerAnchor = "if (inner) inner.style.transform = 'scale(' + (1.03 + local * 0.09).toFixed(4) + ') translate3d(0,' + (local * -1.6).toFixed(2) + '%,0)';";
+  must(js.indexOf(innerAnchor) > -1, 'patch 6 anchor (reel inner transform) not found');
+  js = js.replace(innerAnchor,
+    "// HSK-PATCH: no scroll-driven zoom/drift when reduced motion is asked for\n" +
+    "    if (inner) inner.style.transform = this.reduced\n" +
+    "      ? 'scale(1.03)'\n" +
+    "      : 'scale(' + (1.03 + local * 0.09).toFixed(4) + ') translate3d(0,' + (local * -1.6).toFixed(2) + '%,0)';");
+
+  // 7) autoplay recovery has to survive a gesture that lands before the clip is
+  //    ready. `once` listeners burned themselves on the first tap and never
+  //    re-armed, which on a phone meant the film stayed on its poster forever.
+  const unlockAnchor = "    ['pointerdown', 'touchstart', 'keydown', 'wheel', 'scroll'].forEach((ev) => {\n" +
+                       "      window.addEventListener(ev, unlock, { passive: true, once: true, capture: true });\n" +
+                       "    });";
+  must(js.indexOf(unlockAnchor) > -1, 'patch 7 anchor (gesture unlock) not found');
+  js = js.replace(unlockAnchor,
+    "    // HSK-PATCH: keep listening until something is actually playing\n" +
+    "    const EVENTS = ['pointerdown', 'touchstart', 'touchend', 'keydown', 'wheel', 'scroll', 'visibilitychange'];\n" +
+    "    const retry = () => {\n" +
+    "      unlock();\n" +
+    "      const r = this.reel;\n" +
+    "      const live = r && r.started && r.layers.some((v) => !v.paused && v.currentTime > 0);\n" +
+    "      if (!live) return;\n" +
+    "      EVENTS.forEach((ev) => window.removeEventListener(ev, retry, true));\n" +
+    "    };\n" +
+    "    EVENTS.forEach((ev) => window.addEventListener(ev, retry, { passive: true, capture: true }));");
 
   // 5) the loading curtain is dismissed by script. <noscript> covers "script is
   //    off"; this covers "script is on but never ran" (blocked, 404, throw).

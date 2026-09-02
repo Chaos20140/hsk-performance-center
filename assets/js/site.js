@@ -141,9 +141,16 @@
           if (q && q.catch) q.catch(() => {});
         });
       };
-      ['pointerdown', 'touchstart', 'keydown', 'wheel', 'scroll'].forEach((ev) => {
-        window.addEventListener(ev, unlock, { passive: true, once: true, capture: true });
-      });
+      // HSK-PATCH: keep listening until something is actually playing
+      const EVENTS = ['pointerdown', 'touchstart', 'touchend', 'keydown', 'wheel', 'scroll', 'visibilitychange'];
+      const retry = () => {
+        unlock();
+        const r = this.reel;
+        const live = r && r.started && r.layers.some((v) => !v.paused && v.currentTime > 0);
+        if (!live) return;
+        EVENTS.forEach((ev) => window.removeEventListener(ev, retry, true));
+      };
+      EVENTS.forEach((ev) => window.addEventListener(ev, retry, { passive: true, capture: true }));
     }
   
     /* ---------- loading screen ---------- */
@@ -343,9 +350,6 @@
       // the poster frame stays and the page reads exactly the same
       const c = navigator.connection;
       if (c && (c.saveData || /(^|-)2g$/.test(c.effectiveType || ''))) { r.armed = true; return; }
-      // HSK-PATCH: a full-screen film that plays for minutes is exactly what
-      // prefers-reduced-motion asks us not to do (WCAG 2.2.2). Poster only.
-      if (this.reduced) { r.armed = true; return; }
       r.armed = true;
       r.layers[0].preload = 'auto';
       r.layers[1].preload = 'auto';
@@ -457,7 +461,10 @@
       const local = raw - idx;
       if (idx !== r.want) this.goToShot(idx);
       const inner = r.inner || (r.inner = r.stage.querySelector('[data-reel-inner]'));
-      if (inner) inner.style.transform = 'scale(' + (1.03 + local * 0.09).toFixed(4) + ') translate3d(0,' + (local * -1.6).toFixed(2) + '%,0)';
+      // HSK-PATCH: no scroll-driven zoom/drift when reduced motion is asked for
+      if (inner) inner.style.transform = this.reduced
+        ? 'scale(1.03)'
+        : 'scale(' + (1.03 + local * 0.09).toFixed(4) + ') translate3d(0,' + (local * -1.6).toFixed(2) + '%,0)';
     }
   
     /* ---------- full-screen menu overlay ---------- */

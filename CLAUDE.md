@@ -38,7 +38,7 @@ ein gefiltertes `_site/` hoch, **nicht** das Repo-Root (siehe §6a Nr. 1).
 │   └── js/
 │       ├── site.js    ← GENERIERT. Nicht direkt editieren.
 │       ├── impressum.js · datenschutz.js  ← GENERIERT (ausgelagert wegen CSP)
-│       ├── mobile.js  ← Handmade: Mobile-Dock
+│       ├── brand.js   ← Handmade: Auftritt der Wortmarke
 │       └── consent.js ← Handmade: Karten-Consent
 ├── .github/workflows/pages.yml  ← Deploy (filtert Internes heraus)
 ├── build/             ← die Pipeline (siehe §3)
@@ -223,13 +223,19 @@ Section. Bei schmalen Viewports baut `applyResponsive()` das auf `view()` + `hs-
 
 Alles einzeln, damit man es rückgängig machen kann.
 
-1. **Mobile-Dock** (`build/mobile.html`, `mobile.js`, CSS-Block in `extra.css`).
-   Feste Leiste unten ≤ 819 px: Menü · Anrufen · Route · Mitglied.
-   Spiegelt den Header-Burger über `HSK.setMenu()`; `html[data-menu]` synchronisiert
-   beide. Versteckt sich im Querformat (≤ 460 px Höhe) und bei offener Tastatur
-   (`visualViewport`). `env(safe-area-inset-bottom)` für Geräte mit Home-Indicator.
-2. **Menü-Fußzeile** `[data-ov-legal]`: Startseite · Impressum · Datenschutz —
-   damit das Mobilmenü auch die Unterseiten erreicht, nicht nur Abschnitte.
+1. **Auftritt der Wortmarke** (`build/brand.js` + CSS-Block in `extra.css`).
+   Vorhang hebt sich → HSK-Zeichen zündet → „PERFORMANCE CENTER" detoniert herein
+   → nach 4,2 s zieht es sich zusammen, übrig bleibt das kurze Zeichen mittig in
+   der Leiste (`html[data-brand="mark"]`, Logo wächst 18 → 21 px).
+   Ohne Skript bleibt die volle Wortmarke stehen; bei reduzierter Bewegung wird
+   sofort der Endzustand gesetzt. **Kein Dock am unteren Rand** — die gesamte
+   Navigation liegt in der oberen Leiste (Burger → Vollbildmenü).
+2. **Vollbildmenü**: acht Einträge, lückenlos 01–08 (Studio, Training,
+   Ausstattung, Coaching, Galerie, Stimmen, Mitglied werden, Kontakt). Die
+   Einträge für Stimmen und Mitglied werden fügt der Build ein, die Nummern
+   schreibt er anschließend fortlaufend neu — vorher sprang die Liste von 05 auf
+   09 (sie zeigte die Abschnittsnummern der Seite, was im Menü wie ein Fehler
+   aussieht). Rechtslinks stehen bewusst **nicht** im Menü, sondern im Footer.
 3. **Karten-Consent** (`consent.js` + Gate-Markup + CSS). Der Google-Maps-`<iframe>`
    trägt `data-src` statt `src` und lädt erst nach Klick. Grund: sonst geht die
    IP jedes Besuchers ungefragt an Google — für eine deutsche Seite nicht haltbar.
@@ -326,6 +332,25 @@ Damit ich nicht zweimal dieselbe Stunde verliere.
 
 ---
 
+11. **Reduzierte Bewegung ≠ Film abschalten** — mein schlimmster Rückschritt
+    Im Audit hatte ich `armReel()` bei `prefers-reduced-motion: reduce`
+    aussteigen lassen (WCAG 2.2.2 im Blick). Folge: auf jedem Telefon, auf dem
+    „Bewegung reduzieren" aktiv ist — unter iOS eine sehr verbreitete
+    Einstellung — lief der Hintergrundfilm gar nicht mehr. Also genau die
+    Meldung „das Hintergrundvideo läuft nicht auf dem Handy".
+    → Der Film läuft wieder für alle. Reduzierte Bewegung schaltet jetzt nur
+    die *Bewegungseffekte* ab (Scroll-Zoom und Drift des Reels, HSK-PATCH 6).
+    **Regel:** reduzierte Bewegung heißt Bewegung dämpfen, nicht Inhalt
+    entfernen — dasselbe galt schon für die Reveals.
+
+12. **`once`-Listener für die Autoplay-Freigabe verbrannten sich**
+    `armGestureUnlock` registrierte die Nachhol-Wiedergabe mit `{once:true}`.
+    Fiel die erste Berührung, bevor der Clip geladen war, war der Versuch
+    verpufft und es gab keinen zweiten. → HSK-PATCH 7 hört weiter zu, bis
+    wirklich etwas läuft, und hängt sich dann selbst aus.
+
+---
+
 ## 6a. Audit-Befunde (Runde 2) — alle behoben
 
 Nach dem ersten Deploy mit dem Website-Audit-Playbook gegengeprüft. Was dabei
@@ -409,7 +434,7 @@ herauskam, war ernster als erwartet:
 ```bash
 cd build && HSK_CANONICAL="…" node build.js     # muss "OK" sagen
 cd .. && node --check assets/js/site.js
-grep -c 'HSK-PATCH' assets/js/site.js            # muss 7 sein
+grep -c 'HSK-PATCH' assets/js/site.js            # muss 8 sein
 grep -oE 'https?://[^"]+' index.html | sort -u   # nichts darf ungefragt laden
 ```
 
