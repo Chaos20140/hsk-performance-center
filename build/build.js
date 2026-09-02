@@ -140,6 +140,27 @@ function buildIndex() {
   html = html.replace(/href="Datenschutz\.dc\.html"/g, 'href="datenschutz.html"');
   must(!/\.dc\.html/.test(html), 'dc.html link left');
 
+  // ---- portrait reel for phones.
+  // The background film is 16:9; on a 9:16 screen object-fit:cover throws away
+  // most of every frame. These clips were generated from the studio's own
+  // portrait stills (Higgsfield, cinematic_studio_video_v2) so the mobile film
+  // is the same room, framed for the phone — and a quarter of the bytes.
+  const MOBILE_SHOTS = [
+    ['assets/m-racks.mp4', 'Racks'],
+    ['assets/m-platform.mp4', 'Plattform'],
+    ['assets/m-cardio.mp4', 'Ausdauer'],
+    ['assets/m-sprint.mp4', 'Sprintbahn']
+  ].filter(([f]) => fs.existsSync(path.join(OUT, f)));
+
+  if (MOBILE_SHOTS.length) {
+    must(html.indexOf('<div data-reel data-shots="') > -1, 'reel element anchor not found');
+    html = html.replace('<div data-reel data-shots="',
+      '<div data-reel data-shots-mobile="' + MOBILE_SHOTS.map(s => s[0]).join(',') + '"' +
+      ' data-labels-mobile="' + MOBILE_SHOTS.map(s => s[1]).join(',') + '"' +
+      ' data-shots="');
+    must(/data-shots-mobile=/.test(html), 'mobile reel attributes not written');
+  }
+
   // ---- hero: the mobile dock occupies the bottom 69px, so the hero's two
   // absolutely-positioned rows get a hook to lift themselves clear of it.
   const heroBlock = 'bottom:clamp(74px,10.5vh,112px);z-index:8';
@@ -572,6 +593,7 @@ const dat = buildLegal('Datenschutz.dc.html', 'datenschutz.html', 'd');
 buildStatic();
 
 console.log('canonical      : ' + CANONICAL);
+console.log('form mode      : ' + FORM_MODE);
 console.log('index.html      hover rules: ' + idx.hover + '  props: ' + JSON.stringify(idx.props));
 console.log('impressum.html  hover rules: ' + imp.hover + '  logic: ' + imp.hadLogic);
 console.log('datenschutz.html hover rules: ' + dat.hover + '  logic: ' + dat.hadLogic);

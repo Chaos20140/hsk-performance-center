@@ -137,9 +137,35 @@ deshalb wirkt das Video als durchgehender Hintergrund der ganzen Seite.
 - **Der Fortschritt kommt aus dem Scroll**, nicht aus einem Timer: `syncReel(p)`
   teilt `pageProgress()` in `shots.length` Kapitel. Runterscrollen = neuer Clip.
 - `data-shots-mobile` / `data-labels-mobile`: falls gesetzt und Viewport ≤ 820 px,
-  nimmt `bootReel` diese statt der Desktop-Liste (HSK-PATCH 1). Für 9:16-Clips.
+  nimmt `bootReel` diese statt der Desktop-Liste (HSK-PATCH 1). Vier Hochkant-Clips
+  `assets/m-*.mp4`. `paintShotMeta` liest die Anzahl aus `reel.shots.length`,
+  der Zähler im Hero springt also von selbst auf „01 / 04".
 - Autoplay-Block: `playSafe()` merkt sich jedes Video und startet es beim ersten
   User-Gesture nach (`armGestureUnlock`).
+
+### 4.3a Codecs — bitte nie wieder HEVC
+
+Der Design-Export lieferte **10 Clips als HEVC** (alle `cine-*` plus `v-crane`).
+`video.canPlayType('video/mp4; codecs="hvc1"')` gibt in Chromium `""` zurück —
+HEVC im `<video>` hängt am Betriebssystem-Decoder. Auf einem Rechner ohne
+HEVC-Erweiterung, unter Linux und in älteren Firefox-Versionen wäre der
+Hintergrundfilm — also der halbe Auftritt der Seite — **komplett ausgefallen**
+(nur das Posterbild wäre geblieben).
+
+Alle Clips liegen jetzt als **H.264 High, yuv420p, `+faststart`, ohne Tonspur** vor:
+- `cine-*` / `v-crane`: 1600×900, CRF 21 (Vollbild-Hintergrund unter Verläufen + Grain)
+- `v-*`: 1280×720 (waren schon H.264)
+- `m-*`: 828 px breit, CRF 23, ~1–1,3 MB pro Clip
+
+**Regel für neue Clips:** immer H.264 einbetten, nie HEVC/AV1 ohne Fallback.
+Prüfen mit `ffprobe -select_streams v:0 -show_entries stream=codec_name`.
+
+Die Hochkant-Clips sind mit Higgsfield (`cinematic_studio_video_v2`, `mode:pro`,
+`sound:off`) aus den **eigenen Hochkant-Fotos des Studios** als `start_image`
+erzeugt — deshalb zeigen sie denselben Raum und nicht irgendein Stock-Gym.
+Ergebnis-Seitenverhältnis ist 3:4 (das Modell folgt dem Startbild), nicht 9:16 —
+auf dem Telefon beschneidet `object-fit:cover` damit ~25 % der Breite statt ~68 %
+wie beim 16:9-Material. Für die Originale siehe Git-Historie.
 
 ### 4.4 Ladevorhang
 
@@ -276,7 +302,20 @@ Damit ich nicht zweimal dieselbe Stunde verliere.
    **Merke:** in dieser Datei ist fast nichts `position:relative` mit z-index —
    jedes neue `z-index` gegenprüfen, auf Desktop *und* mobil.
 
-8. **`applyResponsive` fegt alle direkten Kinder von `[data-map-wrap]` weg**
+8. **Higgsfield gab 10-MB-Clips zurück**
+   5 Sekunden bei 17,7 Mbit/s. Als Handy-Hintergrund absurd — hätte den ganzen
+   Zweck („weniger Bytes auf dem Telefon") ins Gegenteil verkehrt.
+   → `ffmpeg` liegt unter
+   `~/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_*/…/bin/`.
+   Auf 828 px Breite, CRF 23 → ~1,1 MB. **Immer nachkomprimieren.**
+
+9. **Higgsfield schlug ein Preset vor, statt zu generieren**
+   `generate_video_batch` gab bei 3 von 4 Anfragen `submission_failed` mit
+   `preset_recommendation` zurück. → mit `declined_preset_id: <id>` erneut senden.
+   Presets abgelehnt, weil sie einen generischen Look drübergelegt hätten statt
+   den bestehenden Studio-Aufnahmen zu folgen.
+
+10. **`applyResponsive` fegt alle direkten Kinder von `[data-map-wrap]` weg**
    `':scope > div:not([data-map-pin])'` → mein Gate wäre mobil `display:none`
    gewesen (Karte dann komplett leer, weil das iframe ja kein `src` hat).
    → HSK-PATCH 4 ergänzt `:not([data-map-gate])`.
