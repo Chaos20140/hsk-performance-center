@@ -1,0 +1,12 @@
+/* Self-hosted faces — the source pulled these from fonts.googleapis.com, which
+   is not an option for a German site (no third-party request, no IP transfer).
+   Same families, same weights, served from the repo. */
+@font-face{font-family:'Instrument Serif';font-style:italic;font-weight:400;font-display:swap;src:url(assets/fonts/instrument-serif-italic-400.woff2) format('woff2')}
+@font-face{font-family:'Instrument Serif';font-style:normal;font-weight:400;font-display:swap;src:url(assets/fonts/instrument-serif-normal-400.woff2) format('woff2')}
+@font-face{font-family:'Manrope';font-style:normal;font-weight:300 700;font-display:swap;src:url(assets/fonts/manrope-normal-300_700.woff2) format('woff2')}
+
+:focus-visible{outline:2px solid #E10600;outline-offset:3px;border-radius:4px}
+html{-webkit-tap-highlight-color:transparent}
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:.001ms!important;transition-duration:.001ms!important}
+}

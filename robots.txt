@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /build/
+Disallow: /src/
+
+Sitemap: https://chaos20140.github.io/hsk-performance-center/sitemap.xml

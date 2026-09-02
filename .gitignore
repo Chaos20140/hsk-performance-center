@@ -1,0 +1,8 @@
+# Playwright / lokale Prüfartefakte
+.playwright-mcp/
+*.log
+
+# OS
+Thumbs.db
+.DS_Store
+desktop.ini

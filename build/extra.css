@@ -1,0 +1,289 @@
+/* ============================================================================
+   Production + mobile layer.
+   Everything above this comment is the design source, untouched. Everything
+   here is additive: it never overrides a design value, it only adds states the
+   design host used to provide (hover) or that a real website needs (keyboard
+   focus, reduced motion, touch chrome, safe areas).
+   ========================================================================== */
+
+/* --- keyboard accessibility -------------------------------------------------
+   The source resets `outline:none` on form controls and relies on hover only.
+   Pointer users see no change; keyboard users get a visible ring. */
+:focus-visible {
+  outline: 2px solid var(--acc, #E10600);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+input:focus-visible, textarea:focus-visible, select:focus-visible {
+  outline: 2px solid var(--acc, #E10600);
+  outline-offset: 4px;
+}
+a:focus:not(:focus-visible), button:focus:not(:focus-visible) { outline: none; }
+
+/* Skip link — first tab stop, invisible until focused. */
+[data-skip] {
+  position: fixed; top: 10px; left: 10px; z-index: 100;
+  padding: 12px 20px; border-radius: 100px;
+  background: var(--acc, #E10600); color: #fff;
+  font-size: 12px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase;
+  transform: translateY(-160%); transition: transform .3s cubic-bezier(.16,1,.3,1);
+}
+[data-skip]:focus { transform: translateY(0); color: #fff; }
+
+/* --- touch ergonomics ------------------------------------------------------ */
+html { -webkit-tap-highlight-color: transparent; }
+@media (pointer: coarse) {
+  /* the custom cursor and the side tab are pointer-only affordances */
+  [data-cursor] { display: none !important; }
+}
+
+/* --- reduced motion --------------------------------------------------------
+   The page is animation-heavy by design. Visitors who ask for less get the
+   resting state of every animation, which is also the readable state. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+    scroll-behavior: auto !important;
+  }
+  [data-grain] { display: none !important; }
+}
+
+/* ============================================================================
+   MOBILE COMMAND DOCK
+   The desktop header collapses to a burger below ~1180px. On phones that
+   leaves the primary actions (call, route, join) two taps away, so they move
+   into a thumb-reachable dock pinned to the bottom edge.
+   ========================================================================== */
+[data-dock] {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  z-index: 53;
+  display: none;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  align-items: stretch;
+  gap: 6px;
+  padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px));
+  background: rgba(6, 6, 8, .82);
+  -webkit-backdrop-filter: blur(22px) saturate(1.3);
+  backdrop-filter: blur(22px) saturate(1.3);
+  border-top: 1px solid rgba(225, 6, 0, .22);
+  box-shadow: 0 -18px 44px rgba(0, 0, 0, .55);
+  transform: translateY(0);
+  transition: transform .55s cubic-bezier(.16, 1, .3, 1), opacity .4s ease;
+}
+/* out of the way while the loading curtain is up */
+html[data-boot="loading"] [data-dock] { transform: translateY(115%); opacity: 0; }
+
+[data-dock] > * {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 52px;
+  padding: 7px 6px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  color: #D6D6DC;
+  font-family: inherit;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color .3s ease, background .3s ease;
+}
+[data-dock] svg { display: block; width: 19px; height: 19px; flex: 0 0 auto; }
+[data-dock] > *:active { background: rgba(255, 255, 255, .07); color: #FFF; }
+
+[data-dock-cta] {
+  flex-direction: row !important;
+  gap: 8px !important;
+  padding: 7px 18px !important;
+  background: var(--acc, #E10600) !important;
+  color: #FFF !important;
+  border-radius: 100px !important;
+  box-shadow: 0 0 22px rgba(225, 6, 0, .42);
+}
+[data-dock-cta]:active { color: #FFF !important; }
+
+/* burger -> X, mirroring the header button */
+[data-dock-bars] { display: flex; flex-direction: column; gap: 4px; width: 19px; height: 19px; align-items: center; justify-content: center; }
+[data-dock-bars] i { display: block; width: 17px; height: 1.6px; background: currentColor; transition: transform .45s cubic-bezier(.16,1,.3,1); }
+html[data-menu="open"] [data-dock-bars] i:first-child { transform: translateY(2.8px) rotate(45deg); }
+html[data-menu="open"] [data-dock-bars] i:last-child  { transform: translateY(-2.8px) rotate(-45deg); }
+html[data-menu="open"] [data-dock-menu] { color: #FFF; }
+
+/* The dock is the mobile treatment only — it appears at exactly the width
+   where the header gives up its inline navigation. */
+@media (max-width: 819px) {
+  [data-dock] { display: grid; }
+  /* the menu overlay must not end underneath the dock */
+  [data-ov-nav] { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)) !important; }
+  /* neither must the footer */
+  body > [data-root] > footer { padding-bottom: calc(46px + env(safe-area-inset-bottom, 0px)) !important; }
+}
+@media (max-width: 819px) and (max-height: 460px) {
+  /* landscape phone: the dock would eat a third of the viewport */
+  [data-dock] { display: none; }
+}
+
+/* --- hero vs. dock ----------------------------------------------------------
+   The hero's two absolute rows are measured from the bottom edge, which the
+   dock now occupies. Lift both by the dock's height so the scroll cue and the
+   shot counter stay readable instead of sliding underneath it. */
+@media (max-width: 819px) {
+  [data-hero-block] { bottom: calc(clamp(74px, 10.5vh, 112px) + 66px + env(safe-area-inset-bottom, 0px)) !important; }
+  [data-hero-meta]  { bottom: calc(clamp(24px, 3.6vh, 40px) + 66px + env(safe-area-inset-bottom, 0px)) !important; }
+}
+@media (max-width: 819px) and (max-height: 460px) {
+  /* no dock in landscape, so no lift either */
+  [data-hero-block] { bottom: clamp(74px, 10.5vh, 112px) !important; }
+  [data-hero-meta]  { bottom: clamp(24px, 3.6vh, 40px) !important; }
+}
+/* The eyebrow is a flex row of [dot][text]. Below ~560px the text is wider than
+   the line, and as a flex item it wraps as a whole — leaving the pulse dot
+   stranded on a line of its own. Inline flow keeps the dot glued to the first
+   word and lets the label wrap where it should. */
+@media (max-width: 560px) {
+  [data-hero-kicker] { display: block !important; line-height: 1.7; }
+  [data-hero-kicker] > span { display: inline-block !important; vertical-align: middle; margin-right: 10px; }
+}
+
+/* --- confirmation hand-off -------------------------------------------------- */
+[data-sent-actions] {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 12px;
+  margin-top: clamp(22px, 2.6vw, 32px);
+}
+[data-sent-actions] a {
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 15px 28px; border-radius: 100px;
+  font-size: 11.5px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase;
+  transition: box-shadow .4s ease, transform .4s cubic-bezier(.16, 1, .3, 1), border-color .4s ease, background .4s ease;
+}
+[data-sent-mail] { background: var(--acc, #E10600); color: #FFF; }
+[data-sent-mail]:hover { box-shadow: 0 0 34px rgba(225, 6, 0, .55); transform: translateY(-2px); color: #FFF; }
+[data-sent-call] { border: 1px solid rgba(255, 255, 255, .24); color: #F4F2EF; }
+[data-sent-call]:hover { border-color: var(--acc, #E10600); background: rgba(225, 6, 0, .1); color: #F4F2EF; }
+
+/* --- mobile menu: legal + page links --------------------------------------- */
+[data-ov-legal] {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 30px;
+  margin-top: clamp(18px, 3vh, 34px);
+  padding-top: clamp(14px, 2vh, 22px);
+  border-top: 1px solid rgba(255, 255, 255, .09);
+}
+[data-ov-legal] a {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: #9A9AA2;
+  text-shadow: 0 1px 12px rgba(0, 0, 0, .9);
+  transition: color .35s ease;
+}
+[data-ov-legal] a:hover, [data-ov-legal] a:active { color: var(--acc, #E10600); }
+
+/* --- header safe areas (notched phones, landscape) -------------------------- */
+@media (max-width: 819px) {
+  [data-nav] {
+    padding-left: max(12px, env(safe-area-inset-left)) !important;
+    padding-right: max(12px, env(safe-area-inset-right)) !important;
+  }
+  [data-overlay] {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
+/* --- phone polish ----------------------------------------------------------
+   Small corrections that only apply where the layout is a single column. */
+@media (max-width: 640px) {
+  /* the hero shot ticker and the scroll cue crowd each other on narrow screens */
+  [data-shot-name] { max-width: 11ch; overflow: hidden; text-overflow: ellipsis; }
+  /* full-bleed marquee headline would otherwise clip mid-word */
+  [data-banner] { opacity: .5 !important; }
+}
+
+/* ============================================================================
+   MAP CONSENT GATE
+   Sits where the Google embed would be until the visitor asks for it. Styled to
+   read as part of the section, not as a cookie banner.
+   ========================================================================== */
+/* [data-map-wrap] is position:absolute with z-index:auto, so it does NOT create
+   a stacking context: its children's z-indices compete with the info card that
+   follows it in the section. Without this, a full-bleed gate at z-index 3 paints
+   straight over the address card. isolation keeps the map layers to themselves
+   and restores DOM order between the map block and the card. */
+[data-map-wrap] { isolation: isolate; }
+
+/* z-index 3 clears the animated map pin (z-index 2), which would otherwise
+   float across the consent copy */
+[data-map-gate] {
+  position: absolute; inset: 0; z-index: 3;
+  display: flex; align-items: center; justify-content: flex-end;
+  padding: clamp(20px, 4vw, 64px);
+  background:
+    radial-gradient(120% 100% at 78% 50%, rgba(225, 6, 0, .09) 0%, rgba(0, 0, 0, 0) 62%),
+    repeating-linear-gradient(0deg, rgba(255,255,255,.035) 0 1px, transparent 1px 46px),
+    repeating-linear-gradient(90deg, rgba(255,255,255,.035) 0 1px, transparent 1px 46px),
+    #08080A;
+  transition: opacity .6s ease;
+}
+[data-map-gate-inner] {
+  max-width: 34ch;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 14px;
+  padding: clamp(22px, 2.4vw, 32px);
+  border-radius: 18px;
+  background: rgba(9, 9, 11, .72);
+  -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px);
+  border: 1px solid rgba(255, 255, 255, .1);
+  text-align: left;
+}
+[data-map-gate-kicker] {
+  font-size: 11px; font-weight: 500; letter-spacing: .26em; text-transform: uppercase;
+  color: #CCCCD2;
+  padding-left: 34px; position: relative;
+}
+[data-map-gate-kicker]::before {
+  content: ""; position: absolute; left: 0; top: 50%;
+  width: 22px; height: 1px; background: var(--acc, #E10600);
+}
+[data-map-gate] p {
+  margin: 0; font-size: 13.5px; line-height: 1.7; color: #B4B4BB; text-wrap: pretty;
+}
+[data-map-accept] {
+  display: inline-flex; align-items: center; gap: 10px;
+  margin-top: 2px; padding: 14px 26px;
+  border: none; border-radius: 100px;
+  background: var(--acc, #E10600); color: #FFF;
+  font-family: inherit; font-size: 11.5px; font-weight: 600;
+  letter-spacing: .16em; text-transform: uppercase; cursor: pointer;
+  transition: box-shadow .4s ease, transform .4s cubic-bezier(.16, 1, .3, 1);
+}
+[data-map-accept]:hover { box-shadow: 0 0 34px rgba(225, 6, 0, .55); transform: translateY(-2px); }
+[data-map-gate] a {
+  font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: #9A9AA2;
+}
+@media (max-width: 979px) {
+  /* stacked layout: the map block is its own panel above the card */
+  [data-map-gate] { justify-content: center; }
+  [data-map-gate-inner] { max-width: 40ch; align-items: center; text-align: center; }
+  [data-map-gate-kicker] { padding-left: 0; }
+  [data-map-gate-kicker]::before { display: none; }
+}
+
+/* --- print ------------------------------------------------------------------ */
+@media print {
+  [data-reel], [data-grain], [data-cursor], [data-loader], [data-dock],
+  [data-overlay], [data-side-tab], [data-nav], [data-lbox] { display: none !important; }
+  [data-root] { background: #fff !important; color: #000 !important; }
+}
