@@ -303,6 +303,33 @@ function buildIndex() {
     '      </div>\n' +
     '    </div>\n' + gateAnchor);
 
+  // ---- Sachliche Korrekturen gegen die Altseite (hsk.fitness).
+  // Der Entwurf hat hier freier formuliert, als die Realität hergibt. Beides
+  // sind Angaben, nach denen jemand tatsächlich handelt — falsch sind sie
+  // ärgerlicher als knapp.
+  {
+    // Parken: „direkt vor dem Studio" stimmt so nicht. Die Altseite nennt das
+    // Parkdeck; direkt vor der Tür geht nur zeitlich begrenzt. Die Angabe zur
+    // B7 fliegt raus — eine Fahrzeit, die sich nicht belegen lässt.
+    const parkAlt = 'Kostenfreie Parkplätze direkt vor dem Studio. Von der B7 sind es keine drei Minuten.';
+    must(html.indexOf(parkAlt) > -1, 'Parkplatz-Text nicht gefunden');
+    html = html.replace(parkAlt,
+      'Kostenfreie Parkplätze auf dem Parkdeck beim Chinarestaurant, Einfahrt Kirchenstraße. ' +
+      'Direkt vor der Tür geht auch — dort allerdings zeitlich begrenzt.');
+
+    // Beratung vor Ort: eigene Zeiten, die auf der neuen Seite komplett
+    // fehlten. Sie sind nicht dasselbe wie die Öffnungszeiten — wer eine
+    // Beratung will, kommt sonst zur falschen Zeit.
+    const zeile = '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:18px;padding:17px 0;border-top:1px solid rgba(255,255,255,.1)">\n            <span style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#9A9AA2">Telefon</span>';
+    must(html.indexOf(zeile) > -1, 'Telefon-Zeile im Anfahrt-Block nicht gefunden');
+    html = html.replace(zeile,
+      '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:18px;padding:17px 0;border-top:1px solid rgba(255,255,255,.1)">\n' +
+      '            <span style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#9A9AA2">Beratung vor Ort</span>\n' +
+      '            <span style="font-family:\'Instrument Serif\',Georgia,serif;font-size:clamp(15px,1.25vw,19px);line-height:1.5;color:#F7F5F2;text-align:right">Mo — Sa&nbsp; 08:00 — 12:00<br />Mo — Fr&nbsp; 15:30 — 20:30</span>\n' +
+      '          </div>\n          ' + zeile);
+    must(/Beratung vor Ort/.test(html), 'Beratungszeiten nicht eingefügt');
+  }
+
   // ---- Reihenfolge nach dem Verkaufsweg, nicht nach der Entstehung.
   // Der Besucher wird über die Seite geführt — Studio, Ausstattung, Galerie,
   // Stimmen — und soll erst überzeugt sein, bevor er zur Mitgliedschaft kommt.

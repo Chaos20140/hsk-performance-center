@@ -525,19 +525,20 @@ herauskam, war ernster als erwartet:
 
 ---
 
-## 6b. Widersprüche zur Altseite — bitte mit dem Kunden klären
+## 6b. Abgleich mit der Altseite
 
-Beim Übernehmen der echten Daten von hsk.fitness aufgefallen:
+Beim Übernehmen der echten Daten von hsk.fitness aufgefallen. Zwei davon sind
+korrigiert (als geprüfte Schritte in `build.js`, dort stehen alle inhaltlichen
+Abweichungen vom Entwurf):
 
-- **Parkplätze.** Die neue Seite sagt „Kostenfreie Parkplätze direkt vor dem
-  Studio". Die Altseite sagt: „Kostenfreie Parkplätze auf dem Parkdeck beim
-  Chinarestaurant (Einfahrt Kirchenstraße) oder **zeitlich begrenzt** direkt
-  vor der Tür." Die Altseite ist genauer — die neue Formulierung könnte
-  jemanden in die Irre führen. Nicht selbst geändert, weil es Inhalt ist.
-- **Persönliche Beratung vor Ort** ist auf der Altseite eigens ausgewiesen
-  (Mo–Sa 08–12 Uhr, Mo–Fr 15:30–20:30 Uhr) und fehlt auf der neuen Seite ganz.
-  Das ist eine echte Information — gehört in den Anfahrt-Abschnitt.
-- **Erfahrung.** Neue Seite: „über 25 Jahre Fachexpertise". Altseite: „seit fast
+- **Parkplätze — korrigiert.** Der Entwurf sagte „direkt vor dem Studio", was so
+  nicht stimmt. Jetzt: Parkdeck beim Chinarestaurant, Einfahrt Kirchenstraße,
+  direkt vor der Tür nur zeitlich begrenzt. Die Fahrzeitangabe „von der B7
+  keine drei Minuten" ist ersatzlos weg — nicht belegbar.
+- **Beratung vor Ort — ergänzt.** Eigene Zeile im Anfahrt-Block (Mo–Sa 08:00–
+  12:00, Mo–Fr 15:30–20:30). Sie ist **nicht** dasselbe wie die
+  Öffnungszeiten; ohne die Unterscheidung steht jemand zur falschen Zeit da.
+- **Erfahrung — offen.** Neue Seite: „über 25 Jahre Fachexpertise". Altseite: „seit fast
   30 Jahren" beschäftigt, „Fitnesstrainer seit 2001". Beides lässt sich
   vertreten, sollte aber auf der Seite nicht auseinanderlaufen.
 
