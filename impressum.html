@@ -3,6 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; form-action 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'none'; object-src 'none'" />
+<meta name="referrer" content="strict-origin-when-cross-origin" />
 <title>Impressum — HSK Performance Center</title>
 <meta name="description" content="Impressum und Anbieterkennzeichnung des HSK Performance Center, Strackestraße 22, 59929 Brilon." />
 <meta name="robots" content="noindex,follow" />
@@ -114,7 +116,7 @@ html{-webkit-tap-highlight-color:transparent}
 
   <section style="margin-bottom:clamp(38px,5vw,60px)">
     <h2 style="margin:0 0 clamp(16px,2vw,22px);padding-bottom:14px;border-bottom:1px solid rgba(255,255,255,.14);font-family:'Instrument Serif',Georgia,serif;font-weight:400;font-size:clamp(22px,2.6vw,32px);line-height:1.15;letter-spacing:-.015em;color:#FFFFFF">Streitbeilegung</h2>
-    <p style="margin:0 0 18px;max-width:70ch;font-size:15px;line-height:1.75;color:#C2C2C9;text-wrap:pretty">Die Europäische Kommission stellt eine Plattform zur Online-Streitbeilegung bereit. Wir sind nicht verpflichtet und nicht bereit, an einem Streitbeilegungsverfahren vor einer Verbraucherschlichtungsstelle teilzunehmen.</p>
+    <p style="margin:0 0 18px;max-width:70ch;font-size:15px;line-height:1.75;color:#C2C2C9;text-wrap:pretty">Wir sind nicht verpflichtet und nicht bereit, an einem Streitbeilegungsverfahren vor einer Verbraucherschlichtungsstelle teilzunehmen.</p>
     <p style="margin:0;max-width:70ch;font-size:15px;line-height:1.75;color:#ABABB3;text-wrap:pretty">[Diese Angabe prüfen — abhängig von Unternehmensgröße und Branche kann eine Teilnahmepflicht bestehen.]</p>
   </section>
 
@@ -149,37 +151,6 @@ html{-webkit-tap-highlight-color:transparent}
 </div>
 
 
-<script>
-(function(){"use strict";
-class DCLogic{constructor(p){this.props=p||{};this.state={};}setState(x){Object.assign(this.state,x);}}
-
-class Component extends DCLogic {
-  componentDidMount() {
-    this.apply();
-    this._onResize = () => this.apply();
-    window.addEventListener('resize', this._onResize);
-  }
-
-  componentDidUpdate() { this.apply(); }
-
-  componentWillUnmount() { window.removeEventListener('resize', this._onResize); }
-
-  // label/value rows stack below the point where the label column gets too narrow to read
-  apply() {
-    const narrow = window.innerWidth < 660;
-    document.querySelectorAll('[data-row]').forEach((el) => {
-      el.style.gridTemplateColumns = narrow ? 'minmax(0,1fr)' : 'minmax(0,.34fr) minmax(0,.66fr)';
-      el.style.gap = narrow ? '5px' : 'clamp(12px,2vw,28px)';
-    });
-    const note = document.querySelector('[data-note]');
-    if (note) note.style.flexDirection = narrow ? 'column' : 'row';
-  }
-}
-
-var app=new Component({});
-function boot(){ if(app.componentDidMount) app.componentDidMount(); }
-if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);else boot();
-})();
-</script>
+<script src="assets/js/impressum.js"></script>
 </body>
 </html>

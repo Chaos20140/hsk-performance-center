@@ -322,6 +322,65 @@ Damit ich nicht zweimal dieselbe Stunde verliere.
 
 ---
 
+## 6a. Audit-Befunde (Runde 2) — alle behoben
+
+Nach dem ersten Deploy mit dem Website-Audit-Playbook gegengeprüft. Was dabei
+herauskam, war ernster als erwartet:
+
+1. **`CLAUDE.md` war öffentlich abrufbar.** GitHub Pages „deploy from branch"
+   publiziert das *ganze* Repo. `curl .../CLAUDE.md` → 200. Diese Datei nennt
+   u. a. „Impressum enthält Platzhalter → abmahnfähig" — nichts, was auf der
+   Kundenseite liegen darf.
+   → `.github/workflows/pages.yml` baut jetzt ein `_site/` per rsync ohne
+   `CLAUDE.md`, `build/`, `src/`, Dotfiles, und hat einen Schritt, der den Job
+   abbrechen lässt, falls doch etwas durchrutscht. Pages-Quelle auf
+   `build_type: workflow` umgestellt.
+   **Merke: bei GitHub Pages immer `curl` gegen die internen Dateien.**
+
+2. **Zehn Clips waren HEVC** → siehe §4.3a. Der Hintergrundfilm wäre auf
+   etlichen Rechnern schlicht nicht gelaufen.
+
+3. **Wortmarke = 18 Einzelbuchstaben-Spans.** `textContent` ergab
+   „PERFORMANCECENTER" (die Wortlücke ist ein leeres Span). Screenreader hätten
+   das buchstabiert. → `aria-hidden="true"`; der Link trägt seinen Namen ohnehin
+   aus dem `alt` des Logos.
+
+4. **Ladevorhang ohne CSS-Failsafe.** `<noscript>` deckt „JS aus" ab, aber nicht
+   „JS an, Skript lädt nicht / wirft". Das Keyframe `hs-loaderout` war im Design
+   definiert und **nirgends benutzt**. → Es liegt jetzt als 8-s-Notausstieg auf
+   `[data-loader]`; `bootLoader()` setzt `animation:'none'`, sobald JS übernimmt
+   (HSK-PATCH 5). Ohne dieses Abschalten würde die Animation die Deckkraft
+   gegen das JS auf 1 halten — Animationen schlagen Inline-Styles.
+
+5. **Autoplay-Film ohne Rücksicht auf `prefers-reduced-motion`** (WCAG 2.2.2).
+   → `armReel()` steigt bei `this.reduced` aus, das Posterbild bleibt stehen.
+   Gegengeprüft: bei reduced motion ist **kein** Inhalt unsichtbar (die Falle
+   „reduced motion = Content-Verlust" greift hier nicht, weil die
+   `animation-duration:.001ms`-Regel die Reveals sofort in den Endzustand bringt).
+
+6. **Veralteter Pflichttext im Impressum.** Die EU-Plattform zur
+   Online-Streitbeilegung existiert nicht mehr; der Satz behauptete das Gegenteil.
+   → Satz entfernt, § 36-VSBG-Aussage bleibt. Assertion im Build verhindert,
+   dass er zurückkommt.
+
+7. **Keine CSP.** → `<meta http-equiv="Content-Security-Policy">` mit
+   `default-src 'none'` + Allowlist auf allen drei Seiten. Dafür mussten die
+   Inline-Skripte der Rechtsseiten nach `assets/js/impressum.js` bzw.
+   `datenschutz.js` wandern (Hash-Ansatz wäre bei jeder Änderung gebrochen).
+   Alle drei Seiten mit offener Konsole geprüft: **null Violations.**
+   `frame-ancestors`, HSTS und `report-uri` gehen per `<meta>` **nicht** —
+   dafür bräuchte es eine Edge (Cloudflare) vor Pages.
+
+### Bekannte Grenzen von GitHub Pages (nicht behebbar ohne Edge)
+
+- `Cache-Control: max-age=600` auf allem. Wiederkehrende Besucher laden die
+  Videos nach 10 Minuten neu. Fix nur über ein CDN davor (Cloudflare-Regel auf
+  `assets/*`) oder Dateinamen-Versionierung.
+- Keine echten Security-Header (`frame-ancestors`, `X-Content-Type-Options`,
+  `Permissions-Policy`).
+
+---
+
 ## 7. Offene Punkte / bewusst nicht gemacht
 
 - **Impressum enthält Platzhalter** in eckigen Klammern (Rechtsform, USt-IdNr.,
@@ -346,7 +405,7 @@ Damit ich nicht zweimal dieselbe Stunde verliere.
 ```bash
 cd build && HSK_CANONICAL="…" node build.js     # muss "OK" sagen
 cd .. && node --check assets/js/site.js
-grep -c 'HSK-PATCH' assets/js/site.js            # muss 5 sein
+grep -c 'HSK-PATCH' assets/js/site.js            # muss 7 sein
 grep -oE 'https?://[^"]+' index.html | sort -u   # nichts darf ungefragt laden
 ```
 

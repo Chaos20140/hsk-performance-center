@@ -30,6 +30,14 @@ a:focus:not(:focus-visible), button:focus:not(:focus-visible) { outline: none; }
 }
 [data-skip]:focus { transform: translateY(0); color: #fff; }
 
+/* --- loading curtain failsafe ----------------------------------------------
+   [data-loader] covers the whole viewport and is dismissed by script. If the
+   script is blocked, 404s or throws, the page would stay behind a black wall.
+   `hs-loaderout` (already defined in the design's stylesheet, but never used)
+   lifts it after 8s — later than every JS path — and bootLoader() cancels this
+   animation the moment it takes ownership, so the normal case is untouched. */
+[data-loader] { animation: hs-loaderout 8s cubic-bezier(.16, 1, .3, 1) forwards; }
+
 /* --- touch ergonomics ------------------------------------------------------ */
 html { -webkit-tap-highlight-color: transparent; }
 @media (pointer: coarse) {

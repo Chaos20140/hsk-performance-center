@@ -151,6 +151,8 @@
       const el = document.querySelector('[data-loader]');
       if (!el || el.dataset.booted) return;
       el.dataset.booted = '1';
+      // HSK-PATCH: script is alive, so it owns the curtain — drop the CSS failsafe
+      el.style.animation = 'none';
       this._locked = true;
       document.documentElement.style.overflow = 'hidden';
       // the hero entrance is armed by the curtain, never by page load — otherwise it
@@ -341,6 +343,9 @@
       // the poster frame stays and the page reads exactly the same
       const c = navigator.connection;
       if (c && (c.saveData || /(^|-)2g$/.test(c.effectiveType || ''))) { r.armed = true; return; }
+      // HSK-PATCH: a full-screen film that plays for minutes is exactly what
+      // prefers-reduced-motion asks us not to do (WCAG 2.2.2). Poster only.
+      if (this.reduced) { r.armed = true; return; }
       r.armed = true;
       r.layers[0].preload = 'auto';
       r.layers[1].preload = 'auto';

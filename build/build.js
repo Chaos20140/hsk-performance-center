@@ -84,7 +84,29 @@ function extractLogic(html) {
 
 /* ------------------------------------------------------- shared head bits */
 
+/* GitHub Pages cannot set response headers, so this is the only place a policy
+   can live. A <meta> CSP cannot carry frame-ancestors, HSTS or report-uri —
+   those need an edge in front (Cloudflare) and are noted in CLAUDE.md.
+   default-src 'none' plus an explicit allowlist: the page loads nothing but its
+   own files, and the single third-party frame is the (consent-gated) map. */
+const CSP = [
+  "default-src 'none'",
+  "base-uri 'none'",
+  "form-action 'self'",
+  "script-src 'self'",
+  "style-src 'self' 'unsafe-inline'",   // the design is built on inline style attributes
+  "img-src 'self' data:",               // data: carries the film-grain SVG
+  "media-src 'self'",
+  "font-src 'self'",
+  "manifest-src 'self'",
+  "connect-src 'none'",
+  "object-src 'none'",
+  "frame-src https://www.google.com"
+].join('; ');
+
 const HEAD_EXTRA = (canonical, title, desc) => `
+<meta http-equiv="Content-Security-Policy" content="${CSP}" />
+<meta name="referrer" content="strict-origin-when-cross-origin" />
 <link rel="canonical" href="${canonical}" />
 <meta property="og:url" content="${canonical}" />
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
@@ -139,6 +161,16 @@ function buildIndex() {
   html = html.replace(/href="Impressum\.dc\.html"/g, 'href="impressum.html"');
   html = html.replace(/href="Datenschutz\.dc\.html"/g, 'href="datenschutz.html"');
   must(!/\.dc\.html/.test(html), 'dc.html link left');
+
+  // ---- the header wordmark is 18 single-letter <span>s so each can detonate
+  // outward on entry. A screen reader reads that as "P-E-R-F-O-R-M-A-N-C-E",
+  // and the word gap is an empty span, so it is not even "Performance Center".
+  // The link is already named by the logo's alt text, so the decoration is
+  // hidden from assistive tech instead of being re-labelled.
+  const wordmark = '<span data-brand-word style=';
+  must(html.indexOf(wordmark) > -1, 'brand wordmark anchor not found');
+  html = html.replace(wordmark, '<span data-brand-word aria-hidden="true" style=');
+  must(/data-brand-word aria-hidden="true"/.test(html), 'wordmark not hidden from AT');
 
   // ---- portrait reel for phones.
   // The background film is 16:9; on a 9:16 screen object-fit:cover throws away
@@ -424,7 +456,21 @@ function patchLogic(js) {
     "    // HSK-PATCH: never pull video on a metered or very slow connection —\n" +
     "    // the poster frame stays and the page reads exactly the same\n" +
     "    const c = navigator.connection;\n" +
-    "    if (c && (c.saveData || /(^|-)2g$/.test(c.effectiveType || ''))) { r.armed = true; return; }");
+    "    if (c && (c.saveData || /(^|-)2g$/.test(c.effectiveType || ''))) { r.armed = true; return; }\n" +
+    "    // HSK-PATCH: a full-screen film that plays for minutes is exactly what\n" +
+    "    // prefers-reduced-motion asks us not to do (WCAG 2.2.2). Poster only.\n" +
+    "    if (this.reduced) { r.armed = true; return; }");
+
+  // 5) the loading curtain is dismissed by script. <noscript> covers "script is
+  //    off"; this covers "script is on but never ran" (blocked, 404, throw).
+  //    The CSS failsafe in extra.css lifts it after 8s — later than every JS
+  //    path — and JS cancels the animation the moment it takes ownership.
+  const bootedAnchor = "el.dataset.booted = '1';";
+  must(js.indexOf(bootedAnchor) > -1, 'patch 5 anchor (loader booted flag) not found');
+  js = js.replace(bootedAnchor,
+    bootedAnchor + "\n" +
+    "    // HSK-PATCH: script is alive, so it owns the curtain — drop the CSS failsafe\n" +
+    "    el.style.animation = 'none';");
 
   // 4) the stacked-map branch hides every direct child div of [data-map-wrap]
   //    (they are all scrims). The consent gate is not a scrim and must survive.
@@ -472,6 +518,12 @@ function buildLegal(srcName, outName, prefix) {
     .replace(/^[ \t]*<link href="https:\/\/fonts\.googleapis\.com[^"]*" rel="stylesheet" \/>\r?\n?/gm, '');
   must(!/fonts\.(googleapis|gstatic)\.com/.test(helmet), outName + ': Google Fonts link left');
 
+  // The EU Online Dispute Resolution platform was shut down; pointing at it as
+  // an existing service is simply wrong now. The § 36 VSBG statement stays.
+  const odr = 'Die Europäische Kommission stellt eine Plattform zur Online-Streitbeilegung bereit. ';
+  if (html.indexOf(odr) > -1) html = html.replace(odr, '');
+  must(!/Plattform zur Online-Streitbeilegung/.test(html), outName + ': stale ODR reference left');
+
   html = html.replace(/<x-dc>\s*/, '').replace(/\s*<\/x-dc>/, '');
   const hv = extractHover(html, prefix);
   html = hv.html;
@@ -485,11 +537,31 @@ function buildLegal(srcName, outName, prefix) {
   const body = html.slice(bodyStart + 6, html.lastIndexOf('</body>'));
   const legalCss = fs.readFileSync(path.join(__dirname, 'legal.css'), 'utf8');
 
+  // the page's logic goes to its own file: an inline <script> would need either
+  // 'unsafe-inline' or a hash that silently rots on the next edit
+  let scriptTag = '';
+  if (logicJs) {
+    const jsName = 'assets/js/' + outName.replace(/\.html$/, '') + '.js';
+    fs.mkdirSync(path.join(OUT, 'assets/js'), { recursive: true });
+    fs.writeFileSync(path.join(OUT, jsName),
+      '/* ' + outName + ' — extracted from the Claude Design source. Generated; do not edit. */\n' +
+      '(function () {\n  "use strict";\n' +
+      '  class DCLogic { constructor(p) { this.props = p || {}; this.state = {}; } setState(x) { Object.assign(this.state, x); } }\n\n' +
+      logicJs.replace(/^/gm, '  ') + '\n\n' +
+      '  var app = new Component(' + JSON.stringify(props) + ');\n' +
+      '  function boot() { if (app.componentDidMount) app.componentDidMount(); }\n' +
+      '  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);\n' +
+      '  else boot();\n})();\n', 'utf8');
+    scriptTag = '<script src="' + jsName + '"></script>';
+  }
+
   const page = `<!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; form-action 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'none'; object-src 'none'" />
+<meta name="referrer" content="strict-origin-when-cross-origin" />
 ${helmet.trim()}
 <meta name="robots" content="noindex,follow" />
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
@@ -501,7 +573,7 @@ ${legalCss}
 </head>
 <body>
 ${body}
-${logicJs ? '<script>\n(function(){"use strict";\nclass DCLogic{constructor(p){this.props=p||{};this.state={};}setState(x){Object.assign(this.state,x);}}\n' + logicJs + '\nvar app=new Component(' + JSON.stringify(props) + ');\nfunction boot(){ if(app.componentDidMount) app.componentDidMount(); }\nif(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);else boot();\n})();\n</script>' : ''}
+${scriptTag}
 </body>
 </html>
 `;
