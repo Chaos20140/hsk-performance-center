@@ -180,6 +180,20 @@ html[data-brand="mark"] [data-brand-logo] { height: 21px !important; }
   [data-brand-word] { transition-duration: .001ms; }
 }
 
+/* --- Partner ----------------------------------------------------------------
+   Die Hover-Regel steht hier und nicht als style-hover im Markup: der Build
+   verarbeitet style-hover, bevor dieser Abschnitt eingefügt wird. */
+@media (max-width: 860px) {
+  [data-partner] { grid-template-columns: minmax(0, 1fr) !important; }
+}
+@media (hover: hover) and (pointer: fine) {
+  [data-partner-cta]:hover {
+    box-shadow: 0 0 40px rgba(225, 6, 0, .55);
+    transform: translateY(-2px);
+    color: #FFFFFF;
+  }
+}
+
 /* --- confirmation hand-off -------------------------------------------------- */
 [data-sent-actions] {
   display: flex; flex-wrap: wrap; justify-content: center; gap: 12px;

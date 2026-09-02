@@ -39,6 +39,7 @@ ein gefiltertes `_site/` hoch, **nicht** das Repo-Root (siehe §6a Nr. 1).
 │       ├── site.js    ← GENERIERT. Nicht direkt editieren.
 │       ├── impressum.js · datenschutz.js  ← GENERIERT (ausgelagert wegen CSP)
 │       ├── brand.js   ← Handmade: Auftritt der Wortmarke + WebKit-Kennzeichen
+│       ├── marquee.js ← Handmade: Laufschriften lückenlos halten
 │       └── consent.js ← Handmade: Karten-Consent
 ├── .github/workflows/pages.yml  ← Deploy (filtert Internes heraus)
 ├── build/             ← die Pipeline (siehe §3)
@@ -237,7 +238,15 @@ Alles einzeln, damit man es rückgängig machen kann.
    nummeriert anschließend fortlaufend neu — die Vorlage sprang von 05 auf 09,
    weil sie die Abschnittsnummern der Seite zeigte. Rechtslinks stehen bewusst
    **nicht** im Menü, sondern im Footer.
-3. **Kopfleiste auf dem Telefon** ohne Pille: kein Hintergrund, kein Rahmen,
+3. **Partner-Abschnitt** (`build/partner.html`, „11 — Partner", vor dem Footer).
+   Bewusst nur **ein** benannter Partner: Wellhub ist der einzige, der sich
+   belegen lässt (steht schon im Drop-in-Abschnitt, und die Altseite hsk.fitness
+   führt keine Partner — ihr Abschnitt „Sie sind in guter Gesellschaft" ist eine
+   Mitgliedergalerie). Die zweite Karte ist eine Einladung, keine Behauptung.
+   Weitere Partner: einfach eine `<article>` in `partner.html` ergänzen.
+   Im Footer zeigt der zweite „Studio"-Link (er ging doppelt auf `#studio`)
+   jetzt hierher.
+4. **Kopfleiste auf dem Telefon** ohne Pille: kein Hintergrund, kein Rahmen,
    kein Schatten — nur Zeichen und Burger über dem Film. Die `!important` sind
    nötig, weil `syncDom()` Hintergrund und Rahmenfarbe beim Scrollen inline
    nachzieht.
@@ -386,6 +395,26 @@ Damit ich nicht zweimal dieselbe Stunde verliere.
     die erst `igniteBrand()` löst — gemessen war er nach fünf Sekunden noch auf
     `opacity:0`. Auf dem Telefon ist er die einzige Navigation.
     → Unter 820 px keine Animation, er steht einfach da.
+
+16. **Laufschriften rissen auf breiten Bildschirmen ab**
+    Die Laufbänder bestehen aus zwei gleichen Gruppen und werden per Keyframe um
+    -50 % geschoben. Nahtlos ist das nur, wenn **eine Gruppe mindestens so breit
+    ist wie das Fenster** — sonst läuft die Spur am Rundenende aus dem Bild.
+    Gemessen: bei 1920 px fehlten der Schlagwortleiste 130 px, bei 2560 px
+    770 px, der Bewertungsreihe bei 2560 px 105 px. Auf einem 1440er alles
+    unauffällig, deshalb lange nicht bemerkt.
+    → `marquee.js` legt so viele Kopien an, dass eine Spurhälfte das Fenster
+    immer füllt (Gruppenzahl bleibt gerade, die -50 %-Animation bleibt gültig).
+    Läuft nach `fonts.ready` und bei Breitenänderung erneut.
+    **Merke:** eine Laufschrift „von Hand verdoppeln" reicht nie — die nötige
+    Zahl der Kopien hängt vom Viewport ab.
+
+17. **Reihenfolge im Build ist eine Falle**
+    `extractHover()` läuft weit oben. Der Partner-Abschnitt wird viel später
+    eingefügt — ein `style-hover` darin wäre nie übersetzt worden und einfach
+    tot gewesen, ohne dass etwas gemeldet hätte.
+    → Eigenes Markup bringt seine Hover-Regeln in `extra.css` mit, und am Ende
+    von `buildIndex()` steht eine Schlussprüfung auf `style-hover=`.
 
 ---
 

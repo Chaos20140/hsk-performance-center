@@ -263,6 +263,26 @@ function buildIndex() {
     '      </div>\n' +
     '    </div>\n' + gateAnchor);
 
+  // ---- Partner-Abschnitt, direkt vor dem Footer.
+  // Bewusst nur ein benannter Partner: Wellhub ist der einzige, der sich aus
+  // dem Bestand belegen lässt (steht schon im Drop-in-Abschnitt). Weitere Namen
+  // zu erfinden verbietet sich — die zweite Karte ist deshalb eine Einladung,
+  // keine Behauptung.
+  {
+    const partnerHtml = fs.readFileSync(path.join(__dirname, 'partner.html'), 'utf8');
+    const footerAnchor = '<footer data-screen-label="Footer"';
+    must(html.indexOf(footerAnchor) > -1, 'footer anchor not found');
+    html = html.replace(footerAnchor, partnerHtml + '\n' + footerAnchor);
+    must(/id="partner"/.test(html), 'partner section not inserted');
+
+    // Der Footer verlinkt „Studio" zweimal auf denselben Anker — der zweite
+    // Eintrag zeigt jetzt auf den neuen Abschnitt.
+    const dupe = '<a href="#studio" style="font-size:14px;color:#DCDCE2;text-shadow:0 1px 12px rgba(0,0,0,.9)">Studio ansehen</a>';
+    must(html.indexOf(dupe) > -1, 'duplicate footer link not found');
+    html = html.replace(dupe,
+      '<a href="#partner" style="font-size:14px;color:#DCDCE2;text-shadow:0 1px 12px rgba(0,0,0,.9)">Partner</a>');
+  }
+
   // ---- Vollbildmenü: vollständige Liste, fortlaufend nummeriert.
   // Vorher fehlten „Stimmen" und „Mitglied werden" ganz, und die Nummern
   // sprangen von 05 auf 09 (sie zeigten die Abschnittsnummern der Seite, was im
@@ -309,6 +329,13 @@ function buildIndex() {
 
   const extraCss = fs.readFileSync(path.join(__dirname, 'extra.css'), 'utf8');
 
+  // Schlussprüfung: extractHover() läuft weit oben. Alles, was danach eingefügt
+  // wird, muss seine Hover-Zustände selbst mitbringen (Regel in extra.css) —
+  // ein style-hover in später eingefügtem Markup wäre sonst tot und niemand
+  // würde es merken.
+  must(!/style-hover=/.test(html), 'style-hover in markup inserted after extractHover()');
+  must(!/\.dc\.html/.test(html), 'dc.html link left');
+
   // ------------------------------------------------------------- assemble
   const bodyStart = html.indexOf('<body>');
   must(bodyStart > -1, 'no <body>');
@@ -340,6 +367,7 @@ ${body}
 <script src="assets/js/site.js"></script>
 <script src="assets/js/brand.js"></script>
 <script src="assets/js/consent.js"></script>
+<script src="assets/js/marquee.js"></script>
 </body>
 </html>
 `;
@@ -431,7 +459,7 @@ ${patched.replace(/^/gm, '  ')}
 })();
 `;
   fs.mkdirSync(path.join(OUT, 'assets/js'), { recursive: true });
-  for (const f of ['brand.js', 'consent.js']) {
+  for (const f of ['brand.js', 'consent.js', 'marquee.js']) {
     fs.copyFileSync(path.join(__dirname, f), path.join(OUT, 'assets/js', f));
   }
   fs.writeFileSync(path.join(OUT, 'assets/js/site.js'), js, 'utf8');
