@@ -7,23 +7,22 @@ Statische Seite, keine Datenbank, kein Server, keine externen Tracker.
 
 ---
 
-## Aufbau
+## Seiten
 
-Der Deploy läuft über GitHub Actions (`.github/workflows/pages.yml`). Der Workflow
-veröffentlicht alles außer `build/`, `src/` und den internen Notizen.
-
-| Pfad | Inhalt |
+| Datei | Inhalt |
 |---|---|
-| `index.html` | Startseite |
+| `index.html` | Startseite (Hero-Film, Haltung, Trainingsbereiche, Ausstattung, Preise, Partner, FAQ, Standort) |
+| `coaching.html` | Personal Training, Steve Brenke, Ablauf |
+| `galerie.html` | Fotos und Clips aus der Halle |
+| `termine.html` | Termine, Beratungszeiten |
+| `preise.html` | Preismodelle und Details |
+| `mitglied-werden.html` | Anfrage-Formular (Probetraining, Mitgliedschaft, Coaching, Partner) |
 | `impressum.html`, `datenschutz.html` | Rechtliches |
 | `404.html` | Fehlerseite |
-| `assets/` | Bilder, Videos, Schriften, Icons, JavaScript |
-| `build/` | Build-Skript und Zusatz-Layer (nicht veröffentlicht) |
-| `src/` | Die Design-Originale, aus denen gebaut wird (nicht veröffentlicht) |
 
-`index.html`, `impressum.html`, `datenschutz.html` und `assets/js/site.js` sind
-**generiert**. Nicht direkt bearbeiten — Änderungen in `build/` bzw. `src/` machen
-und neu bauen.
+Alle HTML-Dateien, `assets/js/site.js`, `robots.txt`, `sitemap.xml` und
+`site.webmanifest` sind **generiert**. Nicht direkt bearbeiten — Änderungen in
+`build/` bzw. `src/` machen und neu bauen.
 
 ## Bauen
 
@@ -34,30 +33,25 @@ cd build
 HSK_CANONICAL="https://chaos20140.github.io/hsk-performance-center/" node build.js
 ```
 
-Bei eigener Domain einfach `HSK_CANONICAL` auf die Zieladresse setzen und neu bauen.
+Bei eigener Domain `HSK_CANONICAL` auf die Zieladresse setzen und neu bauen.
+Der Deploy läuft über GitHub Actions (`.github/workflows/pages.yml`) und
+veröffentlicht alles außer `build/`, `src/` und den internen Notizen.
 
 ## Inhalte ändern
 
 | Was | Wo |
 |---|---|
-| Texte, Abschnitte, Bilder | `src/HSK Performance Center.dc.html`, danach bauen |
-| Fotos austauschen | Datei in `assets/` unter **gleichem Namen** ersetzen |
-| Akzentfarbe | `data-props` im `src/`-File (`accent`, Standard `#E10600`) |
-| Mobile-Leiste unten | `build/mobile.html` + `build/extra.css` |
-| Kontaktformular-Verhalten | `HSK_FORM_MODE=mailto` (Standard) oder `demo` |
-
-## Vor dem echten Livegang
-
-1. **Impressum vervollständigen** — die Felder in eckigen Klammern
-   (Rechtsform, USt-IdNr., Registergericht) müssen gefüllt oder gestrichen werden.
-2. **Musterbilder ersetzen** — Coach-Porträt und Empfang sind als „Musterbild"
-   gekennzeichnet.
-3. **Datenschutzerklärung prüfen** lassen, sobald die echte Domain steht.
+| Startseite (Texte, Abschnitte, Bilder) | `src/HSK Performance Center.dc.html` (Claude-Design-Original), danach bauen |
+| Unterseiten | `build/pages/*.html` |
+| Termine | `build/events.json` — ein Eintrag pro Termin |
+| Fotos/Clips austauschen | Datei in `assets/` unter **gleichem Namen** ersetzen (Videos: H.264, ohne Ton) |
+| Untere Leiste auf dem Telefon | `build/build.js`, `page()` → `mbar` |
+| Formular-Verhalten | `HSK_FORM_MODE=mailto` (Standard) oder `demo` |
 
 ## Datenschutz
 
-- Keine Cookies, kein Analytics, keine Web-Fonts von Dritten.
+- Keine Cookies, kein Analytics, keine Web-Fonts von Dritten (Schriften liegen im Repo).
 - Die Google-Maps-Karte lädt **erst nach ausdrücklichem Klick**; vorher geht keine
   Anfrage an Google. Die Entscheidung liegt lokal im Browser des Besuchers.
-- Das Kontaktformular speichert nichts: es öffnet einen fertigen E-Mail-Entwurf
-  im Mailprogramm des Besuchers.
+- Das Formular speichert nichts: es öffnet einen fertigen E-Mail-Entwurf im
+  Mailprogramm des Besuchers.

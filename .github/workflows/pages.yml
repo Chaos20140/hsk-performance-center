@@ -27,6 +27,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Die HTML-Dateien sind eingecheckte Build-Artefakte. Der Build läuft hier
+      # noch einmal; weicht das Ergebnis vom Commit ab, wurde vergessen zu bauen.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Rebuild and verify committed output
+        env:
+          HSK_CANONICAL: https://chaos20140.github.io/hsk-performance-center/
+        run: |
+          (cd build && node build.js)
+          git diff --exit-code -- . ':!build' || { echo "::error::committed output differs from a fresh build — run the build and commit"; exit 1; }
+
       - name: Assemble the published site
         run: |
           mkdir -p _site
@@ -46,7 +58,9 @@ jobs:
           for f in CLAUDE.md build src .gitignore .gitattributes; do
             if [ -e "_site/$f" ]; then echo "::error::$f must not be published"; exit 1; fi
           done
-          test -f _site/index.html
+          for p in index coaching galerie termine preise mitglied-werden impressum datenschutz 404; do
+            test -f "_site/$p.html" || { echo "::error::$p.html missing"; exit 1; }
+          done
           test -f _site/assets/js/site.js
 
       - uses: actions/configure-pages@v5

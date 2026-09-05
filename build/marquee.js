@@ -1,23 +1,23 @@
-/* HSK Performance Center — Laufschriften lückenlos halten.
+/* HSK Performance Center — Laufschriften lückenlos halten (v2).
 
-   Die Laufbänder (Schlagwortleiste, Bewertungsreihe, „Jetzt anfangen") bestehen
-   aus zwei identischen Gruppen und werden per Keyframe um -50 % geschoben. Das
-   ist nur dann nahtlos, wenn eine Gruppe mindestens so breit ist wie das
-   Fenster — sonst läuft die Spur am Ende der Runde aus dem Bild und es bleibt
-   eine leere Fläche stehen.
+   Die Bänder des Designs (rotes Schlagwortband, „Jetzt anfangen") sind eine
+   Spur aus einzelnen <span>-Kindern, in der die Wortfolge bereits ZWEIMAL
+   steht, und werden per Keyframe um -50 % geschoben. Nahtlos ist das nur,
+   wenn eine Spurhälfte mindestens so breit ist wie das Fenster — sonst läuft
+   die Spur am Rundenende aus dem Bild.
 
-   Gemessen: bei 1920 px fehlten der Schlagwortleiste 130 px, bei 2560 px
-   770 px. Auf einem 1440er fiel es nicht auf, deshalb blieb es lange unentdeckt.
-
-   Hier werden so viele Kopien angelegt, dass eine Spurhälfte das Fenster immer
-   füllt. Die -50 %-Animation bleibt dabei unangetastet: die Zahl der Gruppen
-   ist immer gerade, eine Hälfte ist also exakt die Wiederholung der anderen. */
+   Hier wird die komplette Spur so oft verdoppelt, bis eine Hälfte das Fenster
+   füllt. Verdoppeln erhält die Symmetrie der beiden Hälften, die -50 %-Animation
+   bleibt gültig. Es wird nie ein Kind entfernt (die v1-Fassung ging von
+   Gruppen-Wrappern aus und zerlegte diese Spuren — siehe CLAUDE.md §6 Nr. 10).
+   Die zweite Hälfte (und alle Kopien) sind für Hilfstechnik verborgen: eine
+   Laufschrift muss nur einmal vorgelesen werden. */
 (function () {
   'use strict';
 
   function tracks() {
     var out = [];
-    var all = document.querySelectorAll('[data-screen-label] div, section div, footer div');
+    var all = document.querySelectorAll('section div');
     for (var i = 0; i < all.length; i++) {
       var el = all[i];
       if (el.children.length < 2) continue;
@@ -27,26 +27,31 @@
     return out;
   }
 
+  function hideSecondHalf(track) {
+    var kids = track.children, n = kids.length;
+    for (var i = Math.floor(n / 2); i < n; i++) kids[i].setAttribute('aria-hidden', 'true');
+  }
+
   function fit(track) {
-    var first = track.firstElementChild;
-    if (!first) return;
-
-    // Die Vorlage einmal festhalten, bevor Kopien dazukommen.
-    if (!track.__tpl) {
-      track.__tpl = first.cloneNode(true);
-      track.__tpl.setAttribute('aria-hidden', 'true');
+    if (!track.__base) {
+      // Grundzustand einmal festhalten (die Spur des Designs, zwei Hälften)
+      track.__base = Array.prototype.map.call(track.children, function (c) { return c.cloneNode(true); });
+      hideSecondHalf(track);
     }
-
     var vw = document.documentElement.clientWidth || window.innerWidth;
-    var gw = first.getBoundingClientRect().width;
-    if (!gw || !vw) return;                       // noch nicht ausgelegt
-
-    var perHalf = Math.max(1, Math.ceil((vw + 4) / gw));
-    var need = perHalf * 2;
-    if (track.children.length === need) return;
-
-    while (track.children.length > need) track.removeChild(track.lastElementChild);
-    while (track.children.length < need) track.appendChild(track.__tpl.cloneNode(true));
+    var half = track.scrollWidth / 2;
+    if (!half || !vw) return;
+    var guard = 0;
+    while (half < vw + 4 && guard++ < 4) {
+      var frag = document.createDocumentFragment();
+      Array.prototype.forEach.call(track.children, function (c) {
+        var k = c.cloneNode(true);
+        k.setAttribute('aria-hidden', 'true');
+        frag.appendChild(k);
+      });
+      track.appendChild(frag);
+      half = track.scrollWidth / 2;
+    }
   }
 
   function run() {
@@ -63,14 +68,12 @@
 
   ready(function () {
     run();
-    // Schriften ändern die Breite der Gruppen, also danach noch einmal.
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(run).catch(function () {});
     window.addEventListener('load', run, { once: true });
-
     var t = null, lastW = document.documentElement.clientWidth;
     window.addEventListener('resize', function () {
       var w = document.documentElement.clientWidth;
-      if (w === lastW) return;                    // reine Höhenänderung ignorieren
+      if (w <= lastW) { lastW = w; return; }        // nur breiter werden braucht mehr Kopien
       lastW = w;
       clearTimeout(t);
       t = setTimeout(run, 180);

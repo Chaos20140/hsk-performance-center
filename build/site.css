@@ -1,0 +1,157 @@
+/* HSK Performance Center — Produktionsschicht.
+   Alles, was das Design-Original nicht mitbringt: selbst gehostete Schriften,
+   Tastaturfokus, iOS-Viewport, die Unterseiten und Rechtsseiten, Druck.
+   Das Design selbst (Farben, Schriftgrößen, Choreografie) bleibt unangetastet. */
+
+/* ---- Schriften: dieselben Familien wie im Design, aus dem Repo (DSGVO) ---- */
+@font-face{font-family:'Big Shoulders Display';font-style:normal;font-weight:100 900;font-display:swap;src:url(assets/fonts/big-shoulders-display-normal-100_900.woff2) format('woff2')}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:400;font-display:swap;src:url(assets/fonts/ibm-plex-mono-normal-400.woff2) format('woff2')}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:500;font-display:swap;src:url(assets/fonts/ibm-plex-mono-normal-500.woff2) format('woff2')}
+@font-face{font-family:'Schibsted Grotesk';font-style:normal;font-weight:400 900;font-display:swap;src:url(assets/fonts/schibsted-grotesk-normal-400_900.woff2) format('woff2')}
+
+/* ---- Grundlagen ---- */
+html{-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent}
+::selection{background:#E10600;color:#fff}
+/* Fokusring in Knochen: sichtbar auf Schwarz UND auf den roten Flächen (Rot auf Rot wäre unsichtbar) */
+:focus-visible{outline:2px solid #F2EFEA;outline-offset:3px}
+img{max-width:100%}
+/* nur für Screenreader (Überschriften, die das Design visuell nicht hat) */
+[data-sr]{position:absolute!important;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+/* FAQ: die Frage ist ein echter Button im <h3> — Optik bleibt die der Überschrift */
+[data-faq-btn]{all:unset;display:block;width:100%;font:inherit;color:inherit;letter-spacing:inherit;text-transform:inherit;line-height:inherit;cursor:pointer}
+[data-faq-btn]:focus-visible{outline:2px solid #F2EFEA;outline-offset:3px}
+/* Hero-HUD: „REC" ist ein Knopf, der Film und Laufschriften anhält (WCAG 2.2.2) */
+[data-reel-toggle]{background:none;border:0;padding:0;margin:0;color:inherit;font:inherit;letter-spacing:inherit;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+html[data-reel="paused"] [data-reel-toggle]>span:first-child{animation:none!important;background:#F2EFEA!important}
+html[data-reel="paused"] [style*="hs-mq"]{animation-play-state:paused!important}
+[data-skip]{position:absolute;left:-999px;top:12px;z-index:100;background:#E10600;color:#fff;padding:12px 18px;font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase}
+[data-skip]:focus{left:12px}
+main{display:block}
+
+/* Burger: im offenen Zustand ein Kreuz — das Design kennt nur die drei Striche */
+[data-burger]{position:relative}
+html[data-menu="open"] [data-burger]>span{background:transparent!important;box-shadow:none!important}
+html[data-menu="open"] [data-burger]::before,html[data-menu="open"] [data-burger]::after{content:"";position:absolute;left:50%;top:50%;width:18px;height:1px;background:#F2EFEA;transform:translate(-50%,-50%) rotate(45deg)}
+html[data-menu="open"] [data-burger]::after{transform:translate(-50%,-50%) rotate(-45deg)}
+
+/* Karte: Link in die Karten-App, liegt über dem iframe (das Klicks schluckt) */
+[data-map-open]{position:absolute;right:14px;bottom:14px;z-index:2;display:inline-flex;align-items:center;gap:8px;background:#050506;color:#F2EFEA;border:1px solid rgba(255,255,255,.18);padding:12px 14px;min-height:44px;font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.2em;text-transform:uppercase}
+@media (hover:hover) and (pointer:fine){
+  [data-map-open]:hover{color:#E10600;border-color:#E10600}
+  [data-termin-tail] a:hover{background:#F2EFEA;color:#050506}
+  [data-form] button:hover{background:#F2EFEA;color:#050506}
+  [data-sent-mail]:hover{background:#F2EFEA;color:#050506}
+  [data-sent-call]:hover{border-color:#E10600;color:#E10600}
+  [data-legal-body] a:hover{color:#E10600}
+}
+
+/* ---- Reduzierte Bewegung ---- */
+/* Das Design-CSS kürzt nur die Dauer; Endlos-Animationen würden damit tausendfach pro
+   Sekunde neu starten (Laufschrift springt, Punkte flimmern). Hier: einmal, dann Ruhe. */
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-iteration-count:1!important;scroll-behavior:auto!important}
+  [style*="hs-mq"],[style*="hs-blink"],[style*="hs-cue"]{animation:none!important}
+}
+
+/* ---- Telefon ---- */
+@media (max-width:900px){
+  /* WebKit vor Safari 18 kennt backdrop-filter nur mit Präfix; !important wie die Design-Regel,
+     damit der von JS gesetzte Inline-Wert (oben „none") nicht gewinnt */
+  [data-nav]{-webkit-backdrop-filter:blur(12px)!important}
+  /* viewport-fit=cover: Kerbe/Statusleiste (Querformat, Standalone) freihalten */
+  [data-nav]{padding-top:max(12px,env(safe-area-inset-top))!important;padding-left:max(18px,env(safe-area-inset-left))!important;padding-right:max(18px,env(safe-area-inset-right))!important}
+  [data-overlay]{padding-top:max(clamp(90px,14vh,150px),calc(env(safe-area-inset-top) + 72px))!important;padding-left:max(18px,env(safe-area-inset-left))!important;padding-right:max(18px,env(safe-area-inset-right))!important}
+  /* Untere Leiste: das Polster für den Home-Indikator muss schwarz sein, nicht die 14-%-Trennfarbe */
+  [data-mbar]{background:#050506!important;gap:0!important;padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
+  [data-mbar] a+a{border-left:1px solid rgba(255,255,255,.14)}
+  /* Formular einspaltig */
+  [data-form]{grid-template-columns:minmax(0,1fr)!important}
+  [data-termin]{grid-template-columns:minmax(0,1fr)!important;gap:14px!important}
+  [data-termin-tail]{align-items:flex-start!important;flex-direction:row!important;flex-wrap:wrap}
+  [data-gal] [data-span="6"]{grid-column:span 12!important}
+  [data-gal] [data-span="4"],[data-gal] [data-span="3"]{grid-column:span 6!important}
+  [data-row],[data-toc],[data-rights]{grid-template-columns:minmax(0,1fr)!important}
+  [data-row]{gap:5px!important}
+  /* FAQ: die linke Spalte ist sticky — einspaltig läuft „Kurz geklärt." sonst über die Fragen */
+  #faq [data-two]>div:first-child{position:static!important}
+  /* Bereiche-Bühne: rechts „HSK — BRILON" kollidiert auf 375 px mit dem REC-Label */
+  [data-areas-stage]>div:last-child{display:none!important}
+  /* Karte: 4:3 ist auf dem Telefon zu flach für das Einwilligungsfeld; der Koordinaten-Chip wandert nach unten */
+  #kontakt [data-two]>div:last-child{aspect-ratio:1/1!important}
+  #kontakt [data-two]>div:last-child>div:last-child{top:auto!important;bottom:14px!important}
+}
+/* iOS: 100vh ist dort die Höhe OHNE Leisten — der untere Rand des Hero (rote
+   Fläche, Knopf) läge hinter der Safari-Leiste. svh ist die sichtbare Höhe. */
+@supports (height:100svh){
+  @media (max-width:900px){
+    #top{height:200svh!important}
+    #top>div{height:100svh!important}
+    [data-areas]{height:330svh!important}
+    [data-areas-grid]{height:100svh!important;grid-template-rows:40svh minmax(0,1fr)!important}
+    [data-wipe]{height:100svh!important}
+  }
+}
+
+/* ---- Unterseiten ---- */
+[data-gal]{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:clamp(10px,1.2vw,18px)}
+[data-gal] [data-span="6"]{grid-column:span 6}
+[data-gal] [data-span="4"]{grid-column:span 4}
+[data-gal] [data-span="3"]{grid-column:span 3}
+[data-gal] figure{margin:0;position:relative;overflow:hidden;background:#0E0E11}
+[data-gal] figure img,[data-gal] figure video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+[data-gal] figcaption{position:absolute;left:12px;bottom:12px;z-index:1;font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:#F2EFEA;background:rgba(5,5,6,.6);padding:5px 8px}
+
+[data-quali]{margin:0;padding:0;list-style:none;display:flex;flex-wrap:wrap;gap:8px}
+[data-quali] li{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#C4C4CA;border:1px solid rgba(255,255,255,.18);padding:9px 12px}
+
+[data-termin]{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,6fr) minmax(0,3fr);gap:clamp(18px,3vw,48px);padding:clamp(24px,3vw,40px) 0;border-top:1px solid rgba(255,255,255,.12)}
+[data-termin]:last-child{border-bottom:1px solid rgba(255,255,255,.12)}
+[data-termin-wann]{font-family:'Big Shoulders Display',Impact,sans-serif;font-weight:900;font-size:clamp(34px,3.6vw,56px);line-height:.9;text-transform:uppercase;color:#F2EFEA}
+[data-termin-zusatz]{margin-top:10px;font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.22em;color:#9A9AA2;text-transform:uppercase}
+[data-termin] h2{margin:0;font-family:'Big Shoulders Display',Impact,sans-serif;font-weight:800;font-size:clamp(26px,2.4vw,40px);line-height:1;text-transform:uppercase;color:#F2EFEA}
+[data-termin] p{margin:12px 0 0;max-width:56ch;font-size:15.5px;line-height:1.7;color:#C4C4CA;text-wrap:pretty}
+[data-termin-tail]{display:flex;flex-direction:column;align-items:flex-end;gap:14px}
+[data-termin-status]{display:inline-flex;align-items:center;gap:9px;font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#C4C4CA}
+[data-termin-status]>span{display:block;width:6px;height:6px;background:#4A9E2E;box-shadow:0 0 9px rgba(74,158,46,.9)}
+[data-termin-tail] a{display:inline-flex;align-items:center;gap:10px;background:#E10600;color:#fff;padding:13px 20px;font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;font-weight:500;transition:background .3s,color .3s}
+
+[data-form]{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 clamp(20px,3vw,48px);border-top:1px solid rgba(255,255,255,.12)}
+[data-form] label{display:flex;flex-direction:column;gap:10px;padding:22px 0;border-bottom:1px solid rgba(255,255,255,.12)}
+[data-form] label>span{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#9A9AA2}
+[data-form] input,[data-form] select,[data-form] textarea{width:100%;background:transparent;border:0;border-radius:0;color:#F2EFEA;font:inherit;font-size:16px;line-height:1.4;padding:4px 0;outline:none;box-shadow:0 1px 0 transparent;transition:box-shadow .3s}
+[data-form] select{background:#050506;cursor:pointer}
+[data-form] select option{background:#050506;color:#F2EFEA}
+[data-form] textarea{resize:vertical;min-height:64px}
+[data-form] ::placeholder{color:#8A8A92}
+[data-form] input:focus-visible,[data-form] select:focus-visible,[data-form] textarea:focus-visible{outline:none;box-shadow:0 1px 0 #E10600}
+[data-form] button{display:inline-flex;align-items:center;gap:12px;background:#E10600;color:#fff;border:0;padding:17px 28px;font-family:'IBM Plex Mono',monospace;font-size:11.5px;letter-spacing:.2em;text-transform:uppercase;font-weight:500;cursor:pointer;transition:background .3s,color .3s}
+[data-sent-actions]{display:flex;flex-wrap:wrap;gap:12px;margin-top:24px}
+[data-sent-mail]{display:inline-flex;align-items:center;gap:12px;background:#E10600;color:#fff;padding:15px 22px;font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;font-weight:500;transition:background .3s,color .3s}
+[data-sent-call]{display:inline-flex;align-items:center;gap:12px;color:#F2EFEA;border:1px solid rgba(255,255,255,.22);padding:15px 22px;font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;transition:border-color .3s,color .3s}
+[data-if="sent"]>div:focus{outline:none}
+
+/* ---- Rechtsseiten: Text aus den v1-Quellen, Gestaltung im neuen System ---- */
+[data-legal-body] section{margin-bottom:clamp(40px,5vw,64px);scroll-margin-top:100px}
+[data-legal-body] h2{margin:0 0 clamp(16px,2vw,22px);padding-bottom:14px;border-bottom:1px solid rgba(255,255,255,.12);font-family:'Big Shoulders Display',Impact,sans-serif;font-weight:900;font-size:clamp(32px,3.6vw,56px);line-height:.9;text-transform:uppercase;color:#F2EFEA}
+[data-legal-body] h2 span{font-family:'IBM Plex Mono',monospace;font-weight:400;font-size:11px;letter-spacing:.2em;color:#E10600;vertical-align:middle;margin-right:14px}
+[data-legal-body] p{margin:0 0 18px;max-width:70ch;font-size:15.5px;line-height:1.75;color:#C4C4CA;text-wrap:pretty}
+[data-legal-body] p:last-child{margin-bottom:0}
+[data-legal-body] a{color:#F2EFEA;border-bottom:1px solid rgba(225,6,0,.6)}
+[data-legal-body] strong{color:#F2EFEA;font-weight:600}
+[data-legal-body] code{font-family:'IBM Plex Mono',monospace;font-size:13.5px;color:#F2EFEA}
+[data-rows]{border-bottom:1px solid rgba(255,255,255,.12)}
+[data-row]{display:grid;grid-template-columns:minmax(0,.34fr) minmax(0,.66fr);gap:clamp(12px,2vw,28px);padding:15px 0;border-top:1px solid rgba(255,255,255,.12)}
+[data-row]>span:first-child{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#9A9AA2;padding-top:4px}
+[data-row]>span:last-child{font-size:15.5px;line-height:1.65;color:#F2EFEA}
+[data-toc]{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 clamp(18px,3vw,36px);margin-bottom:clamp(48px,6vw,80px);border-top:1px solid rgba(255,255,255,.12)}
+[data-toc] a{display:flex;gap:14px;padding:13px 0;border-bottom:1px solid rgba(255,255,255,.12);font-size:14.5px;color:#DCDCE2}
+[data-toc] a span{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.2em;color:#E10600;padding-top:3px}
+[data-rights]{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 clamp(18px,3vw,36px);margin-bottom:24px;border-top:1px solid rgba(255,255,255,.12)}
+[data-rights] span{padding:13px 0;border-bottom:1px solid rgba(255,255,255,.12);font-size:15px;color:#DCDCE2}
+
+/* ---- Druck ---- */
+@media print{
+  [data-nav],[data-overlay],[data-mbar],[data-progress],[data-boot],[data-if="booting"],svg[aria-hidden="true"],video{display:none!important}
+  body{background:#fff!important;color:#000!important}
+  main{padding-top:0!important}
+}
