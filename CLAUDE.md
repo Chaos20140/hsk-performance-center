@@ -108,7 +108,7 @@ Was `build()` tut, in dieser Reihenfolge:
    Section / dem TOC bis vor die Schlusszeile, **entfernt alle Inline-Styles** und setzt
    Kopf + Schlusszeile neu; Optik kommt aus `site.css` (`[data-legal-body]`, `[data-row]`,
    `[data-toc]`, `[data-rights]`). Drei asserted Textkorrekturen (§5.3).
-8. `writeSiteJs()`: Logik wörtlich + `patchLogic()` (23 Marker `HSK-PATCH`) + Shim.
+8. `writeSiteJs()`: Logik wörtlich + `patchLogic()` (27 Marker `HSK-PATCH`) + Shim.
 9. `buildStatic()`: Manifest, robots, sitemap (nur indexierbare Seiten), 404, `.nojekyll`.
 10. Schlussprüfung über alle Seiten: keine `style-hover`, `.dc.html`, `{{`, `<sc-if`,
     Medien-Hotlinks, Google Fonts, Inline-Skripte; externe Referenzen nur Maps/Facebook/
@@ -405,7 +405,12 @@ Drei asserted Korrekturen in `legalPage()`:
 20. **`_mob` wurde nach dem ersten `sync()` gesetzt** — der allererste Frame lief noch
     im Desktop-Zweig und hinterließ ein Inline-Transform, das auf dem Telefon niemand
     mehr aufräumte. → Kennzeichen ganz an den Anfang von `componentDidMount`.
-21. **Der Anker-Sprung passiert in Chromium nach DOMContentLoaded.** `scrollY` war beim
+21. **Playwright-Seite im Hintergrund drosselt Transitions und rAF.** Eine Messung
+    zeigte HUD und Schlusszeile mit vertauschten Deckkraft-Werten — der Browser hatte
+    die laufenden Übergänge eingefroren, weil die Seite nicht im Vordergrund war.
+    → **Vor jeder Messung von Animationen `page.bringToFront()`**, sonst jagt man
+    Fehler, die es nicht gibt (vgl. Nr. 4: der schwarze Screenshot des Panes).
+22. **Der Anker-Sprung passiert in Chromium nach DOMContentLoaded.** `scrollY` war beim
     Mount noch 0, also lud der Hero-Clip trotz `#preise`. Der Hash zählt jetzt als
     „nicht im Bild".
 
@@ -454,7 +459,7 @@ Drei asserted Korrekturen in `legalPage()`:
 ```bash
 cd build && HSK_CANONICAL="https://chaos20140.github.io/hsk-performance-center/" node build.js   # muss "OK" sagen
 cd .. && node --check assets/js/site.js
-grep -c 'HSK-PATCH' assets/js/site.js                 # 24 (23 Marker + Kopfkommentar)
+grep -c 'HSK-PATCH' assets/js/site.js                 # 28 (27 Marker + Kopfkommentar)
 grep -ohE '(src|href)="https?://[^"]+"' *.html | sort -u   # nur maps / facebook / canonical
 ```
 
@@ -475,6 +480,47 @@ Nach dem Push: `curl -I` auf `/CLAUDE.md`, `/build/build.js`, `/src/` → müsse
 ---
 
 ## 9. Änderungslog (jede Änderung, neueste oben)
+
+- **2026-09-06 (3) — Design-Durchsicht Telefon** (Workflow, 8 Dimensionen × 2 Skeptiker,
+  158 Agenten; 40 bestätigt, 35 verworfen). Umgesetzt:
+  - **Typografie**: Display-Zeilen auf dem Telefon `line-height:.96` — Big Shoulders
+    reicht mit Umlaut bis 0,954 em über die Grundlinie, bei .84 stießen die Punkte von
+    Ä/Ö/Ü in die Zeile darüber, sobald eine Zeile umbrach. `<wbr>` → `&shy;` (im Build,
+    asserted): `<wbr>` bricht ohne Trennstrich, „KEIN MASSEN / BETRIEB." war schlicht
+    falsch geschrieben. Wipe-Titel unter 500 px auf `12.8vw` (traf sonst seine
+    clamp-Untergrenze und wurde dreizeilig mit „DREI" allein). `hyphens:auto` für die
+    langen Komposita in schmalen Spalten.
+  - **Rhythmus**: Unterseiten-Sockel nur noch auf EINER Kante (jede Naht war 104 px,
+    an zwei Stellen 164). `#loslegen` ausgenommen (randloses Band). Die Preisseite
+    bekam `id="preise"` — alle sechs Telefon-Regeln waren id-gebunden und griffen dort
+    nicht, ausgerechnet auf der Seite mit den Preisen. Rechtsseiten haben kein
+    `data-screen-label` und liefen als einzige komplett im Desktop-Takt.
+  - **Bedienung**: REC-Knopf 42 × 14 → 58 × 45 px (Polster + negativer Außenabstand,
+    Optik unverändert), Fußzeilen-Links (der einzige Weg zu Impressum/Datenschutz)
+    44 px, Termin-CTA 44 px, „In Google Maps öffnen" 44 px, Logo-Link volle Zeilenhöhe.
+    **`:active`-Zustände** ergänzt — es gab keinen einzigen: das iOS-Aufblinken ist
+    abgeschaltet und jeder Hover-Zustand hängt an `(hover:hover)`, was auf dem Telefon
+    nie zutrifft.
+  - **Echte Fehler**: `[data-hero-hud]` trug `animation:… both` — der Endzustand einer
+    Keyframe-Animation steht über dem style-Attribut, das Skript hätte die Deckkraft
+    nie ändern können. Jetzt `animation-fill-mode:backwards`. Die Galerie-Regel
+    `[data-gal]{gap:8px!important}` machte aus den 1-px-Rasterlinien des
+    Bewegtbild-Rasters 8-px-Bänder (dort SIND die Fugen die Linien) — `!important` weg.
+    Leere Rasterzellen erschienen als graue Geisterkacheln → dritte Kachel jeder
+    Dreiergruppe über die volle Breite. Kennzahlen („10.000+", „Meister", „06–24")
+    liefen aus ihren 85-px-Zellen über die Rasterlinien → `[data-stats]` einspaltig.
+    Auf 375 × 667 wurde der Zähler „03 / 03" um 14 px abgeschnitten → Bühne 34 dvh.
+  - **Gewicht** (Telefon): Bereichs-Clips laden dort gar nicht mehr (4,25 MB, das
+    Standbild trägt die Bühne allein, HSK-PATCH 21). Hover-Clips als 960-px-Fassungen
+    `*-m.mp4` (16,5 → 2,4 MB, HSK-PATCH 22). Hochkant-Hero-Clips mit CRF 27 neu
+    kodiert (4,76 → 2,55 MB). Hero-Poster nicht mehr als Attribut, sondern als
+    medien-gebundener Hintergrund — das Telefon lud sonst erst 165 KB Querformat und
+    danach das Hochkant-Bild. `eq-treadmill.jpg` war bytegleich mit `p-cardio.jpg`
+    (316 KB doppelt) → entfernt. `reelTick` läuft auf dem Telefon gar nicht mehr
+    (Timecode und Segmentleiste sind dort `display:none`, es schrieb 11 Werte pro
+    Frame in unsichtbare Elemente, HSK-PATCH 20). **Zusammen rund 21 MB weniger.**
+  - Offen gelassen: `srcset` für die Fotos (Aufwand/Nutzen — die Bilder sind bei
+    DPR 3 kaum überdimensioniert und laden ohnehin faul).
 
 - **2026-09-06 (2) — Ruckeln auf dem Telefon, iOS-Adressleiste.** Tolunay schickte drei
   iPhone-Screenshots: große Leerflächen und „das rote Banner zieht sich ruckelig nach

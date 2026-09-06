@@ -180,6 +180,18 @@ function processFragment(html, hoverPrefix, counter) {
   html = lazyImages(html);
   // Alle Videos sind stumme Atmosphäre; das Bild daneben trägt den Alt-Text.
   html = html.replace(/<video( [^>]*)>/g, '<video$1 aria-hidden="true">');
+  // <wbr> ist eine Umbruchgelegenheit OHNE Trennzeichen (richtig für URLs, falsch
+  // für Wörter): „Kein Massenbetrieb." bräche zu „KEIN MASSEN / BETRIEB." ohne
+  // Bindestrich. &shy; bricht an derselben Stelle und setzt einen.
+  html = html.replace(/<wbr>/g, '&shy;');
+  must(!/<wbr>/.test(html), 'wbr leftovers');
+  // Wo eine Telefon-Fassung des Clips im Repo liegt (assets/NAME-m.mp4, 960 px),
+  // wird sie als data-src-mobile hinterlegt; site.js wählt sie auf dem Telefon.
+  // Die Querformat-Fassungen sind bis zu 3,7 MB schwer — für eine 354-px-Karte.
+  html = html.replace(/data-src="assets\/([a-z0-9-]+)\.mp4"/g, (m, name) =>
+    fs.existsSync(path.join(OUT, 'assets', name + '-m.mp4'))
+      ? m + ' data-src-mobile="assets/' + name + '-m.mp4"'
+      : m);
   return { html, rules: hv.rules };
 }
 
@@ -365,11 +377,25 @@ function build() {
   // Hero-Film: die Quelle wählt site.js (Querformat-Clips am Rechner, die vier
   // Hochkant-Clips auf dem Telefon). Ohne src im Markup lädt das Telefon nicht
   // erst 1,3 MB Querformat, um sie dann zu verwerfen.
+  // Auch das poster-Attribut fällt weg: der Vorab-Scanner des Browsers holt es,
+  // bevor site.js überhaupt läuft — das Telefon lüde erst das 165-KB-Querformat
+  // und danach das Hochkant-Poster. Das Standbild kommt jetzt aus site.css und
+  // ist dort an die Bildschirmbreite gebunden.
   {
     const v0 = 'poster="assets/cine-rise-poster.jpg" src="https://chaos20140.github.io/hsk-performance-center/assets/cine-rise.mp4"';
     must(body.indexOf(v0) > -1, 'hero video layer 0 not found');
-    body = body.replace(v0, 'poster="assets/cine-rise-poster.jpg" data-poster-mobile="assets/m-racks-poster.jpg" data-src="assets/cine-rise.mp4" data-src-mobile="assets/m-racks.mp4"');
+    body = body.replace(v0, 'data-src="assets/cine-rise.mp4" data-src-mobile="assets/m-racks.mp4"');
     must(fs.existsSync(path.join(OUT, 'assets', 'm-racks-poster.jpg')), 'mobile poster missing');
+    must(!/poster="assets\/cine-rise-poster\.jpg"/.test(body), 'hero poster attribute left');
+  }
+
+  // Kennzahlen-Raster (Startseite „2001 / 06–24 / 5,0"): drei Zellen à 85 px
+  // tragen die Werte auf dem Telefon nicht — sie liefen über die Rasterlinien.
+  // Der Haken lässt site.css sie dort einspaltig stellen.
+  {
+    const stats = '<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.12);animation:hs-in 1s cubic-bezier(.16,1,.3,1) both;animation-timeline:view();animation-range:entry 0% cover 30%">';
+    must(body.indexOf(stats) > -1, 'stats grid anchor not found');
+    body = body.replace(stats, stats.replace('<div style=', '<div data-stats style='));
   }
 
   // Tastatur: FAQ-Zeilen und Bereichs-Zeilen sind klickbare <div>s. Sie bekommen
@@ -818,6 +844,33 @@ function patchLogic(js) {
         "      w.style.clipPath = 'inset(' + ((1 - q) * 100).toFixed(2) + '% 0 0 0)';\n" +
         "    }", 'wipe transform');
 
+  // 20) Timecode und Segmentleiste stehen unter `data-hide-m`, sind auf dem Telefon
+  //     also ausgeblendet — die Bild-für-Bild-Schleife schrieb dort trotzdem elf
+  //     Werte pro Frame in unsichtbare Elemente und suchte sie jedes Mal neu.
+  //     Am Rechner werden die Knoten jetzt einmal gemerkt.
+  patch("        const tc = document.querySelector('[data-tc]');",
+        "        const tc = this._tc || (this._tc = document.querySelector('[data-tc]')); // HSK-PATCH 20", 'reelTick tc');
+  patch("        document.querySelectorAll('[data-seg]').forEach((seg, k) => {",
+        "        (this._segs || (this._segs = document.querySelectorAll('[data-seg]'))).forEach((seg, k) => {", 'reelTick segs');
+  patch("    this.reel.cutAt = performance.now();\n    this._reelRaf = requestAnimationFrame(this.reelTick);",
+        "    this.reel.cutAt = performance.now();\n" +
+        "    if (!this._mob) this._reelRaf = requestAnimationFrame(this.reelTick); // HSK-PATCH 20b", 'reelTick start');
+
+  // 22) Die Hover-Clips der Ausstattungs- und Galeriekarten sind Querformat-
+  //     Fassungen bis 3,7 MB. Auf dem Telefon läuft die 960-px-Fassung (-m.mp4).
+  patch("      eqEnter: (e) => {\n        const v = e.currentTarget.querySelector('video');\n        if (!v) return;\n        if (!v.getAttribute('src')) v.src = v.dataset.src;",
+        "      eqEnter: (e) => {\n        const v = e.currentTarget.querySelector('video');\n        if (!v) return;\n" +
+        "        if (!v.getAttribute('src')) v.src = (this._mob && v.dataset.srcMobile) || v.dataset.src; // HSK-PATCH 22", 'eqEnter mobile');
+
+  // 21) Die drei Bereichs-Clips sind Querformat-Fassungen (zusammen 4,25 MB). Auf
+  //     dem Telefon ist die Bühne 34–42 dvh hoch und das Standbild trägt sie
+  //     allein — dort wird gar kein Video geladen.
+  patch("      if (on) { if (!v.getAttribute('src')) v.src = v.dataset.src; v.muted = true; v.loop = true; const pr = v.play(); if (pr && pr.catch) pr.catch(() => {}); v.style.opacity = '1'; }",
+        "      if (on && !this._mob) { // HSK-PATCH 21\n" +
+        "        if (!v.getAttribute('src')) v.src = v.dataset.src;\n" +
+        "        v.muted = true; v.loop = true; const pr = v.play(); if (pr && pr.catch) pr.catch(() => {});\n" +
+        "        v.style.opacity = '1';\n      }", 'areas video mobile');
+
   // 15) Der Hero-Effekt (rote Fläche fährt raus, Film zoomt zurück, „Die Halle"
   //     blendet ein) lief über eine feste Bildschirmhöhe. Das stimmt nur, solange
   //     die Sektion 200 vh hoch ist — auf dem Telefon sind es 150, die Klebestrecke
@@ -911,7 +964,7 @@ function patchLogic(js) {
         "      if (d >= 2) el.style.animationDelay = Math.max(0, d - 2.3).toFixed(2) + 's';\n" +
         "    });\n  }\n  bootReel() {", 'skipIntroDelays');
 
-  must(count(/HSK-PATCH/g, js) === 23, 'expected 23 HSK-PATCH markers, got ' + count(/HSK-PATCH/g, js));
+  must(count(/HSK-PATCH/g, js) === 27, 'expected 27 HSK-PATCH markers, got ' + count(/HSK-PATCH/g, js));
   return js;
 }
 

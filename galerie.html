@@ -110,8 +110,10 @@ img{max-width:100%}
 /* FAQ: die Frage ist ein echter Button im <h3> — Optik bleibt die der Überschrift */
 [data-faq-btn]{all:unset;display:block;width:100%;font:inherit;color:inherit;letter-spacing:inherit;text-transform:inherit;line-height:inherit;cursor:pointer}
 [data-faq-btn]:focus-visible{outline:2px solid #F2EFEA;outline-offset:3px}
-/* Hero-HUD: „REC" ist ein Knopf, der Film und Laufschriften anhält (WCAG 2.2.2) */
-[data-reel-toggle]{background:none;border:0;padding:0;margin:0;color:inherit;font:inherit;letter-spacing:inherit;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+/* Hero-HUD: „REC" ist ein Knopf, der Film und Laufschriften anhält (WCAG 2.2.2).
+   Das Polster macht die Trefferfläche 44 px hoch, der negative Außenabstand hebt
+   es im Layout wieder auf — die HUD-Zeile sitzt unverändert. */
+[data-reel-toggle]{background:none;border:0;padding:15px 8px;margin:-15px -8px;color:inherit;font:inherit;letter-spacing:inherit;cursor:pointer;display:inline-flex;align-items:center;gap:8px;min-height:44px}
 html[data-reel="paused"] [data-reel-toggle]>span:first-child{animation:none!important;background:#F2EFEA!important}
 html[data-reel="paused"] [style*="hs-mq"]{animation-play-state:paused!important}
 [data-skip]{position:absolute;left:-999px;top:12px;z-index:100;background:#E10600;color:#fff;padding:12px 18px;font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase}
@@ -124,8 +126,21 @@ html[data-menu="open"] [data-burger]>span{background:transparent!important;box-s
 html[data-menu="open"] [data-burger]::before,html[data-menu="open"] [data-burger]::after{content:"";position:absolute;left:50%;top:50%;width:18px;height:1px;background:#F2EFEA;transform:translate(-50%,-50%) rotate(45deg)}
 html[data-menu="open"] [data-burger]::after{transform:translate(-50%,-50%) rotate(-45deg)}
 
+/* Standbild des Hero-Films. Als poster-Attribut würde der Vorab-Scanner des
+   Browsers immer die Querformat-Fassung holen (165 KB), auch auf dem Telefon,
+   das danach noch das Hochkant-Bild lädt. Als Hintergrund holt jeder Bildschirm
+   nur seine eigene Fassung — und das Video deckt sie ab, sobald es läuft. */
+[data-reel-layer="0"]{background:#050506 url(assets/cine-rise-poster.jpg) center/cover no-repeat}
+@media (max-width:900px) and (orientation:portrait){
+  [data-reel-layer="0"]{background-image:url(assets/m-racks-poster.jpg)}
+}
+
 /* Karte: Link in die Karten-App, liegt über dem iframe (das Klicks schluckt) */
 [data-map-open]{position:absolute;right:14px;bottom:14px;z-index:2;display:inline-flex;align-items:center;gap:8px;background:#050506;color:#F2EFEA;border:1px solid rgba(255,255,255,.18);padding:12px 14px;min-height:44px;font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.2em;text-transform:uppercase}
+/* Der Ausweg für alle, die die Karte nicht laden wollen — er braucht dieselbe
+   Trefferfläche wie der Knopf daneben */
+[data-if="mapOff"] a{display:inline-flex;align-items:center;min-height:44px}
+[data-if="mapOff"] button{padding:15px 22px}
 @media (hover:hover) and (pointer:fine){
   [data-map-open]:hover{color:#E10600;border-color:#E10600}
   [data-termin-tail] a:hover{background:#F2EFEA;color:#050506}
@@ -134,6 +149,18 @@ html[data-menu="open"] [data-burger]::after{transform:translate(-50%,-50%) rotat
   [data-sent-call]:hover{border-color:#E10600;color:#E10600}
   [data-legal-body] a:hover{color:#E10600}
 }
+/* Ein Finger hat keinen Cursor: ohne :active gibt es auf dem Telefon gar keine
+   Rückmeldung — das iOS-Aufblinken ist oben abgeschaltet, und jeder Hover-Zustand
+   hängt an (hover:hover), was dort nie zutrifft. */
+@media (hover:none){
+  a:active,button:active,[role="button"]:active{opacity:.6;transition:opacity .05s}
+}
+
+/* Das HUD trägt eine Eintritts-Animation mit `both`. Deren Endzustand steht in der
+   Kaskade ÜBER dem style-Attribut — das Skript könnte die Deckkraft danach nie mehr
+   ändern, das HUD bliebe für immer sichtbar. `backwards` hält es während der
+   Verzögerung unsichtbar und gibt die Eigenschaft danach wieder frei. */
+[data-hero-hud]{animation-fill-mode:backwards!important}
 
 /* ---- Reduzierte Bewegung ---- */
 /* Das Design-CSS kürzt nur die Dauer; Endlos-Animationen würden damit tausendfach pro
@@ -160,6 +187,11 @@ html[data-menu="open"] [data-burger]::after{transform:translate(-50%,-50%) rotat
   [data-termin-tail]{align-items:flex-start!important;flex-direction:row!important;flex-wrap:wrap}
   [data-gal] [data-span="6"]{grid-column:span 12!important}
   [data-gal] [data-span="4"],[data-gal] [data-span="3"]{grid-column:span 6!important}
+  /* Die Bilder stehen in Dreiergruppen: zweispaltig bliebe je Gruppe eine halbe
+     Zelle leer — im Bewegtbild-Raster (Container-Hintergrund = Linie) wäre das
+     ein grauer Block. Die dritte Kachel nimmt deshalb die ganze Zeile. */
+  [data-gal] [data-span="4"]+[data-span="4"]+[data-span="4"]{grid-column:span 12!important}
+  [data-gal] figure:last-child:nth-child(odd){grid-column:1/-1!important}
   [data-row],[data-toc],[data-rights]{grid-template-columns:minmax(0,1fr)!important}
   [data-row]{gap:5px!important}
   /* FAQ: die linke Spalte ist sticky — einspaltig läuft „Kurz geklärt." sonst über die Fragen */
@@ -171,9 +203,18 @@ html[data-menu="open"] [data-burger]::after{transform:translate(-50%,-50%) rotat
      ein Abbruch der Seite. Zentriert füllt der Block den Platz, ohne dass die
      Zeilen beim Bereichswechsel springen (die Höhe ändert sich symmetrisch). */
   [data-areas-index]{justify-content:center!important;padding-top:20px!important;padding-bottom:calc(20px + env(safe-area-inset-bottom))!important;gap:14px!important}
+  /* Auf kurzen Bildschirmen (iPhone SE, 667 px) trug der Index 388 px Inhalt in
+     374 px Platz — der Zähler „03 / 03" wurde unten abgeschnitten. Die Bühne gibt
+     dort ab. */
+  @media (max-height:760px){
+    [data-areas-index]{gap:10px!important;padding-top:14px!important}
+    [data-areas-h2]{font-size:clamp(26px,7vw,36px)!important}
+  }
   /* Karte: 4:3 ist auf dem Telefon zu flach für das Einwilligungsfeld; der Koordinaten-Chip wandert nach unten */
   #kontakt [data-two]>div:last-child{aspect-ratio:1/1!important}
   #kontakt [data-two]>div:last-child>div:last-child{top:auto!important;bottom:14px!important}
+  /* … und der Kartenlink dann nach oben rechts, sonst liegt er auf dem Chip */
+  [data-map-open]{top:14px!important;bottom:auto!important}
 
   /* ================================================================
      RHYTHMUS AUF DEM TELEFON
@@ -239,6 +280,11 @@ html[data-menu="open"] [data-burger]::after{transform:translate(-50%,-50%) rotat
   #preise>div>p{margin-bottom:22px!important}
   #preise article{padding:20px!important;gap:14px!important}
   #preise article>div:nth-child(3){font-size:56px!important}
+  /* Die Display-Zeilen des Designs stehen auf line-height .84–.86. Big Shoulders
+     reicht mit Umlaut aber bis 0,954 em über die Grundlinie — sobald eine Zeile
+     auf dem Telefon umbricht, stoßen die Punkte von Ä/Ö/Ü in die Zeile darüber. */
+  [data-hero-after] div:last-child,[data-wipe-title],#haltung h2,#ausstattung h2,#kontakt h2,#partner h2,#faq h2,
+  body[data-sub] main h1,body[data-sub] main h2{line-height:.96!important}
   #preise>div>div:last-child{margin-top:28px!important;padding-top:20px!important}
   #preise>div>div:last-child>div:first-child{margin-bottom:20px!important}
   #preise>div>div:last-child>div:nth-child(2){gap:24px!important}
@@ -259,16 +305,53 @@ html[data-menu="open"] [data-burger]::after{transform:translate(-50%,-50%) rotat
      NUR mit body[data-sub] — ohne die Einschränkung träfe die Regel auch die
      Startseite und hängte 52 px unter die Ausstattung, also einen schwarzen
      Spalt zwischen den roten Wipe und die rote Preisfläche. */
-  body[data-sub] main>section[data-screen-label]{padding-top:52px!important;padding-bottom:52px!important}
-  /* Der Seitenkopf braucht unten keinen eigenen Sockel — die nächste Sektion bringt ihren mit */
-  body[data-sub] main>section[data-screen-label]:first-child{padding-top:96px!important;padding-bottom:32px!important}
-  [data-gal]{gap:8px!important}
+  /* Nur EINE Kante trägt den Sockel — sonst addieren sich an jeder Naht zwei
+     (52 + 52 = 104 px, mit Innen-Sockel sogar 164). Das Design macht es genauso. */
+  body[data-sub] main>section[data-screen-label]:not(#loslegen){padding-top:52px!important;padding-bottom:0!important}
+  body[data-sub] main>section[data-screen-label]:first-child{padding-top:96px!important;padding-bottom:0!important}
+  /* Das Loslegen-Band ist randlos (seine Polster sitzen auf den Kindern) */
+  body[data-sub] main>section#loslegen{padding-top:0!important;padding-bottom:0!important}
+  /* Fortsetzungs-Sektionen tragen ihre Trennung als Haarlinie im Innencontainer;
+     dessen Desktop-Sockel (60 px) käme oben drauf */
+  body[data-sub] main>section>div[style*="border-top:1px solid rgba(255,255,255,.12);padding-top"]{padding-top:36px!important}
+  /* Der wiederverwendete Sektionskopf steht auf der Landing bei 24 px */
+  body[data-sub] main>section div[style*="margin-bottom:clamp(36px,4.6vw,64px)"]{margin-bottom:24px!important}
+  /* Die Rechtsseiten tragen kein data-screen-label — ohne eigene Regel blieben sie
+     als einzige im Desktop-Takt (152 px Kopfsockel) */
+  body[data-sub] main>section[data-legal]{padding-top:96px!important;padding-bottom:52px!important}
+  [data-legal-body] section{margin-bottom:32px!important}
+  [data-toc]{margin-bottom:28px!important}
+  footer>div:last-child{margin-top:28px!important;align-items:center!important}
+  footer>div:last-child a{display:inline-flex;align-items:center;min-height:44px}
+  /* Die Schlusszeile ist auf dem Telefon der einzige Weg zu Impressum und
+     Datenschutz — 13,7 px hohe Ziele reichen dafür nicht. */
+  [data-overlay] a[href="mitglied-werden.html"]{padding:15px 22px!important}
+  [data-nav]>a:first-child{align-self:stretch!important;min-width:44px}
+  /* Lange deutsche Komposita in schmalen Spalten */
+  [data-legal-body] p,[data-row]>span:last-child,[data-termin] p,[data-faq-body] p,#haltung p,#preise>div>p{-webkit-hyphens:auto;hyphens:auto}
+  /* ohne !important — das Bewegtbild-Raster setzt inline gap:1px, und dort SIND
+     die Fugen die Rasterlinien (Container-Hintergrund). Mit !important würde
+     jede Haarlinie zu einem 8-px-Band. */
+  [data-gal]{gap:8px}
   [data-termin]{padding-top:20px!important;padding-bottom:20px!important}
   [data-quali]{gap:6px!important}
   [data-form] label{padding-top:16px!important;padding-bottom:16px!important}
 
+  /* Kennzahlen-Trio: drei Zellen à 85 px tragen weder „10.000+" (99 px) noch
+     „Meister" (101 px) noch „06–24" (102 px) — der Text lief über die Rasterlinien */
+  [data-stats]{grid-template-columns:minmax(0,1fr)!important}
+  [data-stats]>div{display:flex!important;align-items:baseline;justify-content:space-between;gap:16px;padding:14px 18px!important}
+  [data-stats]>div>div:last-child{margin-top:0!important;text-align:right}
+
   /* Overlay-Menü: kein Weiterscrollen der Seite dahinter */
   [data-overlay]{overscroll-behavior:contain}
+}
+
+/* Der Wipe-Titel greift bei 390 px seine clamp-Untergrenze (64 px) ab und wird
+   dreizeilig — „DREI" bliebe als Silbenzeile allein stehen. 12,8 vw trifft bei
+   500 px exakt die 64 px, es gibt also keinen Sprung an der Grenze. */
+@media (max-width:500px){
+  [data-wipe-title]{font-size:12.8vw!important}
 }
 /* iOS: 100vh ist dort die Höhe OHNE Leisten — der untere Rand des Hero (rote
    Fläche, Knopf) läge hinter der Safari-Leiste. svh ist die sichtbare Höhe. */
@@ -313,7 +396,7 @@ html[data-menu="open"] [data-burger]::after{transform:translate(-50%,-50%) rotat
 [data-termin-tail]{display:flex;flex-direction:column;align-items:flex-end;gap:14px}
 [data-termin-status]{display:inline-flex;align-items:center;gap:9px;font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#C4C4CA}
 [data-termin-status]>span{display:block;width:6px;height:6px;background:#4A9E2E;box-shadow:0 0 9px rgba(74,158,46,.9)}
-[data-termin-tail] a{display:inline-flex;align-items:center;gap:10px;background:#E10600;color:#fff;padding:13px 20px;font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;font-weight:500;transition:background .3s,color .3s}
+[data-termin-tail] a{display:inline-flex;align-items:center;gap:10px;background:#E10600;color:#fff;padding:15px 20px;min-height:44px;font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;font-weight:500;transition:background .3s,color .3s}
 
 [data-form]{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 clamp(20px,3vw,48px);border-top:1px solid rgba(255,255,255,.12)}
 [data-form] label{display:flex;flex-direction:column;gap:10px;padding:22px 0;border-bottom:1px solid rgba(255,255,255,.12)}
@@ -360,9 +443,16 @@ html[data-menu="open"] [data-burger]::after{transform:translate(-50%,-50%) rotat
 @supports (height:100dvh){
   @media (max-width:900px){
     #top>div{height:100dvh!important}
-    [data-areas-grid]{height:100dvh!important;grid-template-rows:44dvh minmax(0,1fr)!important}
+    [data-areas-grid]{height:100dvh!important;grid-template-rows:42dvh minmax(0,1fr)!important}
     [data-wipe]{height:100dvh!important}
   }
+  @media (max-width:900px) and (max-height:760px){
+    [data-areas-grid]{grid-template-rows:34dvh minmax(0,1fr)!important}
+  }
+}
+/* Fallback ohne dvh */
+@media (max-width:900px) and (max-height:760px){
+  [data-areas-grid]{grid-template-rows:34svh minmax(0,1fr)!important}
 }
 
 /* ---- Druck ---- */
@@ -429,7 +519,7 @@ html[data-menu="open"] [data-burger]::after{transform:translate(-50%,-50%) rotat
 
 <section data-screen-label="Fotos" style="position:relative;background:#050506;padding:0 clamp(18px,4vw,64px) clamp(60px,8vw,120px)">
   <div data-gal style="max-width:1500px;margin:0 auto">
-    <figure data-span="6" style="aspect-ratio:16/10"><img loading="lazy" decoding="async" src="assets/gal-hall.jpg" alt="Die Halle: Sprintbahn, Racks und Spiegelwand"><figcaption>01 — Die Halle</figcaption></figure>
+    <figure data-span="6" style="aspect-ratio:16/10"><img loading="eager" fetchpriority="high" src="assets/gal-hall.jpg" alt="Die Halle: Sprintbahn, Racks und Spiegelwand"><figcaption>01 — Die Halle</figcaption></figure>
     <figure data-span="3" style="aspect-ratio:4/5"><img loading="lazy" decoding="async" src="assets/gal-chalk.jpg" alt="Chalk auf der Lifting-Plattform"><figcaption>02 — Chalk</figcaption></figure>
     <figure data-span="3" style="aspect-ratio:4/5"><img loading="lazy" decoding="async" src="assets/gal-led.jpg" alt="Rotes Lichtband über der Spiegelwand"><figcaption>03 — Lichtband</figcaption></figure>
     <figure data-span="4" style="aspect-ratio:4/3"><img loading="lazy" decoding="async" src="assets/eq-racks.jpg" alt="Racks und Cages"><figcaption>04 — Racks &amp; Cages</figcaption></figure>
@@ -444,7 +534,7 @@ html[data-menu="open"] [data-burger]::after{transform:translate(-50%,-50%) rotat
     <figure data-span="6" style="aspect-ratio:16/10"><img loading="lazy" decoding="async" src="assets/gal-stack.jpg" alt="Scheibenstapel an der Maschine"><figcaption>13 — Scheibenstapel</figcaption></figure>
     <figure data-span="4" style="aspect-ratio:4/3"><img loading="lazy" decoding="async" src="assets/eq-machines.jpg" alt="Spezialmaschinen"><figcaption>14 — Spezialmaschinen</figcaption></figure>
     <figure data-span="4" style="aspect-ratio:4/3"><img loading="lazy" decoding="async" src="assets/eq-sled.jpg" alt="Sprintbahn mit Schlitten"><figcaption>15 — Sprintbahn</figcaption></figure>
-    <figure data-span="4" style="aspect-ratio:4/3"><img loading="lazy" decoding="async" src="assets/eq-treadmill.jpg" alt="Laufbänder"><figcaption>16 — Laufbänder</figcaption></figure>
+    <figure data-span="4" style="aspect-ratio:4/3"><img loading="lazy" decoding="async" src="assets/p-cardio.jpg" alt="Laufbänder"><figcaption>16 — Laufbänder</figcaption></figure>
   </div>
 </section>
 
@@ -458,11 +548,11 @@ html[data-menu="open"] [data-burger]::after{transform:translate(-50%,-50%) rotat
       <p style="margin:0;max-width:40ch;font-size:clamp(15px,1.15vw,18px);line-height:1.7;color:#C4C4CA;text-wrap:pretty">Beim Hover läuft der Clip. Auf dem Telefon: einmal antippen.</p>
     </div>
     <div data-gal style="gap:1px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.12)">
-      <figure data-span="6" data-eq-card data-on-pointerenter="eqEnter" data-on-pointerleave="eqLeave" style="aspect-ratio:16/9;background:#050506"><img loading="lazy" decoding="async" src="assets/p-mirror.jpg" alt="Spiegelwand"><video data-src="assets/v-mirror.mp4" muted="muted" loop="loop" playsinline="playsinline" preload="none" style="opacity:0;transition:opacity .6s ease" aria-hidden="true"></video><figcaption><span style="display:inline-block;width:6px;height:6px;background:#E10600;margin-right:8px;vertical-align:middle"></span>REC — Spiegelwand</figcaption></figure>
-      <figure data-span="6" data-eq-card data-on-pointerenter="eqEnter" data-on-pointerleave="eqLeave" style="aspect-ratio:16/9;background:#050506"><img loading="lazy" decoding="async" src="assets/cine-descent-poster.jpg" alt="Abstieg in die Halle"><video data-src="assets/cine-descent.mp4" muted="muted" loop="loop" playsinline="playsinline" preload="none" style="opacity:0;transition:opacity .6s ease" aria-hidden="true"></video><figcaption><span style="display:inline-block;width:6px;height:6px;background:#E10600;margin-right:8px;vertical-align:middle"></span>REC — Abstieg</figcaption></figure>
-      <figure data-span="4" data-eq-card data-on-pointerenter="eqEnter" data-on-pointerleave="eqLeave" style="aspect-ratio:16/10;background:#050506"><img loading="lazy" decoding="async" src="assets/g-dumbbell.jpg" alt="Hantelscheiben"><video data-src="assets/v-dumbbells.mp4" muted="muted" loop="loop" playsinline="playsinline" preload="none" style="opacity:0;transition:opacity .6s ease" aria-hidden="true"></video><figcaption><span style="display:inline-block;width:6px;height:6px;background:#E10600;margin-right:8px;vertical-align:middle"></span>REC — Hanteln</figcaption></figure>
-      <figure data-span="4" data-eq-card data-on-pointerenter="eqEnter" data-on-pointerleave="eqLeave" style="aspect-ratio:16/10;background:#050506"><img loading="lazy" decoding="async" src="assets/g-kettle.jpg" alt="Kettlebells"><video data-src="assets/v-kettle.mp4" muted="muted" loop="loop" playsinline="playsinline" preload="none" style="opacity:0;transition:opacity .6s ease" aria-hidden="true"></video><figcaption><span style="display:inline-block;width:6px;height:6px;background:#E10600;margin-right:8px;vertical-align:middle"></span>REC — Kettlebells</figcaption></figure>
-      <figure data-span="4" data-eq-card data-on-pointerenter="eqEnter" data-on-pointerleave="eqLeave" style="aspect-ratio:16/10;background:#050506"><img loading="lazy" decoding="async" src="assets/v-crane-poster.jpg" alt="Die Halle in der Weite"><video data-src="assets/v-crane.mp4" muted="muted" loop="loop" playsinline="playsinline" preload="none" style="opacity:0;transition:opacity .6s ease" aria-hidden="true"></video><figcaption><span style="display:inline-block;width:6px;height:6px;background:#E10600;margin-right:8px;vertical-align:middle"></span>REC — Weite</figcaption></figure>
+      <figure data-span="6" data-eq-card data-on-pointerenter="eqEnter" data-on-pointerleave="eqLeave" style="aspect-ratio:16/9;background:#050506"><img loading="lazy" decoding="async" src="assets/p-mirror.jpg" alt="Spiegelwand"><video data-src="assets/v-mirror.mp4" data-src-mobile="assets/v-mirror-m.mp4" muted="muted" loop="loop" playsinline="playsinline" preload="none" style="opacity:0;transition:opacity .6s ease" aria-hidden="true"></video><figcaption><span style="display:inline-block;width:6px;height:6px;background:#E10600;margin-right:8px;vertical-align:middle"></span>REC — Spiegelwand</figcaption></figure>
+      <figure data-span="6" data-eq-card data-on-pointerenter="eqEnter" data-on-pointerleave="eqLeave" style="aspect-ratio:16/9;background:#050506"><img loading="lazy" decoding="async" src="assets/cine-descent-poster.jpg" alt="Abstieg in die Halle"><video data-src="assets/cine-descent.mp4" data-src-mobile="assets/cine-descent-m.mp4" muted="muted" loop="loop" playsinline="playsinline" preload="none" style="opacity:0;transition:opacity .6s ease" aria-hidden="true"></video><figcaption><span style="display:inline-block;width:6px;height:6px;background:#E10600;margin-right:8px;vertical-align:middle"></span>REC — Abstieg</figcaption></figure>
+      <figure data-span="4" data-eq-card data-on-pointerenter="eqEnter" data-on-pointerleave="eqLeave" style="aspect-ratio:16/10;background:#050506"><img loading="lazy" decoding="async" src="assets/g-dumbbell.jpg" alt="Hantelscheiben"><video data-src="assets/v-dumbbells.mp4" data-src-mobile="assets/v-dumbbells-m.mp4" muted="muted" loop="loop" playsinline="playsinline" preload="none" style="opacity:0;transition:opacity .6s ease" aria-hidden="true"></video><figcaption><span style="display:inline-block;width:6px;height:6px;background:#E10600;margin-right:8px;vertical-align:middle"></span>REC — Hanteln</figcaption></figure>
+      <figure data-span="4" data-eq-card data-on-pointerenter="eqEnter" data-on-pointerleave="eqLeave" style="aspect-ratio:16/10;background:#050506"><img loading="lazy" decoding="async" src="assets/g-kettle.jpg" alt="Kettlebells"><video data-src="assets/v-kettle.mp4" data-src-mobile="assets/v-kettle-m.mp4" muted="muted" loop="loop" playsinline="playsinline" preload="none" style="opacity:0;transition:opacity .6s ease" aria-hidden="true"></video><figcaption><span style="display:inline-block;width:6px;height:6px;background:#E10600;margin-right:8px;vertical-align:middle"></span>REC — Kettlebells</figcaption></figure>
+      <figure data-span="4" data-eq-card data-on-pointerenter="eqEnter" data-on-pointerleave="eqLeave" style="aspect-ratio:16/10;background:#050506"><img loading="lazy" decoding="async" src="assets/v-crane-poster.jpg" alt="Die Halle in der Weite"><video data-src="assets/v-crane.mp4" data-src-mobile="assets/v-crane-m.mp4" muted="muted" loop="loop" playsinline="playsinline" preload="none" style="opacity:0;transition:opacity .6s ease" aria-hidden="true"></video><figcaption><span style="display:inline-block;width:6px;height:6px;background:#E10600;margin-right:8px;vertical-align:middle"></span>REC — Weite</figcaption></figure>
     </div>
   </div>
 </section>

@@ -111,10 +111,10 @@
         const r = this.reel;
         if (!r.paused) {
           const el = (performance.now() - r.t0) / 1000;
-          const tc = document.querySelector('[data-tc]');
+          const tc = this._tc || (this._tc = document.querySelector('[data-tc]')); // HSK-PATCH 20
           if (tc) { const h = Math.floor(el / 3600), m = Math.floor(el / 60) % 60, s = Math.floor(el) % 60, f = Math.floor((el % 1) * 25); tc.textContent = [h, m, s, f].map((n) => String(n).padStart(2, '0')).join(':'); }
           const prog = Math.min(1, (performance.now() - r.cutAt) / r.hold);
-          document.querySelectorAll('[data-seg]').forEach((seg, k) => {
+          (this._segs || (this._segs = document.querySelectorAll('[data-seg]'))).forEach((seg, k) => {
             const fill = seg.firstElementChild; if (!fill) return;
             const clipIdx = parseInt(r.clips[r.i][1], 10) - 1;
             fill.style.transform = k < clipIdx ? 'scaleX(1)' : (k === clipIdx ? 'scaleX(' + prog.toFixed(3) + ')' : 'scaleX(0)');
@@ -123,7 +123,7 @@
         this._reelRaf = requestAnimationFrame(this.reelTick);
       };
       this.reel.cutAt = performance.now();
-      this._reelRaf = requestAnimationFrame(this.reelTick);
+      if (!this._mob) this._reelRaf = requestAnimationFrame(this.reelTick); // HSK-PATCH 20b
       // HSK-PATCH 12
       this.reel.noCuts = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
       if ((window.scrollY || 0) >= (window.innerHeight || 1) || (!!location.hash && location.hash !== '#top')) { this.setReelPaused(true); return; }
@@ -310,7 +310,11 @@
         m.style.opacity = on ? '1' : '0';
         const v = m.querySelector('video');
         if (!v) return;
-        if (on) { if (!v.getAttribute('src')) v.src = v.dataset.src; v.muted = true; v.loop = true; const pr = v.play(); if (pr && pr.catch) pr.catch(() => {}); v.style.opacity = '1'; }
+        if (on && !this._mob) { // HSK-PATCH 21
+          if (!v.getAttribute('src')) v.src = v.dataset.src;
+          v.muted = true; v.loop = true; const pr = v.play(); if (pr && pr.catch) pr.catch(() => {});
+          v.style.opacity = '1';
+        }
         else if (!v.paused) { v.pause(); }
       });
       const count = document.querySelector('[data-area-count]'); if (count) count.textContent = '0' + (idx + 1) + ' / 03';
@@ -380,7 +384,7 @@
         eqEnter: (e) => {
           const v = e.currentTarget.querySelector('video');
           if (!v) return;
-          if (!v.getAttribute('src')) v.src = v.dataset.src;
+          if (!v.getAttribute('src')) v.src = (this._mob && v.dataset.srcMobile) || v.dataset.src; // HSK-PATCH 22
           v.muted = true; v.loop = true; const pr = v.play(); if (pr && pr.catch) pr.catch(() => {});
           v.style.opacity = '1';
         },
