@@ -188,6 +188,11 @@ html[data-menu="open"] [data-burger]::after{transform:translate(-50%,-50%) rotat
      Desktop bleibt unberührt (alles nur ≤ 900 px).
      ================================================================ */
 
+  /* Hero-HUD und Schlusszeile wechseln auf dem Telefon in einer CSS-Blende
+     (das Skript setzt nur noch 0/1, siehe HSK-PATCH 17) */
+  [data-hero-hud],[data-hero-after]{transition:opacity .5s ease}
+  [data-wipe]{will-change:transform}
+
   /* -- Hero: die rote Fläche sitzt unten und braucht keinen Desktop-Sockel */
   [data-red]{padding-top:22px!important;padding-bottom:calc(22px + env(safe-area-inset-bottom))!important}
   [data-red] h1{margin-top:10px!important}
@@ -285,6 +290,7 @@ html[data-menu="open"] [data-burger]::after{transform:translate(-50%,-50%) rotat
     #top>div{height:100svh!important}
     [data-areas]{height:210svh!important}
     [data-areas-grid]{height:100svh!important;grid-template-rows:44svh minmax(0,1fr)!important}
+    /* (svh = Höhe MIT Adressleiste; die Feinjustierung darauf steht unten in dvh) */
     [data-wipe]{height:100svh!important}
   }
 }
@@ -345,6 +351,22 @@ html[data-menu="open"] [data-burger]::after{transform:translate(-50%,-50%) rotat
 [data-toc] a span{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.2em;color:#E10600;padding-top:3px}
 [data-rights]{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 clamp(18px,3vw,36px);margin-bottom:24px;border-top:1px solid rgba(255,255,255,.12)}
 [data-rights] span{padding:13px 0;border-bottom:1px solid rgba(255,255,255,.12);font-size:15px;color:#DCDCE2}
+
+/* ---- iOS: die Adressleiste ändert die Bildschirmhöhe ----
+   `svh` ist die Höhe MIT eingeblendeter Leiste. Safari blendet sie beim
+   Scrollen aus — dann ist der sichtbare Bereich bis zu 145 px höher als jeder
+   Vollbild-Block, und unter dem Hero, der Bühne und dem roten Wipe steht ein
+   Streifen der nächsten Sektion. `dvh` folgt der Leiste, die Blöcke füllen den
+   Bildschirm also in beiden Zuständen. Die Sektions-HÖHEN bleiben in `svh`:
+   sie bestimmen die Scroll-Strecke, und die darf sich beim Ein- und Ausblenden
+   der Leiste nicht ändern (sonst springt die Seite unter dem Finger weg). */
+@supports (height:100dvh){
+  @media (max-width:900px){
+    #top>div{height:100dvh!important}
+    [data-areas-grid]{height:100dvh!important;grid-template-rows:44dvh minmax(0,1fr)!important}
+    [data-wipe]{height:100dvh!important}
+  }
+}
 
 /* ---- Druck ---- */
 @media print{

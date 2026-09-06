@@ -15,6 +15,22 @@
     state = { booting: true, menu: false, mapOn: false };
     componentDidMount() {
       this._alive = true;
+      // HSK-PATCH 16: Telefon-Kennzeichen — es entscheidet, welche Scroll-Effekte
+      // laufen. Auf iOS liefert Safari die Scroll-Ereignisse während des Nachlaufs
+      // gebündelt; jede pro Frame gesetzte Transformation stottert dort sichtbar.
+      // Muss vor dem ersten sync() stehen, sonst läuft der erste Frame falsch.
+      this._mq = window.matchMedia ? window.matchMedia('(max-width: 900px)') : null;
+      this._mob = !!(this._mq && this._mq.matches);
+      this._onMq = () => {
+        this._mob = !!(this._mq && this._mq.matches);
+        // Beim Wechsel die Inline-Reste der jeweils anderen Fassung löschen
+        ['[data-red]', '[data-hero-video]', '[data-hero-scrim]', '[data-hero-hud]', '[data-hero-after]', '[data-px]', '[data-wipe]'].forEach((s) => {
+          document.querySelectorAll(s).forEach((el) => { el.style.transform = ''; el.style.opacity = ''; el.style.clipPath = ''; });
+        });
+        this._navOn = null; this._hudOn = null; this._afterOn = null;
+        this.sync();
+      };
+      if (this._mq && this._mq.addEventListener) this._mq.addEventListener('change', this._onMq);
       const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       // HSK-PATCH 2: Vorhang nur mit Vorhang-Markup, nie bei Anker-Aufruf
       const skipBoot = reduced || !document.querySelector('[data-if="booting"]') || !!location.hash;
@@ -220,8 +236,17 @@
       const p = Math.min(1, Math.max(0, y / heroSpan));
       this.heroFx(p);
       const nav = document.querySelector('[data-nav]');
-      if (nav) { const on = y > (document.querySelector('[data-hero-video]') ? vh * 0.9 : 24); nav.style.background = on ? 'rgba(5,5,6,.72)' : 'transparent'; nav.style.backdropFilter = on ? 'blur(14px)' : 'none'; nav.style.webkitBackdropFilter = on ? 'blur(14px)' : 'none'; /* HSK-PATCH 5 */ nav.style.borderBottom = on ? '1px solid rgba(255,255,255,.08)' : '1px solid transparent'; }
-      document.querySelectorAll('[data-px]').forEach((el) => {
+      if (nav) { // HSK-PATCH 5
+        const on = y > (document.querySelector('[data-hero-video]') ? vh * 0.9 : 24);
+        if (this._navOn !== on) {
+          this._navOn = on;
+          nav.style.background = on ? 'rgba(5,5,6,.72)' : 'transparent';
+          nav.style.backdropFilter = on ? 'blur(14px)' : 'none';
+          nav.style.webkitBackdropFilter = on ? 'blur(14px)' : 'none';
+          nav.style.borderBottom = on ? '1px solid rgba(255,255,255,.08)' : '1px solid transparent';
+        }
+      }
+      if (!this._mob) document.querySelectorAll('[data-px]').forEach((el) => { // HSK-PATCH 18
         const r = el.getBoundingClientRect();
         if (r.bottom < -200 || r.top > vh + 200) return;
         const c = (r.top + r.height / 2) - vh / 2;
@@ -231,6 +256,17 @@
       this.wipeFx(vh);
     }
     heroFx(p) {
+      if (this._mob) { // HSK-PATCH 17
+        this.setReelPaused(p >= 1 || !!(this.reel && this.reel.userPaused));
+        const hudM = document.querySelector('[data-hero-hud]');
+        const hudOn = p < 0.3;
+        if (hudM && this._hudOn !== hudOn) { this._hudOn = hudOn; hudM.style.opacity = hudOn ? '1' : '0'; }
+        const afterM = document.querySelector('[data-hero-after]');
+        const afterOn = p > 0.45;
+        if (afterM && this._afterOn !== afterOn) { this._afterOn = afterOn; afterM.style.opacity = afterOn ? '1' : '0'; afterM.style.transform = 'none'; }
+        this._overRed = false;
+        return;
+      }
       const q = 1 - Math.pow(1 - p, 3);
       const red = document.querySelector('[data-red]');
       if (red) red.style.transform = 'translate3d(' + (-q * 104).toFixed(2) + '%,0,0)';
@@ -287,7 +323,13 @@
       const r = sec.getBoundingClientRect();
       const p = Math.min(1, Math.max(0, 1 - (r.bottom - vh) / vh));
       const q = 1 - Math.pow(1 - p, 2);
-      w.style.clipPath = 'inset(' + ((1 - q) * 100).toFixed(2) + '% 0 0 0)';
+      if (this._mob) { // HSK-PATCH 19
+        w.style.clipPath = 'none';
+        w.style.transform = 'translate3d(0,' + ((1 - q) * 100).toFixed(2) + '%,0)';
+      } else {
+        w.style.transform = '';
+        w.style.clipPath = 'inset(' + ((1 - q) * 100).toFixed(2) + '% 0 0 0)';
+      }
       const t = w.querySelector('[data-wipe-title]');
       if (t) t.style.transform = 'translate3d(0,' + ((1 - q) * 60).toFixed(1) + 'px,0)';
     }

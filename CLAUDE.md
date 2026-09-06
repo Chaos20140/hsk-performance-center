@@ -108,7 +108,7 @@ Was `build()` tut, in dieser Reihenfolge:
    Section / dem TOC bis vor die Schlusszeile, **entfernt alle Inline-Styles** und setzt
    Kopf + Schlusszeile neu; Optik kommt aus `site.css` (`[data-legal-body]`, `[data-row]`,
    `[data-toc]`, `[data-rights]`). Drei asserted Textkorrekturen (§5.3).
-8. `writeSiteJs()`: Logik wörtlich + `patchLogic()` (19 Marker `HSK-PATCH`) + Shim.
+8. `writeSiteJs()`: Logik wörtlich + `patchLogic()` (23 Marker `HSK-PATCH`) + Shim.
 9. `buildStatic()`: Manifest, robots, sitemap (nur indexierbare Seiten), 404, `.nojekyll`.
 10. Schlussprüfung über alle Seiten: keine `style-hover`, `.dc.html`, `{{`, `<sc-if`,
     Medien-Hotlinks, Google Fonts, Inline-Skripte; externe Referenzen nur Maps/Facebook/
@@ -393,7 +393,19 @@ Drei asserted Korrekturen in `legalPage()`:
     Chrome und die Idiome der Landing — jeder „nur für Unterseiten"-Selektor braucht
     `body[data-sub]`, und Sektionsgrenzen misst man (`rect.bottom` vs. `rect.top`),
     statt sie auf Bildern zu suchen.
-18. **Der Anker-Sprung passiert in Chromium nach DOMContentLoaded.** `scrollY` war beim
+18. **Patch-Reihenfolge — schon wieder** (vgl. Nr. 13). Ein neuer Patch für die
+    Kopfleiste suchte den Text, den ein *späterer* Patch erst erzeugt. Beide betrafen
+    dieselbe Zeile. → **Eine Zeile, ein Patch**: zusammenlegen statt stapeln.
+    Ebenso: die Einrückung im Anker ist die des **Originals** (4 Leerzeichen), nicht
+    die der Ausgabe (6, weil `writeSiteJs` alles um 2 einrückt).
+19. **Ein Kunden-Screenshot kann aus dem Cache stammen.** GitHub Pages liefert
+    `Cache-Control: max-age=600`. Drei Screenshots zeigten Fehler, die lokal längst
+    behoben waren — der Deploy lag drei Minuten davor. → **Erst die Live-Seite mit
+    Cache-Buster in der Gerätegröße nachmessen**, dann diagnostizieren.
+20. **`_mob` wurde nach dem ersten `sync()` gesetzt** — der allererste Frame lief noch
+    im Desktop-Zweig und hinterließ ein Inline-Transform, das auf dem Telefon niemand
+    mehr aufräumte. → Kennzeichen ganz an den Anfang von `componentDidMount`.
+21. **Der Anker-Sprung passiert in Chromium nach DOMContentLoaded.** `scrollY` war beim
     Mount noch 0, also lud der Hero-Clip trotz `#preise`. Der Hash zählt jetzt als
     „nicht im Bild".
 
@@ -442,7 +454,7 @@ Drei asserted Korrekturen in `legalPage()`:
 ```bash
 cd build && HSK_CANONICAL="https://chaos20140.github.io/hsk-performance-center/" node build.js   # muss "OK" sagen
 cd .. && node --check assets/js/site.js
-grep -c 'HSK-PATCH' assets/js/site.js                 # 20 (19 Marker + Kopfkommentar)
+grep -c 'HSK-PATCH' assets/js/site.js                 # 24 (23 Marker + Kopfkommentar)
 grep -ohE '(src|href)="https?://[^"]+"' *.html | sort -u   # nur maps / facebook / canonical
 ```
 
@@ -463,6 +475,31 @@ Nach dem Push: `curl -I` auf `/CLAUDE.md`, `/build/build.js`, `/src/` → müsse
 ---
 
 ## 9. Änderungslog (jede Änderung, neueste oben)
+
+- **2026-09-06 (2) — Ruckeln auf dem Telefon, iOS-Adressleiste.** Tolunay schickte drei
+  iPhone-Screenshots: große Leerflächen und „das rote Banner zieht sich ruckelig nach
+  links". Die Leerflächen waren **Cache** (Screenshot 18:13, Deploy 18:10, Pages
+  cached 10 min) — auf der Live-Seite bei 430 × 932 an allen fünf Stellen 0 px Leere
+  nachgemessen. Das Ruckeln war echt:
+  - **HSK-PATCH 16/17**: `this._mob` (matchMedia ≤ 900 px, gesetzt **vor** dem ersten
+    `sync()`, mit `change`-Listener, der die Inline-Reste der anderen Fassung löscht).
+    `heroFx` kehrt auf dem Telefon früh zurück: **keine** pro Frame gesetzten
+    Transformationen mehr für rote Fläche, Film-Zoom und Schleier. HUD und
+    Schlusszeile wechseln nur noch an einer Schwelle (0/1) und blenden per CSS.
+    Begründung fürs Design: am Rechner fährt die rote Fläche als 46-%-Spalte
+    seitwärts aus dem Bild — auf dem Telefon ist sie ein Block am unteren Rand,
+    ihn seitwärts wegzuschieben trägt gestalterisch nicht und stottert, weil Safari
+    die Scroll-Ereignisse im Nachlauf gebündelt liefert.
+  - **HSK-PATCH 18**: Parallax (`[data-px]`) auf dem Telefon aus.
+  - **HSK-PATCH 5** (erweitert): Hintergrund und Weichzeichner der Leiste nur beim
+    Zustandswechsel schreiben statt in jedem Frame (`backdrop-filter` ist auf iOS teuer).
+  - **HSK-PATCH 19**: der rote Wipe auf dem Telefon als `translate3d` statt `clip-path`
+    — Compositor statt Neuzeichnen des ganzen Blocks.
+  - **`dvh` für die Vollbild-Blöcke** (`#top>div`, `[data-areas-grid]`, `[data-wipe]`):
+    `svh` ist die Höhe **mit** Adressleiste; blendet Safari sie beim Scrollen aus, ist
+    der sichtbare Bereich bis zu 145 px höher als jeder Vollbild-Block und darunter
+    steht ein Streifen der nächsten Sektion. Die Sektions-**Höhen** bleiben in `svh`,
+    damit sich die Scroll-Strecke beim Ein-/Ausblenden nicht ändert.
 
 - **2026-09-06 — Mobiler Rhythmus** (Tolunay: „viel zu weite Abstände … das Scrollen
   muss noch angepasst werden"). Gemessen: 18,47 Bildschirme, davon 5,3 reines

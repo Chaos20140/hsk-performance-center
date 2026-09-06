@@ -683,6 +683,22 @@ function patchLogic(js) {
   // 2) Vorhang nur dort, wo er existiert (Startseite) — und nie, wenn jemand
   //    per Anker kommt (index.html#preise): scrollTo(0,0) würde den Sprung fressen.
   patch("    window.scrollTo(0, 0);\n    const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;\n    if (reduced) { this.setState({ booting: false }); }\n    else {",
+        "    // HSK-PATCH 16: Telefon-Kennzeichen — es entscheidet, welche Scroll-Effekte\n" +
+        "    // laufen. Auf iOS liefert Safari die Scroll-Ereignisse während des Nachlaufs\n" +
+        "    // gebündelt; jede pro Frame gesetzte Transformation stottert dort sichtbar.\n" +
+        "    // Muss vor dem ersten sync() stehen, sonst läuft der erste Frame falsch.\n" +
+        "    this._mq = window.matchMedia ? window.matchMedia('(max-width: 900px)') : null;\n" +
+        "    this._mob = !!(this._mq && this._mq.matches);\n" +
+        "    this._onMq = () => {\n" +
+        "      this._mob = !!(this._mq && this._mq.matches);\n" +
+        "      // Beim Wechsel die Inline-Reste der jeweils anderen Fassung löschen\n" +
+        "      ['[data-red]', '[data-hero-video]', '[data-hero-scrim]', '[data-hero-hud]', '[data-hero-after]', '[data-px]', '[data-wipe]'].forEach((s) => {\n" +
+        "        document.querySelectorAll(s).forEach((el) => { el.style.transform = ''; el.style.opacity = ''; el.style.clipPath = ''; });\n" +
+        "      });\n" +
+        "      this._navOn = null; this._hudOn = null; this._afterOn = null;\n" +
+        "      this.sync();\n" +
+        "    };\n" +
+        "    if (this._mq && this._mq.addEventListener) this._mq.addEventListener('change', this._onMq);\n" +
         "    const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;\n" +
         "    // HSK-PATCH 2: Vorhang nur mit Vorhang-Markup, nie bei Anker-Aufruf\n" +
         "    const skipBoot = reduced || !document.querySelector('[data-if=\"booting\"]') || !!location.hash;\n" +
@@ -761,6 +777,47 @@ function patchLogic(js) {
   patch("    if (paused) clearTimeout(r.timer); else { r.cutAt = performance.now(); this.scheduleCut(); }",
         "    if (paused) clearTimeout(r.timer); else if (!r.noCuts) { r.cutAt = performance.now(); this.scheduleCut(); }", 'setReelPaused cuts');
 
+  // 17) Der Hero auf dem Telefon: keine pro Frame gesetzten Transformationen.
+  //     Am Rechner fährt die rote Fläche als 46-%-Spalte seitwärts aus dem Bild —
+  //     eine Bewegung, die dort trägt. Auf dem Telefon ist sie ein Block am
+  //     unteren Rand; ihn seitwärts wegzuschieben ergibt gestalterisch wenig und
+  //     ruckelt zudem (Safari liefert die Scroll-Ereignisse gebündelt nach).
+  //     Der Hero scrollt dort einfach weg; HUD und Schlusszeile wechseln in einer
+  //     CSS-Blende (site.css), also auf dem Compositor statt im Skript.
+  patch("  heroFx(p) {\n    const q = 1 - Math.pow(1 - p, 3);",
+        "  heroFx(p) {\n" +
+        "    if (this._mob) { // HSK-PATCH 17\n" +
+        "      this.setReelPaused(p >= 1 || !!(this.reel && this.reel.userPaused));\n" +
+        "      const hudM = document.querySelector('[data-hero-hud]');\n" +
+        "      const hudOn = p < 0.3;\n" +
+        "      if (hudM && this._hudOn !== hudOn) { this._hudOn = hudOn; hudM.style.opacity = hudOn ? '1' : '0'; }\n" +
+        "      const afterM = document.querySelector('[data-hero-after]');\n" +
+        "      const afterOn = p > 0.45;\n" +
+        "      if (afterM && this._afterOn !== afterOn) { this._afterOn = afterOn; afterM.style.opacity = afterOn ? '1' : '0'; afterM.style.transform = 'none'; }\n" +
+        "      this._overRed = false;\n" +
+        "      return;\n" +
+        "    }\n" +
+        "    const q = 1 - Math.pow(1 - p, 3);", 'heroFx mobile');
+
+  // 18) Parallax und Nav-Schreibarbeit: der Parallax fällt auf dem Telefon weg
+  //     (die Bilder stehen dort ohnehin bündig, siehe site.css), und Hintergrund
+  //     samt Weichzeichner der Leiste werden nur beim Zustandswechsel gesetzt
+  //     statt in jedem Frame — backdrop-filter ist auf iOS teuer.
+  patch("    document.querySelectorAll('[data-px]').forEach((el) => {",
+        "    if (!this._mob) document.querySelectorAll('[data-px]').forEach((el) => { // HSK-PATCH 18", 'parallax mobile');
+
+  // 19) Der rote Wipe: clip-path zwingt jeden Frame zu einem Neuzeichnen des
+  //     ganzen Blocks. Auf dem Telefon dieselbe Bewegung als translate3d — das
+  //     läuft auf dem Compositor und bleibt auch beim Nachlauf-Scrollen glatt.
+  patch("    w.style.clipPath = 'inset(' + ((1 - q) * 100).toFixed(2) + '% 0 0 0)';",
+        "    if (this._mob) { // HSK-PATCH 19\n" +
+        "      w.style.clipPath = 'none';\n" +
+        "      w.style.transform = 'translate3d(0,' + ((1 - q) * 100).toFixed(2) + '%,0)';\n" +
+        "    } else {\n" +
+        "      w.style.transform = '';\n" +
+        "      w.style.clipPath = 'inset(' + ((1 - q) * 100).toFixed(2) + '% 0 0 0)';\n" +
+        "    }", 'wipe transform');
+
   // 15) Der Hero-Effekt (rote Fläche fährt raus, Film zoomt zurück, „Die Halle"
   //     blendet ein) lief über eine feste Bildschirmhöhe. Das stimmt nur, solange
   //     die Sektion 200 vh hoch ist — auf dem Telefon sind es 150, die Klebestrecke
@@ -815,10 +872,22 @@ function patchLogic(js) {
         "    this._onVis = () => { if (!this.reel) return; if (document.hidden) this.setReelPaused(true); else if ((window.scrollY || 0) < window.innerHeight && !this.reel.userPaused) this.setReelPaused(false); };\n" +
         "    document.addEventListener('visibilitychange', this._onVis);", 'mount tail');
 
-  // 5) WebKit vor Safari 18 kennt backdrop-filter nur mit Präfix; die Leiste
-  //    ist auf jeder Unterseite ab dem ersten Pixel gefüllt (kein Film darunter).
-  patch("    if (nav) { const on = y > vh * 0.9; nav.style.background = on ? 'rgba(5,5,6,.72)' : 'transparent'; nav.style.backdropFilter = on ? 'blur(14px)' : 'none';",
-        "    if (nav) { const on = y > (document.querySelector('[data-hero-video]') ? vh * 0.9 : 24); nav.style.background = on ? 'rgba(5,5,6,.72)' : 'transparent'; nav.style.backdropFilter = on ? 'blur(14px)' : 'none'; nav.style.webkitBackdropFilter = on ? 'blur(14px)' : 'none'; /* HSK-PATCH 5 */", 'nav scrim');
+  // 5) Drei Dinge an der Kopfleiste auf einmal (ein Patch, weil sie dieselbe
+  //    Zeile betreffen — getrennte Patches würden einander die Anker wegziehen):
+  //    WebKit vor Safari 18 kennt backdrop-filter nur mit Präfix; auf Unterseiten
+  //    ist die Leiste ab dem ersten Pixel gefüllt (kein Film darunter); und
+  //    geschrieben wird nur beim Zustandswechsel — backdrop-filter in jedem
+  //    Scroll-Frame neu zu setzen ist auf iOS teuer.
+  patch("    if (nav) { const on = y > vh * 0.9; nav.style.background = on ? 'rgba(5,5,6,.72)' : 'transparent'; nav.style.backdropFilter = on ? 'blur(14px)' : 'none'; nav.style.borderBottom = on ? '1px solid rgba(255,255,255,.08)' : '1px solid transparent'; }",
+        "    if (nav) { // HSK-PATCH 5\n" +
+        "      const on = y > (document.querySelector('[data-hero-video]') ? vh * 0.9 : 24);\n" +
+        "      if (this._navOn !== on) {\n" +
+        "        this._navOn = on;\n" +
+        "        nav.style.background = on ? 'rgba(5,5,6,.72)' : 'transparent';\n" +
+        "        nav.style.backdropFilter = on ? 'blur(14px)' : 'none';\n" +
+        "        nav.style.webkitBackdropFilter = on ? 'blur(14px)' : 'none';\n" +
+        "        nav.style.borderBottom = on ? '1px solid rgba(255,255,255,.08)' : '1px solid transparent';\n" +
+        "      }\n    }", 'nav scrim');
 
   // 6) Menüzustand für Screenreader und CSS
   patch("    this.setState({ menu: open });\n    document.documentElement.style.overflow = open ? 'hidden' : '';",
@@ -842,7 +911,7 @@ function patchLogic(js) {
         "      if (d >= 2) el.style.animationDelay = Math.max(0, d - 2.3).toFixed(2) + 's';\n" +
         "    });\n  }\n  bootReel() {", 'skipIntroDelays');
 
-  must(count(/HSK-PATCH/g, js) === 19, 'expected 19 HSK-PATCH markers, got ' + count(/HSK-PATCH/g, js));
+  must(count(/HSK-PATCH/g, js) === 23, 'expected 23 HSK-PATCH markers, got ' + count(/HSK-PATCH/g, js));
   return js;
 }
 
