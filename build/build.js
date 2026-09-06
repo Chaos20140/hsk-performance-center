@@ -761,6 +761,16 @@ function patchLogic(js) {
   patch("    if (paused) clearTimeout(r.timer); else { r.cutAt = performance.now(); this.scheduleCut(); }",
         "    if (paused) clearTimeout(r.timer); else if (!r.noCuts) { r.cutAt = performance.now(); this.scheduleCut(); }", 'setReelPaused cuts');
 
+  // 15) Der Hero-Effekt (rote Fläche fährt raus, Film zoomt zurück, „Die Halle"
+  //     blendet ein) lief über eine feste Bildschirmhöhe. Das stimmt nur, solange
+  //     die Sektion 200 vh hoch ist — auf dem Telefon sind es 150, die Klebestrecke
+  //     also eine halbe Bildschirmhöhe. Der Effekt wird jetzt aus der tatsächlichen
+  //     Sektionshöhe abgeleitet und ist damit von der CSS-Höhe unabhängig.
+  patch("    const p = Math.min(1, Math.max(0, y / vh));\n    this.heroFx(p);",
+        "    const hero = document.getElementById('top'); // HSK-PATCH 15\n" +
+        "    const heroSpan = hero ? Math.max(1, hero.offsetHeight - vh) : vh;\n" +
+        "    const p = Math.min(1, Math.max(0, y / heroSpan));\n    this.heroFx(p);", 'hero span');
+
   // 13) Pause-Knopf im HUD (WCAG 2.2.2) — ein Nutzerstopp überdauert das Scrollen
   patch("    this.setReelPaused(p >= 1);",
         "    this.setReelPaused(p >= 1 || !!(this.reel && this.reel.userPaused)); // HSK-PATCH 13", 'heroFx pause');
@@ -832,7 +842,7 @@ function patchLogic(js) {
         "      if (d >= 2) el.style.animationDelay = Math.max(0, d - 2.3).toFixed(2) + 's';\n" +
         "    });\n  }\n  bootReel() {", 'skipIntroDelays');
 
-  must(count(/HSK-PATCH/g, js) === 18, 'expected 18 HSK-PATCH markers, got ' + count(/HSK-PATCH/g, js));
+  must(count(/HSK-PATCH/g, js) === 19, 'expected 19 HSK-PATCH markers, got ' + count(/HSK-PATCH/g, js));
   return js;
 }
 

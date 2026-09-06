@@ -215,7 +215,9 @@
       if (mbar) { const on = y > vh * 0.85; mbar.style.transform = on ? 'translate3d(0,0,0)' : 'translate3d(0,110%,0)'; mbar.style.transition = 'transform .5s cubic-bezier(.16,1,.3,1)'; }
       const bar = document.querySelector('[data-progress]');
       if (bar) bar.style.transform = 'scaleX(' + prog.toFixed(4) + ')';
-      const p = Math.min(1, Math.max(0, y / vh));
+      const hero = document.getElementById('top'); // HSK-PATCH 15
+      const heroSpan = hero ? Math.max(1, hero.offsetHeight - vh) : vh;
+      const p = Math.min(1, Math.max(0, y / heroSpan));
       this.heroFx(p);
       const nav = document.querySelector('[data-nav]');
       if (nav) { const on = y > (document.querySelector('[data-hero-video]') ? vh * 0.9 : 24); nav.style.background = on ? 'rgba(5,5,6,.72)' : 'transparent'; nav.style.backdropFilter = on ? 'blur(14px)' : 'none'; nav.style.webkitBackdropFilter = on ? 'blur(14px)' : 'none'; /* HSK-PATCH 5 */ nav.style.borderBottom = on ? '1px solid rgba(255,255,255,.08)' : '1px solid transparent'; }

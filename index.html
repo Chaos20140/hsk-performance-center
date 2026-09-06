@@ -167,18 +167,119 @@ html[data-menu="open"] [data-burger]::after{transform:translate(-50%,-50%) rotat
   #faq [data-two]>div:first-child{position:static!important}
   /* Bereiche-Bühne: rechts „HSK — BRILON" kollidiert auf 375 px mit dem REC-Label */
   [data-areas-stage]>div:last-child{display:none!important}
+  /* Der Index steht im Design oben („flex-start", damit die Liste nicht wandert).
+     Auf 844 px bleiben darunter ~280 px leerer Klebe-Raum stehen — er wirkt wie
+     ein Abbruch der Seite. Zentriert füllt der Block den Platz, ohne dass die
+     Zeilen beim Bereichswechsel springen (die Höhe ändert sich symmetrisch). */
+  [data-areas-index]{justify-content:center!important;padding-top:20px!important;padding-bottom:calc(20px + env(safe-area-inset-bottom))!important;gap:14px!important}
   /* Karte: 4:3 ist auf dem Telefon zu flach für das Einwilligungsfeld; der Koordinaten-Chip wandert nach unten */
   #kontakt [data-two]>div:last-child{aspect-ratio:1/1!important}
   #kontakt [data-two]>div:last-child>div:last-child{top:auto!important;bottom:14px!important}
+
+  /* ================================================================
+     RHYTHMUS AUF DEM TELEFON
+     Die Abstände des Designs sind für 1500 px gerechnet: dort trägt ein
+     170-px-Sockel eine 1400 px breite Fläche. Auf 390 px steht dieselbe
+     Zahl über einer einzigen Textspalte und wirkt als Loch — die Seite
+     wurde dadurch 18,5 Bildschirme lang. Hier ein eigener, engerer
+     Takt: Sockel 52 px, Abstand zwischen Blöcken 24–32 px.
+     Desktop bleibt unberührt (alles nur ≤ 900 px).
+     ================================================================ */
+
+  /* -- Hero: die rote Fläche sitzt unten und braucht keinen Desktop-Sockel */
+  [data-red]{padding-top:22px!important;padding-bottom:calc(22px + env(safe-area-inset-bottom))!important}
+  [data-red] h1{margin-top:10px!important}
+  [data-red] p{margin-top:12px!important}
+  [data-red-cta]{margin-top:16px!important}
+  [data-red-facts]{margin-top:16px!important;padding-top:10px!important}
+  /* „Die Halle. Täglich 06–24." lag auf dem HUD (beide oben) — jetzt darunter */
+  [data-hero-after]{top:112px!important}
+
+  /* -- Sektions-Sockel */
+  #haltung{padding-top:52px!important}
+  #ausstattung>div{padding-top:52px!important;padding-bottom:40px!important}
+  #preise{padding-bottom:56px!important}
+  #partner{padding-top:52px!important;padding-bottom:56px!important}
+  #faq{padding-bottom:56px!important}
+  #faq>div{padding-top:44px!important;gap:20px!important}
+  #kontakt{padding-bottom:56px!important}
+  #kontakt>div{padding-top:44px!important}
+  #loslegen>div:last-child{padding-top:32px!important;padding-bottom:32px!important}
+  footer{padding-top:44px!important}
+  footer>div:first-child{gap:28px!important}
+
+  /* -- Haltung: Überschrift → Text → Zahlen → Bilder */
+  #haltung>div:first-child>h2{margin-top:16px!important}
+  #haltung>div:first-child>div:nth-child(3){margin-top:28px!important;gap:24px!important}
+  #haltung>div:first-child>div:nth-child(4){margin-top:32px!important}
+  /* Das Bildpaar steht im 12-Spalten-Raster mit 70–220 px Versatz. Auf einer
+     Telefonbreite bleiben davon zwei Briefmarken mit viel Leere ringsum —
+     also oben bündig nebeneinander, Bildunterschrift über die volle Breite. */
+  #haltung figure[data-px]{margin-top:0!important}
+  #haltung figure[data-px="-14"]{grid-column:1/span 5!important}
+  #haltung figure[data-px="10"]{grid-column:6/span 7!important;aspect-ratio:4/5!important}
+  #haltung div[data-px="-6"]{grid-column:1/span 12!important;margin-top:12px!important}
+  /* Ohne den Versatz würde der Parallax (±56 px, von sync() inline gesetzt) die
+     Bilder in das Zahlenraster darüber schieben — auf dem Telefon stehen sie still */
+  #haltung [data-px]{transform:none!important}
+  /* Laufschrift-Band */
+  #haltung>div:last-child{margin-top:44px!important;padding-top:12px!important;padding-bottom:12px!important}
+
+  /* -- Ausstattung: sechs gestapelte Karten waren allein 2,3 Bildschirme */
+  #ausstattung>div>div:nth-child(2){margin-top:24px!important}
+  [data-eq-card]{padding:14px!important;gap:14px!important}
+  [data-eq-card]>div:first-child{aspect-ratio:16/9!important}
+  #ausstattung>div>div:last-child{margin-top:28px!important;padding-top:20px!important;gap:18px!important}
+
+  /* -- Preise */
+  #preise>div>p{margin-bottom:22px!important}
+  #preise article{padding:20px!important;gap:14px!important}
+  #preise article>div:nth-child(3){font-size:56px!important}
+  #preise>div>div:last-child{margin-top:28px!important;padding-top:20px!important}
+  #preise>div>div:last-child>div:first-child{margin-bottom:20px!important}
+  #preise>div>div:last-child>div:nth-child(2){gap:24px!important}
+
+  /* -- Partner: feste Mindesthöhen sind auf dem Telefon leere Kästen */
+  #partner>div>div:first-child{margin-bottom:24px!important}
+  #partner article{min-height:0!important;padding:22px!important;gap:20px!important}
+
+  /* -- FAQ + Standort */
+  [data-faq-head]{padding-top:16px!important;padding-bottom:16px!important}
+  [data-faq-body] p{margin-bottom:18px!important}
+  #kontakt h2{margin-top:16px!important;margin-bottom:24px!important}
+  #kontakt [data-two]{gap:20px!important}
+  [data-kv]{padding-top:12px!important;padding-bottom:12px!important;gap:10px!important}
+  #kontakt [data-two]>div:first-child>p{margin-top:16px!important}
+
+  /* -- Unterseiten: gleicher Takt */
+  main>section[data-screen-label]{padding-top:52px!important;padding-bottom:52px!important}
+  /* Der Seitenkopf braucht unten keinen eigenen Sockel — die nächste Sektion bringt ihren mit */
+  main>section[data-screen-label]:first-child{padding-top:96px!important;padding-bottom:32px!important}
+  [data-gal]{gap:8px!important}
+  [data-termin]{padding-top:20px!important;padding-bottom:20px!important}
+  [data-quali]{gap:6px!important}
+  [data-form] label{padding-top:16px!important;padding-bottom:16px!important}
+
+  /* Overlay-Menü: kein Weiterscrollen der Seite dahinter */
+  [data-overlay]{overscroll-behavior:contain}
 }
 /* iOS: 100vh ist dort die Höhe OHNE Leisten — der untere Rand des Hero (rote
    Fläche, Knopf) läge hinter der Safari-Leiste. svh ist die sichtbare Höhe. */
+/* Scroll-Strecken der Sticky-Sektionen: am Rechner fährt die rote Fläche über
+   eine volle Bildschirmhöhe seitwärts aus dem Bild, und jeder Trainingsbereich
+   bekommt 110 vh Weg. Auf dem Telefon steht die rote Fläche unten und die
+   Bühne ist 38 svh hoch — dieselben Strecken fühlen sich dort an, als hinge
+   das Scrollen. Hero 200→150, Bereiche 330→210 (je Bereich 37 vh). */
+@media (max-width:900px){
+  #top{height:150vh!important}
+  [data-areas]{height:210vh!important}
+}
 @supports (height:100svh){
   @media (max-width:900px){
-    #top{height:200svh!important}
+    #top{height:150svh!important}
     #top>div{height:100svh!important}
-    [data-areas]{height:330svh!important}
-    [data-areas-grid]{height:100svh!important;grid-template-rows:40svh minmax(0,1fr)!important}
+    [data-areas]{height:210svh!important}
+    [data-areas-grid]{height:100svh!important;grid-template-rows:44svh minmax(0,1fr)!important}
     [data-wipe]{height:100svh!important}
   }
 }

@@ -108,7 +108,7 @@ Was `build()` tut, in dieser Reihenfolge:
    Section / dem TOC bis vor die Schlusszeile, **entfernt alle Inline-Styles** und setzt
    Kopf + Schlusszeile neu; Optik kommt aus `site.css` (`[data-legal-body]`, `[data-row]`,
    `[data-toc]`, `[data-rights]`). Drei asserted Textkorrekturen (§5.3).
-8. `writeSiteJs()`: Logik wörtlich + `patchLogic()` (18 Marker `HSK-PATCH`) + Shim.
+8. `writeSiteJs()`: Logik wörtlich + `patchLogic()` (19 Marker `HSK-PATCH`) + Shim.
 9. `buildStatic()`: Manifest, robots, sitemap (nur indexierbare Seiten), 404, `.nojekyll`.
 10. Schlussprüfung über alle Seiten: keine `style-hover`, `.dc.html`, `{{`, `<sc-if`,
     Medien-Hotlinks, Google Fonts, Inline-Skripte; externe Referenzen nur Maps/Facebook/
@@ -432,7 +432,7 @@ Drei asserted Korrekturen in `legalPage()`:
 ```bash
 cd build && HSK_CANONICAL="https://chaos20140.github.io/hsk-performance-center/" node build.js   # muss "OK" sagen
 cd .. && node --check assets/js/site.js
-grep -c 'HSK-PATCH' assets/js/site.js                 # 19 (18 Marker + Kopfkommentar)
+grep -c 'HSK-PATCH' assets/js/site.js                 # 20 (19 Marker + Kopfkommentar)
 grep -ohE '(src|href)="https?://[^"]+"' *.html | sort -u   # nur maps / facebook / canonical
 ```
 
@@ -453,6 +453,26 @@ Nach dem Push: `curl -I` auf `/CLAUDE.md`, `/build/build.js`, `/src/` → müsse
 ---
 
 ## 9. Änderungslog (jede Änderung, neueste oben)
+
+- **2026-09-06 — Mobiler Rhythmus** (Tolunay: „viel zu weite Abstände … das Scrollen
+  muss noch angepasst werden"). Gemessen: 18,47 Bildschirme, davon 5,3 reines
+  Klebe-Scrollen. Jetzt **16,18** (−12 %), Desktop unverändert (15,69).
+  Alles in `site.css` unter ≤ 900 px, plus zwei Fehler, die dabei aufgefallen sind:
+  - **Scroll-Strecken**: Hero 200 → 150 svh, Bereiche 330 → 210 svh (37 vh je Bereich).
+  - **HSK-PATCH 15**: `heroFx` bekam seine Strecke aus einer festen Bildschirmhöhe —
+    das stimmt nur bei 200 vh. Jetzt aus `#top.offsetHeight − vh`, also unabhängig
+    von der CSS-Höhe (am Rechner rechnerisch identisch zu vorher).
+  - **Parallax in „Haltung"**: ohne den Desktop-Versatz (70–220 px) schoben die
+    ±56 px Parallax die Bilder ins Zahlenraster. Auf dem Telefon `transform:none`,
+    Bilder oben bündig nebeneinander (5/12 + 7/12), Bildunterschrift volle Breite.
+  - **Bereichs-Index** war oben ausgerichtet → ~280 px leerer Klebe-Raum unter
+    „03 / 03". Jetzt zentriert, Bühne 40 → 44 svh.
+  - **Sockel** 80–90 → 52 px, Blockabstände 44–80 → 24–32 px, Karten enger
+    (Ausstattung 325 → 300 px, Preise 293 → 252 px, Partner ohne Mindesthöhe),
+    `[data-kv]` 17 → 12 px, Seitenkopf der Unterseiten unten 32 px.
+  - **Hero**: „Die Halle. Täglich 06–24." lag auf dem REC-HUD (beide `top:~66px`) —
+    jetzt `top:112px`. Rote Fläche mit engerem Innenabstand.
+  - Overlay-Menü `overscroll-behavior:contain`.
 
 - **2026-09-05 (Prüfrunde)** — 29 bestätigte + selbst bewertete Befunde umgesetzt, alles in
   §5.1a: `marquee.js` neu, Reel-Patches 9–14 (preload, playAll, Bereichs-Videos,
