@@ -383,7 +383,17 @@ Drei asserted Korrekturen in `legalPage()`:
     unverifizierten Befunde (mobile/html/build) habe ich selbst bewertet; alle
     berechtigten sind umgesetzt (§5.1a), die übrigen begründet verworfen (robots.txt
     auf Project-Pages wirkungslos → egal; README öffentlich → ist ohnehin public).
-16. **Der Anker-Sprung passiert in Chromium nach DOMContentLoaded.** `scrollY` war beim
+17. **Ein Selektor „für die Unterseiten" traf auch die Startseite.**
+    `main>section[data-screen-label]{padding:52px 0}` sollte den Unterseiten einen
+    Takt geben — die Landing-Sektionen tragen dieselben Labels. Folge: 52 px unter
+    der Ausstattung, also ein schwarzer Spalt zwischen dem roten Wipe und der roten
+    Preisfläche (der Wipe klebt `bottom:0` am Container, das Padding schiebt ihn
+    hoch). Aufgefallen erst beim Nachmessen der Sektionsgrenze, nicht im Screenshot.
+    → Auf `body[data-sub]` eingeschränkt. **Merke:** die Unterseiten benutzen das
+    Chrome und die Idiome der Landing — jeder „nur für Unterseiten"-Selektor braucht
+    `body[data-sub]`, und Sektionsgrenzen misst man (`rect.bottom` vs. `rect.top`),
+    statt sie auf Bildern zu suchen.
+18. **Der Anker-Sprung passiert in Chromium nach DOMContentLoaded.** `scrollY` war beim
     Mount noch 0, also lud der Hero-Clip trotz `#preise`. Der Hash zählt jetzt als
     „nicht im Bild".
 
@@ -457,7 +467,8 @@ Nach dem Push: `curl -I` auf `/CLAUDE.md`, `/build/build.js`, `/src/` → müsse
 - **2026-09-06 — Mobiler Rhythmus** (Tolunay: „viel zu weite Abstände … das Scrollen
   muss noch angepasst werden"). Gemessen: 18,47 Bildschirme, davon 5,3 reines
   Klebe-Scrollen. Jetzt **16,18** (−12 %), Desktop unverändert (15,69).
-  Alles in `site.css` unter ≤ 900 px, plus zwei Fehler, die dabei aufgefallen sind:
+  Alles in `site.css` unter ≤ 900 px, plus drei Fehler, die dabei aufgefallen sind
+  (der dritte war mein eigener, siehe §6 Nr. 17):
   - **Scroll-Strecken**: Hero 200 → 150 svh, Bereiche 330 → 210 svh (37 vh je Bereich).
   - **HSK-PATCH 15**: `heroFx` bekam seine Strecke aus einer festen Bildschirmhöhe —
     das stimmt nur bei 200 vh. Jetzt aus `#top.offsetHeight − vh`, also unabhängig
@@ -473,6 +484,8 @@ Nach dem Push: `curl -I` auf `/CLAUDE.md`, `/build/build.js`, `/src/` → müsse
   - **Hero**: „Die Halle. Täglich 06–24." lag auf dem REC-HUD (beide `top:~66px`) —
     jetzt `top:112px`. Rote Fläche mit engerem Innenabstand.
   - Overlay-Menü `overscroll-behavior:contain`.
+  - Nachtrag: der Unterseiten-Sockel traf auch die Landing (§6 Nr. 17) — jetzt
+    `body[data-sub]`, Endstand **15,71** Bildschirme.
 
 - **2026-09-05 (Prüfrunde)** — 29 bestätigte + selbst bewertete Befunde umgesetzt, alles in
   §5.1a: `marquee.js` neu, Reel-Patches 9–14 (preload, playAll, Bereichs-Videos,
