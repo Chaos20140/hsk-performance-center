@@ -169,14 +169,14 @@ HUD: `[data-tc]` Timecode, `[data-seg]` 10 Segmente (nur Desktop, `data-hide-m`)
 
 | Was | Methode | Hooks |
 |---|---|---|
-| Rote Fläche fährt seitwärts aus dem Bild — Rechner Bild für Bild, Telefon als CSS-Blende an einem Schaltpunkt —, Video zoomt zurück, „Die Halle." erscheint | `heroFx` | `[data-red]`, `[data-hero-video]`, `[data-hero-after]`, `[data-nav-logo]` |
-| Trainingsbereiche: das ganze Raster klebt, nur der Bereich wechselt — Rechner 330 vh, Telefon 250 dvh (Klebestrecke = Sektion minus Raster, **gemessen**) | `areasFx`, `goArea` | `[data-areas]`, `[data-areas-grid]`, `[data-area-row]`, `[data-area-media]` |
-| Roter Wipe „Eine Leistung. Drei Laufzeiten." — **Rechner:** sticky bottom + clip-path am Scrollrad. **Telefon:** schiebt sich von links nach rechts herein, danach — erst wenn das Rot komplett steht — steigt die Schrift ein (CSS-Blende, Skript setzt nur `data-wipe-auf`); belegt dort keinen eigenen Platz im Fluss | `wipeFx` | `[data-eq]`, `[data-wipe]` |
+| Rote Fläche fährt seitwärts aus dem Bild (Telefon mit eigener Kurve), Video zoomt zurück, „Die Halle." erscheint | `heroFx` | `[data-red]`, `[data-hero-video]`, `[data-hero-after]`, `[data-nav-logo]` |
+| Trainingsbereiche: das ganze Raster klebt, nur der Bereich wechselt (330 vh, Raster 100 vh/dvh; Klebestrecke = Sektion minus Raster) | `areasFx`, `goArea` | `[data-areas]`, `[data-areas-grid]`, `[data-area-row]`, `[data-area-media]` |
+| Roter Wipe „Eine Leistung. Drei Laufzeiten." — **Rechner:** clip-path von oben. **Telefon:** clip-path von links nach rechts, die Schrift steigt wortweise ein, dazu der Preis-Zusatz | `wipeFx` | `[data-eq]`, `[data-wipe]`, `[data-wipe-word]`, `[data-wipe-sub]` |
 | Ausstattungs-Clips beim Hover | `eqEnter/eqLeave` | `[data-eq-card] video[data-src]` |
 | FAQ | `toggleFaq` | `[data-faq-head]`, `[data-faq-body]` (max-height) |
-| Nav-Hintergrund, SCRL %, Progress-Balken, Mobilleiste ab 0,85 vh, Parallax | `sync` | `[data-nav]`, `[data-scrl]`, `[data-progress]`, `[data-mbar]`, `[data-px]` |
+| Nav-Hintergrund, SCRL %, Progress-Balken, Mobilleiste ab 0,7 vh, Parallax | `sync` | `[data-nav]`, `[data-scrl]`, `[data-progress]`, `[data-mbar]`, `[data-px]` |
 | Öffnungsstatus | `renderVals().statusText` | `h >= 6` → „JETZT GEÖFFNET · BIS 24 UHR" |
-| Karte: `ll=`-Einbettung ohne Google-Nadel, eigene rote Marke in der Mitte, ganze Fläche startet die Route (Apple Karten / Google Maps) | `loadMap` + `armMap` im Shim | `[data-if="mapOn"/"mapOff"]`, `[data-map-frame]`, `[data-map-open]`, `[data-map-pin]` |
+| Karte: `ll=`-Einbettung ohne Google-Nadel (die pulsierende Marke kommt aus dem Design), ganze Fläche startet die Route (Apple Karten / Google Maps) | `loadMap` + `armMap` im Shim | `[data-if="mapOn"/"mapOff"]`, `[data-map-frame]`, `[data-map-open]` |
 
 Scroll-getriebene Reveals laufen über `animation-timeline: view()`; ohne Support
 (Firefox/ältere Safari) spielt die Animation einmal beim Laden und endet dank `both`
@@ -523,7 +523,7 @@ Drei asserted Korrekturen in `legalPage()`:
 ```bash
 cd build && HSK_CANONICAL="https://chaos20140.github.io/hsk-performance-center/" node build.js   # muss "OK" sagen
 cd .. && node --check assets/js/site.js
-grep -c 'HSK-PATCH' assets/js/site.js                 # 32 (31 Marker + Kopfkommentar)
+grep -c 'HSK-PATCH' assets/js/site.js                 # 23 (22 Marker + Kopfkommentar)
 grep -ohE '(src|href)="https?://[^"]+"' *.html | sort -u   # nur maps / facebook / canonical
 ```
 
@@ -547,6 +547,62 @@ sobald ein `scrollTo` vorausging (siehe Fehler Nr. 29/30).
 ---
 
 ## 9. Änderungslog (jede Änderung, neueste oben)
+
+- **2026-09-07 — Design neu abgerufen und die mobile Fassung 1:1 übernommen**
+  (Auftrag Tolunay). Das Design in Claude Design war seit meinem Import
+  überarbeitet worden — und zwar genau an den Stellen, um die wir uns die
+  letzten Runden gestritten haben. Es bringt jetzt selbst mit:
+  - `[data-hero-sec]` 260 vh und `[data-hero-pin]` 100 dvh; `heroFx` hat einen
+    eigenen Telefon-Zweig (rote Fläche seitwärts über die ersten 42 % der
+    Strecke, eigene Kurven für Film-Zoom, Schleier, HUD und „Die Halle").
+  - `pinFx` — eine Ersatzmechanik, die erkennt, ob `position:sticky` überhaupt
+    greift, und die Klebeblöcke sonst selbst mit Transformationen hält.
+  - `areasFx` rechnet die Klebestrecke aus **Sektionshöhe minus Rasterhöhe** —
+    dieselbe Korrektur, die ich als HSK-PATCH 23 gebaut hatte.
+  - Der Vorhang läuft auf dem Telefon als `clip-path` von **links nach rechts**,
+    die Schrift steigt wortweise ein (`data-wipe-word`), dazu ein mobiler
+    Preis-Zusatz (`data-wipe-sub`).
+  - Eine **pulsierende Kartenmarke** (`hs-ping` / `hs-pin`) mitten in der Karte.
+  - `[data-marquee]` randlos auf dem Telefon, `[data-faq-side]` statisch,
+    `[data-areas-foot]` aus und der Zähler stattdessen auf der Bühne,
+    `html{overflow-x:clip}` statt `body{overflow-x:hidden}`.
+  **Was ich dafür entfernt habe:** meinen kompletten mobilen Abstands-Rhythmus,
+  meine Höhen-Blöcke (svh/dvh), meine Hero-, Vorhang- und Zeilen-Animationen,
+  meine Kartenmarke, das `data-band`-Pflaster und die Patches 15, 17, 18, 19,
+  21, 23, 24, 25, 26, 27, 28. `site.css` ist von 455 auf 239 Zeilen geschrumpft,
+  die Zahl der Skript-Patches von 31 auf 22.
+  **Was in der Produktionsschicht bleibt** (ändert am Bild nichts): Hersteller-
+  Präfixe, sichere Zonen randloser Telefone, 44-px-Trefferflächen, die
+  Karten-Einwilligung, selbst gehostete Schriften, Clips aus dem Repo,
+  Save-Data-Schutz, Zeitzone Berlin, Fokusführung im Menü — und alles zu den
+  Unterseiten, die es im Design nicht gibt.
+  **Zwei bewusste Abweichungen, beide sichtbar:**
+  1. Auf dem Telefon laufen im Hero vier **Hochkant-Clips** statt der zehn
+     Kinoclips (HSK-PATCH 8). Das Design zeigt die 16:9-Clips, von denen
+     `object-fit:cover` auf 9:16 zwei Drittel abschneidet; die Hochkant-Fassungen
+     zeigen denselben Raum, fürs Telefon gerahmt, bei einem Viertel der Bytes.
+     Im HUD steht deshalb „03 / 04" statt „03 / 10".
+  2. Das Einwilligungsfeld der Karte braucht bei 390 px 279 px Höhe, der
+     4:3-Rahmen des Designs bietet 266. Engeres Polster im Feld (16 px statt 20,
+     Fließtext 13,5 px) statt eines anderen Seitenverhältnisses — die geladene
+     Karte behält damit exakt die Proportion des Designs.
+  - **Ein Bild fehlte:** das Design nutzt neu `assets/eq-treadmill.jpg` für die
+    Conditioning-Karte. Über die Design-API kommen Dateien nur bis 256 KB, das
+    Bild ist größer und kam abgeschnitten an. Ich habe es aus `v-treadmill.mp4`
+    erzeugt — also aus genau dem Clip, den dieselbe Karte beim Hover abspielt
+    (`gal-cardio.jpg` im Projekt ist erkennbar ein Standbild derselben Aufnahme).
+    Wer das Original will, legt es einfach darüber.
+  - Gemessen: Startseite auf dem Telefon 18,92 Bildschirme gegen 18,90 im
+    Design; am Rechner in **jedem** geprüften Wert identisch (Länge 15,71,
+    Hero 1800, Bereiche 2970, Raster und Vorhang kleben, `clip-path` unberührt).
+    Neun Ansichten Design gegen Build gegenübergestellt (Hero, Haltung,
+    Bereiche 1 und 3, Ausstattung, Vorhang, Preise, Kontakt) — deckungsgleich.
+    9 Seiten × 4 Breiten ohne Querlauf und Konsolenfehler, reduzierte Bewegung,
+    Anker, Menü, FAQ, Antippen einer Bereichszeile. Sicherheit: kein
+    `innerHTML`/`eval`/`fetch` in der übernommenen Logik, CSP unverändert,
+    Google-Fonts weiterhin herausgelöst und selbst gehostet, keine neuen
+    Fremdziele.
+
 
 - **2026-09-07 — Siebte Rückmeldung** (Tolunay):
   - **Bereiche zurück auf die feststehende Ansicht.** Gewünscht war von Anfang an

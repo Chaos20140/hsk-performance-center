@@ -15,22 +15,10 @@
     state = { booting: true, menu: false, mapOn: false };
     componentDidMount() {
       this._alive = true;
-      // HSK-PATCH 16: Telefon-Kennzeichen — es entscheidet, welche Scroll-Effekte
-      // laufen. Auf iOS liefert Safari die Scroll-Ereignisse während des Nachlaufs
-      // gebündelt; jede pro Frame gesetzte Transformation stottert dort sichtbar.
-      // Muss vor dem ersten sync() stehen, sonst läuft der erste Frame falsch.
-      this._mq = window.matchMedia ? window.matchMedia('(max-width: 900px)') : null;
-      this._mob = !!(this._mq && this._mq.matches);
-      this._onMq = () => {
-        this._mob = !!(this._mq && this._mq.matches);
-        // Beim Wechsel die Inline-Reste der jeweils anderen Fassung löschen
-        ['[data-red]', '[data-hero-video]', '[data-hero-scrim]', '[data-hero-hud]', '[data-hero-after]', '[data-px]', '[data-wipe]'].forEach((s) => {
-          document.querySelectorAll(s).forEach((el) => { el.style.transform = ''; el.style.opacity = ''; el.style.clipPath = ''; });
-        });
-        this._navOn = null; this._hudOn = null; this._afterOn = null;
-        this.sync();
-      };
-      if (this._mq && this._mq.addEventListener) this._mq.addEventListener('change', this._onMq);
+      // HSK-PATCH 16: Telefon-Kennzeichen, bevor irgendetwas anderes läuft.
+      // Die Design-Logik setzt `this._mobile` selbst in sync(); hier steht es
+      // nur für das, was VOR dem ersten sync() gebraucht wird (Reel-Quellen).
+      this._mobile = window.innerWidth <= 900;
       const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       // HSK-PATCH 2: Vorhang nur mit Vorhang-Markup, nie bei Anker-Aufruf
       const skipBoot = reduced || !document.querySelector('[data-if="booting"]') || !!location.hash;
@@ -123,7 +111,7 @@
         this._reelRaf = requestAnimationFrame(this.reelTick);
       };
       this.reel.cutAt = performance.now();
-      if (!this._mob) this._reelRaf = requestAnimationFrame(this.reelTick); // HSK-PATCH 20b
+      if (!this._mobile) this._reelRaf = requestAnimationFrame(this.reelTick); // HSK-PATCH 20b
       // HSK-PATCH 12
       this.reel.noCuts = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
       if ((window.scrollY || 0) >= (window.innerHeight || 1) || (!!location.hash && location.hash !== '#top')) { this.setReelPaused(true); return; }
@@ -223,24 +211,22 @@
     }
     sync() {
       const y = window.scrollY || 0, vh = window.innerHeight || 1;
+      this._mobile = window.innerWidth <= 900;
       const total = Math.max(1, document.documentElement.scrollHeight - vh);
       const prog = y / total;
       const scrl = document.querySelector('[data-scrl]');
-      if (scrl) { const s = 'SCRL ' + String(Math.round(prog * 100)).padStart(2, '0') + '%'; if (this._scrl !== s) { this._scrl = s; scrl.textContent = s; } } // HSK-PATCH 26
+      if (scrl) scrl.textContent = 'SCRL ' + String(Math.round(prog * 100)).padStart(2, '0') + '%';
       const mbar = document.querySelector('[data-mbar]');
-      if (mbar) { const on = y > vh * 0.85; if (this._mbarOn !== on) { this._mbarOn = on; mbar.style.transform = on ? 'translate3d(0,0,0)' : 'translate3d(0,110%,0)'; mbar.style.transition = 'transform .5s cubic-bezier(.16,1,.3,1)'; } } // HSK-PATCH 25
+      if (mbar) { const on = y > vh * 0.7; mbar.style.transform = on ? 'translate3d(0,0,0)' : 'translate3d(0,110%,0)'; mbar.style.transition = 'transform .5s cubic-bezier(.16,1,.3,1)'; }
       const bar = document.querySelector('[data-progress]');
       if (bar) bar.style.transform = 'scaleX(' + prog.toFixed(4) + ')';
-      if (this._heroVh !== vh) { // HSK-PATCH 15
-        const hero = document.getElementById('top');
-        this._heroVh = vh; this._heroH = hero ? hero.offsetHeight : 0;
-      }
-      const heroSpan = Math.max(1, (this._heroH || vh * 2) - vh);
-      const p = Math.min(1, Math.max(0, y / heroSpan));
+      const hsec = document.querySelector('[data-hero-sec]'), hpin = document.querySelector('[data-hero-pin]');
+      let p = Math.min(1, Math.max(0, y / vh));
+      if (hsec && hpin) { const hr = hsec.getBoundingClientRect(); p = Math.min(1, Math.max(0, -hr.top / Math.max(1, hr.height - hpin.offsetHeight))); }
       this.heroFx(p);
       const nav = document.querySelector('[data-nav]');
       if (nav) { // HSK-PATCH 5
-        const on = y > (document.querySelector('[data-hero-video]') ? vh * 0.9 : 24);
+        const on = document.querySelector('[data-hero-video]') ? p > 0.85 : y > 24;
         if (this._navOn !== on) {
           this._navOn = on;
           nav.style.background = on ? 'rgba(5,5,6,.72)' : 'transparent';
@@ -249,59 +235,58 @@
           nav.style.borderBottom = on ? '1px solid rgba(255,255,255,.08)' : '1px solid transparent';
         }
       }
-      if (!this._mob) document.querySelectorAll('[data-px]').forEach((el) => { // HSK-PATCH 18
+      document.querySelectorAll('[data-px]').forEach((el) => {
         const r = el.getBoundingClientRect();
         if (r.bottom < -200 || r.top > vh + 200) return;
         const c = (r.top + r.height / 2) - vh / 2;
         el.style.transform = 'translate3d(0,' + (c * parseFloat(el.dataset.px) / 100).toFixed(1) + 'px,0)';
       });
+      this.pinFx(vh);
       this.areasFx(vh);
       this.wipeFx(vh);
     }
     heroFx(p) {
-      if (this._mob) { // HSK-PATCH 17
-        // Der Film läuft, solange vom Hero noch etwas im Bild ist. `p >= 1` wäre
-        // zu früh: dort beginnt der Hero erst wegzuscrollen und steht noch eine
-        // volle Bildschirmhöhe lang da — er würde sichtbar einfrieren.
-        this.setReelPaused((window.scrollY || 0) >= (this._heroH || window.innerHeight) || !!(this.reel && this.reel.userPaused));
-        // Die rote Fläche fährt wie am Rechner seitwärts aus dem Bild, der Film
-        // läuft dahinter weiter. Bild für Bild ging nicht: Safari reicht die
-        // Scroll-Ereignisse beim Nachlauf gebündelt nach, das ruckelte sichtbar.
-        // Also ein Schaltpunkt und eine CSS-Blende (site.css) — dieselbe Mechanik
-        // wie beim roten Preis-Vorhang. Zwei Schwellen, damit sie am Umschlag
-        // nicht flattert; die untere greift erst nach dem Scrollen zurück.
-        const red = this._red || (this._red = document.querySelector('[data-red]'));
-        if (red) {
-          const weg = this._redWeg ? p > 0.04 : p > 0.09;
-          if (this._redWeg !== weg) {
-            this._redWeg = weg;
-            red.style.transform = weg ? 'translate3d(-102%,0,0)' : 'translate3d(0,0,0)';
-          }
-        }
-        const afterM = document.querySelector('[data-hero-after]');
-        const afterOn = p > 0.34;
-        if (afterM && this._afterOn !== afterOn) { this._afterOn = afterOn; afterM.style.opacity = afterOn ? '1' : '0'; afterM.style.transform = 'none'; }
-        const hudM = document.querySelector('[data-hero-hud]');
-        const hudOn = p < 0.3;
-        if (hudM && this._hudOn !== hudOn) { this._hudOn = hudOn; hudM.style.opacity = hudOn ? '1' : '0'; }
-        this._overRed = false;
-        return;
-      }
-      const q = 1 - Math.pow(1 - p, 3);
+      const m = this._mobile;
+      const q = m ? 1 - Math.pow(1 - Math.min(1, p / 0.42), 3) : 1 - Math.pow(1 - p, 3);
+      const a = m ? 1 - Math.pow(1 - Math.min(1, Math.max(0, (p - 0.5) / 0.32)), 3) : Math.min(1, Math.max(0, (p - 0.45) * 2.2));
       const red = document.querySelector('[data-red]');
       if (red) red.style.transform = 'translate3d(' + (-q * 104).toFixed(2) + '%,0,0)';
       const vid = document.querySelector('[data-hero-video]');
-      if (vid) vid.style.transform = 'scale(' + (1.12 - q * 0.1).toFixed(3) + ')';
+      if (vid) vid.style.transform = 'scale(' + (1.12 - (m ? Math.min(1, p / 0.7) : q) * 0.1).toFixed(3) + ')';
       this.setReelPaused(p >= 1 || !!(this.reel && this.reel.userPaused)); // HSK-PATCH 13
       const scrim = document.querySelector('[data-hero-scrim]');
-      if (scrim) scrim.style.opacity = String(0.5 + q * 0.5);
+      if (scrim) scrim.style.opacity = String(0.5 + (m ? Math.min(1, Math.max(0, (p - 0.35) / 0.5)) : q) * 0.5);
       const hud = document.querySelector('[data-hero-hud]');
-      if (hud) hud.style.opacity = String(Math.max(0, 1 - p * 2.4));
+      if (hud && p > 0.02 && !hud._anim) { hud._anim = 1; hud.style.animation = 'none'; }
+      if (hud) hud.style.opacity = String(Math.max(0, m ? 1 - p / 0.3 : 1 - p * 2.4));
       const after = document.querySelector('[data-hero-after]');
-      if (after) { const a = Math.min(1, Math.max(0, (p - 0.45) * 2.2)); after.style.opacity = String(a); after.style.transform = 'translate3d(0,' + ((1 - a) * 40).toFixed(1) + 'px,0)'; }
+      if (after) { after.style.opacity = String(a); after.style.transform = 'translate3d(0,' + ((1 - a) * 40).toFixed(1) + 'px,0)'; }
       const logo = document.querySelector('[data-nav-logo]');
-      if (logo) logo.style.filter = p > 0.5 ? 'none' : 'brightness(0) invert(1)';
-      this._overRed = p < 0.5;
+      if (logo) logo.style.filter = p > (m ? 0.25 : 0.5) ? 'none' : 'brightness(0) invert(1)';
+      this._overRed = p < (m ? 0.42 : 0.5);
+    }
+    pinFx(vh) {
+      const groups = [['[data-hero-sec]', '[data-hero-pin]', 'top'], ['[data-areas]', '[data-areas-grid]', 'top'], ['[data-eq]', '[data-wipe]', 'bottom']];
+      if (this._stickyBroken === undefined) {
+        for (const g of groups) {
+          if (g[2] !== 'top') continue;
+          const sec = document.querySelector(g[0]), pin = document.querySelector(g[1]);
+          if (!sec || !pin) continue;
+          const s = sec.getBoundingClientRect();
+          if (s.top < -40 && s.bottom > vh + 40) { this._stickyBroken = Math.abs(pin.getBoundingClientRect().top - s.top) < 2; break; }
+        }
+      }
+      if (!this._stickyBroken) return;
+      groups.forEach((g) => {
+        const sec = document.querySelector(g[0]), pin = document.querySelector(g[1]);
+        if (!sec || !pin) return;
+        const s = sec.getBoundingClientRect(), c = pin.getBoundingClientRect(), prev = pin._pinOff || 0;
+        let off;
+        if (g[2] === 'top') off = Math.min(Math.max(0, -s.top), Math.max(0, s.height - c.height));
+        else { const st = c.top - prev, sb = c.bottom - prev; off = Math.max(s.top - st, Math.min(0, vh - sb)); }
+        pin._pinOff = off;
+        pin.style.transform = 'translate3d(0,' + off.toFixed(1) + 'px,0)';
+      });
     }
     areasFx(vh) {
       const sec = document.querySelector('[data-areas]');
@@ -312,11 +297,8 @@
         if (this._activeArea !== -1) { this._activeArea = -1; document.querySelectorAll('[data-area-media] video').forEach((v) => { if (!v.paused) v.pause(); }); }
         return;
       }
-      if (this._gridVh !== vh) { // HSK-PATCH 23
-        const g = document.querySelector('[data-areas-grid]');
-        this._gridVh = vh; this._gridH = g ? g.offsetHeight : 0;
-      }
-      const span = r.height - (this._gridH || vh);
+      const grid = document.querySelector('[data-areas-grid]');
+      const span = r.height - (grid ? grid.offsetHeight : vh);
       const p = Math.min(0.999, Math.max(0, -r.top / Math.max(1, span)));
       const idx = Math.min(2, Math.floor(p * 3));
       if (idx === this._activeArea) return;
@@ -334,14 +316,10 @@
         m.style.opacity = on ? '1' : '0';
         const v = m.querySelector('video');
         if (!v) return;
-        if (on && !this._mob) { // HSK-PATCH 21
-          if (!v.getAttribute('src')) v.src = v.dataset.src;
-          v.muted = true; v.loop = true; const pr = v.play(); if (pr && pr.catch) pr.catch(() => {});
-          v.style.opacity = '1';
-        }
+        if (on) { if (!v.getAttribute('src')) v.src = v.dataset.src; v.muted = true; v.loop = true; const pr = v.play(); if (pr && pr.catch) pr.catch(() => {}); v.style.opacity = '1'; }
         else if (!v.paused) { v.pause(); }
       });
-      const count = document.querySelector('[data-area-count]'); if (count) count.textContent = '0' + (idx + 1) + ' / 03';
+      document.querySelectorAll('[data-area-count]').forEach((c) => { c.textContent = '0' + (idx + 1) + ' / 03'; });
       const label = document.querySelector('[data-area-label]'); if (label) label.textContent = labels[idx];
     }
     wipeFx(vh) {
@@ -349,19 +327,21 @@
       const w = document.querySelector('[data-wipe]');
       if (!sec || !w) return;
       const r = sec.getBoundingClientRect();
-      if (this._mob) { // HSK-PATCH 19
-        const auf = this._wipeAuf ? r.bottom < vh * 2.2 : r.bottom < vh * 1.9;
-        if (this._wipeAuf !== auf) {
-          this._wipeAuf = auf;
-          if (auf) w.setAttribute('data-wipe-auf', ''); else w.removeAttribute('data-wipe-auf');
-        }
-        return;
-      }
       const p = Math.min(1, Math.max(0, 1 - (r.bottom - vh) / vh));
       const q = 1 - Math.pow(1 - p, 2);
-      w.style.clipPath = 'inset(' + ((1 - q) * 100).toFixed(2) + '% 0 0 0)';
-      const t = w.querySelector('[data-wipe-title]');
-      if (t) t.style.transform = 'translate3d(0,' + ((1 - q) * 60).toFixed(1) + 'px,0)';
+      const words = w.querySelectorAll('[data-wipe-word]'), lab = w.querySelector('[data-wipe-label]'), sub = w.querySelector('[data-wipe-sub]'), t = w.querySelector('[data-wipe-title]');
+      if (this._mobile) {
+        w.style.clipPath = 'inset(0 ' + ((1 - q) * 100).toFixed(2) + '% 0 0)';
+        if (t) t.style.transform = 'none';
+        words.forEach((el, i) => { const k = Math.min(1, Math.max(0, (p - (0.42 + i * 0.09)) / 0.3)); const e = 1 - Math.pow(1 - k, 3); el.style.transform = 'translate3d(0,' + ((1 - e) * 110).toFixed(1) + '%,0)'; });
+        if (lab) lab.style.opacity = String(Math.min(1, Math.max(0, (p - 0.35) / 0.25)));
+        if (sub) sub.style.opacity = String(Math.min(1, Math.max(0, (p - 0.78) / 0.2)));
+      } else {
+        w.style.clipPath = 'inset(' + ((1 - q) * 100).toFixed(2) + '% 0 0 0)';
+        if (t) t.style.transform = 'translate3d(0,' + ((1 - q) * 60).toFixed(1) + 'px,0)';
+        words.forEach((el) => { el.style.transform = 'none'; });
+        if (lab) lab.style.opacity = '1';
+      }
     }
     renderVals() {
       // HSK-PATCH 14
@@ -396,9 +376,8 @@
           const i = parseInt(e.currentTarget.dataset.areaRow, 10);
           const sec = document.querySelector('[data-areas]');
           if (!sec) return;
-          const top = sec.getBoundingClientRect().top + window.scrollY; // HSK-PATCH 24
-          const grid = sec.querySelector('[data-areas-grid]');
-          const span = Math.max(1, sec.offsetHeight - (grid ? grid.offsetHeight : window.innerHeight));
+          const vh = window.innerHeight, top = sec.getBoundingClientRect().top + window.scrollY;
+          const span = sec.offsetHeight - vh;
           window.scrollTo({ top: top + span * (i / 3 + 0.08), behavior: 'smooth' });
         },
         toggleFaq: (e) => {
@@ -411,7 +390,7 @@
         eqEnter: (e) => {
           const v = e.currentTarget.querySelector('video');
           if (!v) return;
-          if (!v.getAttribute('src')) v.src = (this._mob && v.dataset.srcMobile) || v.dataset.src; // HSK-PATCH 22
+          if (!v.getAttribute('src')) v.src = (this._mobile && v.dataset.srcMobile) || v.dataset.src; // HSK-PATCH 22
           v.muted = true; v.loop = true; const pr = v.play(); if (pr && pr.catch) pr.catch(() => {});
           v.style.opacity = '1';
         },

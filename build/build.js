@@ -33,10 +33,11 @@ const count = (re, s) => (s.match(re) || []).length;
 /* ------------------------------------------------------------ transforms */
 
 function stripOmelette(html) {
-  const before = html.length;
+  // Die Vorschau von Claude Design spritzt beim Ansehen ein Stück Technik ein;
+  // über die API kommt die Datei ohne. Beides ist in Ordnung — verlangt wird
+  // nur, dass hinterher nichts davon übrig ist.
   html = html.replace(/<style data-omelette-injected>[\s\S]*?<\/style>/g, '');
   html = html.replace(/<script data-omelette-injected>[\s\S]*?<\/script>/g, '');
-  must(html.length < before, 'omelette preamble not found');
   must(!/data-omelette-injected/.test(html), 'omelette leftovers');
   html = html.replace(/<script src="\.\/support\.js"><\/script>\s*/g, '');
   must(!/support\.js/.test(html), 'support.js reference left');
@@ -371,16 +372,10 @@ function build() {
     must(!/<iframe[^>]*\ssrc="https/.test(body), 'a third-party iframe still loads on view');
     // Die rote Marke sitzt in der Kartenmitte, also auf dem Studio. Sie liegt
     // außerhalb des iframe und bleibt deshalb vom Graufilter unberührt.
-    // Dieselbe Form, die Google selbst setzt — nur in Rot statt grau unter dem
-    // Filter. Die Spitze der Nadel sitzt auf der Kartenmitte, also auf dem Studio.
-    const nadel = '<span data-map-pin aria-hidden="true">' +
-      '<span data-map-puls></span><span data-map-puls></span>' +
-      '<svg viewBox="0 0 24 34" width="26" height="37">' +
-      '<path d="M12 0C5.4 0 0 5.4 0 12c0 8.5 10.1 20.3 11.2 21.6.4.5 1.2.5 1.6 0C13.9 32.3 24 20.5 24 12 24 5.4 18.6 0 12 0z" fill="#E10600"/>' +
-      '<circle cx="12" cy="12" r="4.3" fill="#050506"/></svg></span>';
-    const mapEnd = 'contrast(1.1)"></iframe>';
-    must(body.indexOf(mapEnd) > -1, 'map iframe end not found');
-    body = body.replace(mapEnd, mapEnd + nadel);
+    // Die pulsierende Marke in der Kartenmitte bringt das Design seit der
+    // Überarbeitung selbst mit (hs-ping/hs-pin) — hier wird nur noch dafür
+    // gesorgt, dass Google keine zweite, graue Nadel darunter setzt.
+    must(/animation:hs-ping/.test(body), 'design map marker missing');
     // Das Element-Attribut würde die Seiten-Policy aufweichen (volle URL an Google)
     const rp = 'referrerpolicy="no-referrer-when-downgrade"';
     must(body.indexOf(rp) > -1, 'map referrerpolicy not found');
@@ -401,9 +396,9 @@ function build() {
   // FAQ-Einleitung: die Nummer ist auf dem Telefon nur als Link wählbar
   // (format-detection=telephone=no schaltet die Auto-Erkennung ab)
   {
-    const tel = 'Was nicht dabei ist: kurz anrufen. 0160 90285812, täglich 06–24 Uhr.';
+    const tel = '<span style="white-space:nowrap">0160 90285812, täglich 06–24 Uhr.</span>';
     must(body.indexOf(tel) > -1, 'FAQ intro not found');
-    body = body.replace(tel, 'Was nicht dabei ist: kurz anrufen. <a href="tel:+4916090285812" style="color:#F2EFEA;border-bottom:1px solid rgba(225,6,0,.6)">0160 90285812</a>, täglich 06–24 Uhr.');
+    body = body.replace(tel, '<span style="white-space:nowrap"><a href="tel:+4916090285812" style="color:#F2EFEA;border-bottom:1px solid rgba(225,6,0,.6)">0160 90285812</a>, täglich 06–24 Uhr.</span>');
   }
 
   // Überschriften-Hierarchie: der Preise-Titel ist im Design der Wipe (ein <div>);
@@ -458,14 +453,8 @@ function build() {
     body = body.replace(b1, '<img loading="eager" fetchpriority="high" src="assets/p-kraft.jpg" alt="Kraftbereich"');
   }
 
-  // Die Laufschrift ist im Design ein randloses Band. In „Haltung" liegt sie aber
-  // in einer Sektion mit seitlichem Polster und endet deshalb 18 px vor jedem
-  // Rand — auf dem Telefon sieht das aus, als sei das Band nicht fertig geladen.
-  {
-    const band = '<div style="margin-top:clamp(80px,10vw,150px);background:#E10600;color:#050506;overflow:hidden;padding:clamp(16px,1.8vw,24px) 0">';
-    must(body.indexOf(band) > -1, 'haltung marquee band not found');
-    body = body.replace(band, band.replace('<div style="', '<div data-band style="'));
-  }
+  // (Die Laufschrift trägt seit der Design-Überarbeitung selbst `data-marquee`
+  //  und wird dort auf dem Telefon randlos gestellt — mein Patch dafür ist weg.)
 
   // Kennzahlen-Raster (Startseite „2001 / 06–24 / 5,0"): drei Zellen à 85 px
   // tragen die Werte auf dem Telefon nicht — sie liefen über die Rasterlinien.
@@ -787,22 +776,10 @@ function patchLogic(js) {
   // 2) Vorhang nur dort, wo er existiert (Startseite) — und nie, wenn jemand
   //    per Anker kommt (index.html#preise): scrollTo(0,0) würde den Sprung fressen.
   patch("    window.scrollTo(0, 0);\n    const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;\n    if (reduced) { this.setState({ booting: false }); }\n    else {",
-        "    // HSK-PATCH 16: Telefon-Kennzeichen — es entscheidet, welche Scroll-Effekte\n" +
-        "    // laufen. Auf iOS liefert Safari die Scroll-Ereignisse während des Nachlaufs\n" +
-        "    // gebündelt; jede pro Frame gesetzte Transformation stottert dort sichtbar.\n" +
-        "    // Muss vor dem ersten sync() stehen, sonst läuft der erste Frame falsch.\n" +
-        "    this._mq = window.matchMedia ? window.matchMedia('(max-width: 900px)') : null;\n" +
-        "    this._mob = !!(this._mq && this._mq.matches);\n" +
-        "    this._onMq = () => {\n" +
-        "      this._mob = !!(this._mq && this._mq.matches);\n" +
-        "      // Beim Wechsel die Inline-Reste der jeweils anderen Fassung löschen\n" +
-        "      ['[data-red]', '[data-hero-video]', '[data-hero-scrim]', '[data-hero-hud]', '[data-hero-after]', '[data-px]', '[data-wipe]'].forEach((s) => {\n" +
-        "        document.querySelectorAll(s).forEach((el) => { el.style.transform = ''; el.style.opacity = ''; el.style.clipPath = ''; });\n" +
-        "      });\n" +
-        "      this._navOn = null; this._hudOn = null; this._afterOn = null;\n" +
-        "      this.sync();\n" +
-        "    };\n" +
-        "    if (this._mq && this._mq.addEventListener) this._mq.addEventListener('change', this._onMq);\n" +
+        "    // HSK-PATCH 16: Telefon-Kennzeichen, bevor irgendetwas anderes läuft.\n" +
+        "    // Die Design-Logik setzt `this._mobile` selbst in sync(); hier steht es\n" +
+        "    // nur für das, was VOR dem ersten sync() gebraucht wird (Reel-Quellen).\n" +
+        "    this._mobile = window.innerWidth <= 900;\n" +
         "    const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;\n" +
         "    // HSK-PATCH 2: Vorhang nur mit Vorhang-Markup, nie bei Anker-Aufruf\n" +
         "    const skipBoot = reduced || !document.querySelector('[data-if=\"booting\"]') || !!location.hash;\n" +
@@ -858,13 +835,13 @@ function patchLogic(js) {
 
   // 11) Bereichs-Videos nur, wenn die Sektion im Bild ist (vorher startete der erste
   //     Clip schon beim Laden der Seite, der letzte lief nach dem Durchscrollen ewig)
-  patch("    const r = sec.getBoundingClientRect();\n    const span = r.height - vh;",
+  patch("    const r = sec.getBoundingClientRect();\n    const grid = document.querySelector('[data-areas-grid]');",
         "    const r = sec.getBoundingClientRect();\n" +
         "    // HSK-PATCH 11: außerhalb des Sichtfelds kein Bereichs-Video\n" +
         "    if (r.top > vh || r.bottom < 0) {\n" +
         "      if (this._activeArea !== -1) { this._activeArea = -1; document.querySelectorAll('[data-area-media] video').forEach((v) => { if (!v.paused) v.pause(); }); }\n" +
         "      return;\n    }\n" +
-        "    const span = r.height - vh;", 'areasFx guard');
+        "    const grid = document.querySelector('[data-areas-grid]');", 'areasFx guard');
 
   // 12) Reel-Start: keine Schnitte bei reduzierter Bewegung (der Film läuft, die
   //     Effekte nicht); pausiert starten, wenn der Hero nicht im Bild ist.
@@ -881,85 +858,6 @@ function patchLogic(js) {
   patch("    if (paused) clearTimeout(r.timer); else { r.cutAt = performance.now(); this.scheduleCut(); }",
         "    if (paused) clearTimeout(r.timer); else if (!r.noCuts) { r.cutAt = performance.now(); this.scheduleCut(); }", 'setReelPaused cuts');
 
-  // 17) Der Hero auf dem Telefon: keine pro Frame gesetzten Transformationen.
-  //     Am Rechner fährt die rote Fläche als 46-%-Spalte seitwärts aus dem Bild —
-  //     eine Bewegung, die dort trägt. Auf dem Telefon ist sie ein Block am
-  //     unteren Rand; ihn seitwärts wegzuschieben ergibt gestalterisch wenig und
-  //     ruckelt zudem (Safari liefert die Scroll-Ereignisse gebündelt nach).
-  //     Der Hero scrollt dort einfach weg; HUD und Schlusszeile wechseln in einer
-  //     CSS-Blende (site.css), also auf dem Compositor statt im Skript.
-  patch("  heroFx(p) {\n    const q = 1 - Math.pow(1 - p, 3);",
-        "  heroFx(p) {\n" +
-        "    if (this._mob) { // HSK-PATCH 17\n" +
-        "      // Der Film läuft, solange vom Hero noch etwas im Bild ist. `p >= 1` wäre\n" +
-        "      // zu früh: dort beginnt der Hero erst wegzuscrollen und steht noch eine\n" +
-        "      // volle Bildschirmhöhe lang da — er würde sichtbar einfrieren.\n" +
-        "      this.setReelPaused((window.scrollY || 0) >= (this._heroH || window.innerHeight) || !!(this.reel && this.reel.userPaused));\n" +
-        "      // Die rote Fläche fährt wie am Rechner seitwärts aus dem Bild, der Film\n" +
-        "      // läuft dahinter weiter. Bild für Bild ging nicht: Safari reicht die\n" +
-        "      // Scroll-Ereignisse beim Nachlauf gebündelt nach, das ruckelte sichtbar.\n" +
-        "      // Also ein Schaltpunkt und eine CSS-Blende (site.css) — dieselbe Mechanik\n" +
-        "      // wie beim roten Preis-Vorhang. Zwei Schwellen, damit sie am Umschlag\n" +
-        "      // nicht flattert; die untere greift erst nach dem Scrollen zurück.\n" +
-        "      const red = this._red || (this._red = document.querySelector('[data-red]'));\n" +
-        "      if (red) {\n" +
-        "        const weg = this._redWeg ? p > 0.04 : p > 0.09;\n" +
-        "        if (this._redWeg !== weg) {\n" +
-        "          this._redWeg = weg;\n" +
-        "          red.style.transform = weg ? 'translate3d(-102%,0,0)' : 'translate3d(0,0,0)';\n" +
-        "        }\n" +
-        "      }\n" +
-        "      const afterM = document.querySelector('[data-hero-after]');\n" +
-        "      const afterOn = p > 0.34;\n" +
-        "      if (afterM && this._afterOn !== afterOn) { this._afterOn = afterOn; afterM.style.opacity = afterOn ? '1' : '0'; afterM.style.transform = 'none'; }\n" +
-        "      const hudM = document.querySelector('[data-hero-hud]');\n" +
-        "      const hudOn = p < 0.3;\n" +
-        "      if (hudM && this._hudOn !== hudOn) { this._hudOn = hudOn; hudM.style.opacity = hudOn ? '1' : '0'; }\n" +
-        "      this._overRed = false;\n" +
-        "      return;\n" +
-        "    }\n" +
-        "    const q = 1 - Math.pow(1 - p, 3);", 'heroFx mobile');
-
-  // 18) Parallax und Nav-Schreibarbeit: der Parallax fällt auf dem Telefon weg
-  //     (die Bilder stehen dort ohnehin bündig, siehe site.css), und Hintergrund
-  //     samt Weichzeichner der Leiste werden nur beim Zustandswechsel gesetzt
-  //     statt in jedem Frame — backdrop-filter ist auf iOS teuer.
-  patch("    document.querySelectorAll('[data-px]').forEach((el) => {",
-        "    if (!this._mob) document.querySelectorAll('[data-px]').forEach((el) => { // HSK-PATCH 18", 'parallax mobile');
-
-  // 19) Der rote Vorhang. Am Rechner läuft er am Scrollrad: der Block klebt am
-  //     unteren Rand und gibt sich Bild für Bild über clip-path frei, während
-  //     die Ausstattung darunter stehen bleibt. Auf dem Telefon ging genau das
-  //     schief. Safari liefert die Scroll-Ereignisse beim Nachlauf gebündelt
-  //     nach — der Vorhang sprang in Stufen hoch statt zu gleiten. Als
-  //     translate3d blieb es stufig, denn nicht das Zeichnen ist das Problem,
-  //     sondern der Takt, in dem die Werte ankommen. Und ein Schaltpunkt mit
-  //     CSS-Blende wäre zwar glatt, ließe aber vor dem Umschlagen eine
-  //     bildschirmhohe schwarze Fläche stehen.
-  //
-  //     Auf dem Telefon schiebt er sich deshalb quer ins Bild — von links nach
-  //     rechts, als eine einzige CSS-Blende auf dem Compositor, danach steigt
-  //     die Schrift ein. Das Skript setzt dafür nur EIN Attribut.
-  //
-  //     Damit dabei nichts leer stehen kann, belegt der Vorhang auf dem Telefon
-  //     keinen eigenen Platz mehr im Fluss (site.css: negativer oberer Abstand
-  //     in Höhe seiner selbst). Er legt sich über das Ende der Ausstattung.
-  //     Es gibt also gar keine Fläche mehr, die schwarz bleiben könnte — egal
-  //     wie schnell jemand scrollt. Ausgelöst bei 1,9 Bildschirmen Restweg,
-  //     rote Phase danach knapp eine Bildschirmhöhe bis zu den Preisen.
-  patch("    const p = Math.min(1, Math.max(0, 1 - (r.bottom - vh) / vh));\n" +
-        "    const q = 1 - Math.pow(1 - p, 2);",
-        "    if (this._mob) { // HSK-PATCH 19\n" +
-        "      const auf = this._wipeAuf ? r.bottom < vh * 2.2 : r.bottom < vh * 1.9;\n" +
-        "      if (this._wipeAuf !== auf) {\n" +
-        "        this._wipeAuf = auf;\n" +
-        "        if (auf) w.setAttribute('data-wipe-auf', ''); else w.removeAttribute('data-wipe-auf');\n" +
-        "      }\n" +
-        "      return;\n" +
-        "    }\n" +
-        "    const p = Math.min(1, Math.max(0, 1 - (r.bottom - vh) / vh));\n" +
-        "    const q = 1 - Math.pow(1 - p, 2);", 'wipe transform');
-
   // 20) Timecode und Segmentleiste stehen unter `data-hide-m`, sind auf dem Telefon
   //     also ausgeblendet — die Bild-für-Bild-Schleife schrieb dort trotzdem elf
   //     Werte pro Frame in unsichtbare Elemente und suchte sie jedes Mal neu.
@@ -970,79 +868,13 @@ function patchLogic(js) {
         "        (this._segs || (this._segs = document.querySelectorAll('[data-seg]'))).forEach((seg, k) => {", 'reelTick segs');
   patch("    this.reel.cutAt = performance.now();\n    this._reelRaf = requestAnimationFrame(this.reelTick);",
         "    this.reel.cutAt = performance.now();\n" +
-        "    if (!this._mob) this._reelRaf = requestAnimationFrame(this.reelTick); // HSK-PATCH 20b", 'reelTick start');
+        "    if (!this._mobile) this._reelRaf = requestAnimationFrame(this.reelTick); // HSK-PATCH 20b", 'reelTick start');
 
   // 22) Die Hover-Clips der Ausstattungs- und Galeriekarten sind Querformat-
   //     Fassungen bis 3,7 MB. Auf dem Telefon läuft die 960-px-Fassung (-m.mp4).
   patch("      eqEnter: (e) => {\n        const v = e.currentTarget.querySelector('video');\n        if (!v) return;\n        if (!v.getAttribute('src')) v.src = v.dataset.src;",
         "      eqEnter: (e) => {\n        const v = e.currentTarget.querySelector('video');\n        if (!v) return;\n" +
-        "        if (!v.getAttribute('src')) v.src = (this._mob && v.dataset.srcMobile) || v.dataset.src; // HSK-PATCH 22", 'eqEnter mobile');
-
-  // 21) Die drei Bereichs-Clips sind Querformat-Fassungen (zusammen 4,25 MB). Auf
-  //     dem Telefon ist die Bühne 34–42 dvh hoch und das Standbild trägt sie
-  //     allein — dort wird gar kein Video geladen.
-  patch("      if (on) { if (!v.getAttribute('src')) v.src = v.dataset.src; v.muted = true; v.loop = true; const pr = v.play(); if (pr && pr.catch) pr.catch(() => {}); v.style.opacity = '1'; }",
-        "      if (on && !this._mob) { // HSK-PATCH 21\n" +
-        "        if (!v.getAttribute('src')) v.src = v.dataset.src;\n" +
-        "        v.muted = true; v.loop = true; const pr = v.play(); if (pr && pr.catch) pr.catch(() => {});\n" +
-        "        v.style.opacity = '1';\n      }", 'areas video mobile');
-
-  // 23) Welcher Trainingsbereich gerade dran ist — aus dem Fortschritt in der
-  //     Klebestrecke. Die ist Sektionshöhe MINUS Höhe des klebenden Rasters,
-  //     nicht minus Bildschirmhöhe: auf dem Telefon sind das dieselben 100 dvh,
-  //     aber gemessen statt angenommen stimmt der Wechsel auch in dem Moment,
-  //     in dem Safari die Adressleiste ein- oder ausblendet und beide Werte
-  //     kurz auseinanderliegen. Gemessen wird nur bei geänderter Bildschirm-
-  //     höhe — ein offsetHeight nach einem Stil-Schreibvorgang erzwänge sonst
-  //     bei jedem Scroll-Ereignis ein neues Layout.
-  patch("    const span = r.height - vh;\n" +
-        "    const p = Math.min(0.999, Math.max(0, -r.top / Math.max(1, span)));",
-        "    if (this._gridVh !== vh) { // HSK-PATCH 23\n" +
-        "      const g = document.querySelector('[data-areas-grid]');\n" +
-        "      this._gridVh = vh; this._gridH = g ? g.offsetHeight : 0;\n" +
-        "    }\n" +
-        "    const span = r.height - (this._gridH || vh);\n" +
-        "    const p = Math.min(0.999, Math.max(0, -r.top / Math.max(1, span)));", 'areas index');
-
-  // 24) Tippt jemand eine Zeile an, muss das Ziel auf derselben Klebestrecke
-  //     liegen wie der Bereichswechsel — sonst springt es woandershin, als der
-  //     angetippte Bereich steht.
-  patch("        const vh = window.innerHeight, top = sec.getBoundingClientRect().top + window.scrollY;\n" +
-        "        const span = sec.offsetHeight - vh;\n" +
-        "        window.scrollTo({ top: top + span * (i / 3 + 0.08), behavior: 'smooth' });",
-        "        const top = sec.getBoundingClientRect().top + window.scrollY; // HSK-PATCH 24\n" +
-        "        const grid = sec.querySelector('[data-areas-grid]');\n" +
-        "        const span = Math.max(1, sec.offsetHeight - (grid ? grid.offsetHeight : window.innerHeight));\n" +
-        "        window.scrollTo({ top: top + span * (i / 3 + 0.08), behavior: 'smooth' });", 'goArea mobile');
-
-  // 25) Bei jedem Scroll-Ereignis wurden Werte geschrieben, die sich fast nie
-  //     ändern (Leiste ein/aus, Fortschrittstext). Jeder Schreibvorgang macht
-  //     die darauf folgende Messung (getBoundingClientRect) zu einem erzwungenen
-  //     Neu-Layout — auf dem Telefon der eigentliche Grund für das Stocken.
-  //     Jetzt wird nur geschrieben, wenn sich etwas geändert hat.
-  patch("    if (mbar) { const on = y > vh * 0.85; mbar.style.transform = on ? 'translate3d(0,0,0)' : 'translate3d(0,110%,0)'; mbar.style.transition = 'transform .5s cubic-bezier(.16,1,.3,1)'; }",
-        "    if (mbar) { const on = y > vh * 0.85; if (this._mbarOn !== on) { this._mbarOn = on; mbar.style.transform = on ? 'translate3d(0,0,0)' : 'translate3d(0,110%,0)'; mbar.style.transition = 'transform .5s cubic-bezier(.16,1,.3,1)'; } } // HSK-PATCH 25",
-        'mbar guard');
-  patch("    if (scrl) scrl.textContent = 'SCRL ' + String(Math.round(prog * 100)).padStart(2, '0') + '%';",
-        "    if (scrl) { const s = 'SCRL ' + String(Math.round(prog * 100)).padStart(2, '0') + '%'; if (this._scrl !== s) { this._scrl = s; scrl.textContent = s; } } // HSK-PATCH 26",
-        'scrl guard');
-
-  // 15) Der Hero-Effekt (rote Fläche fährt raus, Film zoomt zurück, „Die Halle"
-  //     blendet ein) lief über eine feste Bildschirmhöhe. Das stimmt nur, solange
-  //     die Sektion 200 vh hoch ist — auf dem Telefon sind es 150, die Klebestrecke
-  //     also eine halbe Bildschirmhöhe. Der Effekt wird jetzt aus der tatsächlichen
-  //     Sektionshöhe abgeleitet und ist damit von der CSS-Höhe unabhängig.
-  //     Gemessen wird sie nur, wenn sich die Bildschirmhöhe geändert hat: die
-  //     Höhe steht in Viewport-Einheiten, hängt also allein an vh — und ein
-  //     offsetHeight nach einem Stil-Schreibvorgang erzwingt sonst bei JEDEM
-  //     Scroll-Ereignis ein neues Layout.
-  patch("    const p = Math.min(1, Math.max(0, y / vh));\n    this.heroFx(p);",
-        "    if (this._heroVh !== vh) { // HSK-PATCH 15\n" +
-        "      const hero = document.getElementById('top');\n" +
-        "      this._heroVh = vh; this._heroH = hero ? hero.offsetHeight : 0;\n" +
-        "    }\n" +
-        "    const heroSpan = Math.max(1, (this._heroH || vh * 2) - vh);\n" +
-        "    const p = Math.min(1, Math.max(0, y / heroSpan));\n    this.heroFx(p);", 'hero span');
+        "        if (!v.getAttribute('src')) v.src = (this._mobile && v.dataset.srcMobile) || v.dataset.src; // HSK-PATCH 22", 'eqEnter mobile');
 
   // 13) Pause-Knopf im HUD (WCAG 2.2.2) — ein Nutzerstopp überdauert das Scrollen
   patch("    this.setReelPaused(p >= 1);",
@@ -1094,9 +926,9 @@ function patchLogic(js) {
   //    ist die Leiste ab dem ersten Pixel gefüllt (kein Film darunter); und
   //    geschrieben wird nur beim Zustandswechsel — backdrop-filter in jedem
   //    Scroll-Frame neu zu setzen ist auf iOS teuer.
-  patch("    if (nav) { const on = y > vh * 0.9; nav.style.background = on ? 'rgba(5,5,6,.72)' : 'transparent'; nav.style.backdropFilter = on ? 'blur(14px)' : 'none'; nav.style.borderBottom = on ? '1px solid rgba(255,255,255,.08)' : '1px solid transparent'; }",
+  patch("    if (nav) { const on = p > 0.85; nav.style.background = on ? 'rgba(5,5,6,.72)' : 'transparent'; nav.style.backdropFilter = on ? 'blur(14px)' : 'none'; nav.style.borderBottom = on ? '1px solid rgba(255,255,255,.08)' : '1px solid transparent'; }",
         "    if (nav) { // HSK-PATCH 5\n" +
-        "      const on = y > (document.querySelector('[data-hero-video]') ? vh * 0.9 : 24);\n" +
+        "      const on = document.querySelector('[data-hero-video]') ? p > 0.85 : y > 24;\n" +
         "      if (this._navOn !== on) {\n" +
         "        this._navOn = on;\n" +
         "        nav.style.background = on ? 'rgba(5,5,6,.72)' : 'transparent';\n" +
@@ -1127,7 +959,7 @@ function patchLogic(js) {
         "      if (d >= 2) el.style.animationDelay = Math.max(0, d - 2.3).toFixed(2) + 's';\n" +
         "    });\n  }\n  bootReel() {", 'skipIntroDelays');
 
-  must(count(/HSK-PATCH/g, js) === 31, 'expected 31 HSK-PATCH markers, got ' + count(/HSK-PATCH/g, js));
+  must(count(/HSK-PATCH/g, js) === 22, 'expected 22 HSK-PATCH markers, got ' + count(/HSK-PATCH/g, js));
   return js;
 }
 

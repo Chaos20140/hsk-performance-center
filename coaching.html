@@ -32,8 +32,8 @@
 <style>
 /* --- Design-System (aus dem Claude-Design-Original) --- */
 *{box-sizing:border-box}
-html{background:#050506}
-body{margin:0;background:#050506;color:#F2EFEA;font-family:'Schibsted Grotesk',system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+html{background:#050506;overflow-x:clip}
+body{margin:0;background:#050506;color:#F2EFEA;font-family:'Schibsted Grotesk',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
 a{color:#F2EFEA;text-decoration:none}a:hover{color:#E10600}
 button{font:inherit}
 @keyframes hb-line{from{transform:scaleX(0)}to{transform:scaleX(1)}}
@@ -47,6 +47,8 @@ button{font:inherit}
 @keyframes hs-mq{to{transform:translate3d(-50%,0,0)}}
 @keyframes hs-cue{0%{transform:scaleY(0);transform-origin:top}50%{transform:scaleY(1);transform-origin:top}51%{transform-origin:bottom}100%{transform:scaleY(0);transform-origin:bottom}}
 @keyframes hs-menu{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:none}}
+@keyframes hs-ping{0%{transform:scale(.35);opacity:.9}70%{opacity:0}100%{transform:scale(1);opacity:0}}
+@keyframes hs-pin{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-3px) scale(1.08)}}
 @media (max-width:900px){
 [data-navlinks]{display:none!important}[data-burger]{display:flex!important}[data-hide-m]{display:none!important}
 [data-nav]{padding:12px 18px!important;background:rgba(5,5,6,.55)!important;backdrop-filter:blur(12px)!important}
@@ -56,18 +58,19 @@ button{font:inherit}
 [data-red-cta]{margin-top:20px!important;flex-direction:column!important;align-items:stretch!important;gap:12px!important}
 [data-red-cta] a{justify-content:center!important;min-height:52px!important}
 [data-red-facts]{margin-top:20px!important;padding-top:12px!important;font-size:9.5px!important;letter-spacing:.16em!important}
-[data-hero-hud]{bottom:auto!important;top:64px!important;right:18px!important}
-[data-hero-after]{bottom:auto!important;top:70px!important;left:18px!important;right:18px!important}
+[data-hero-hud]{bottom:auto!important;top:78px!important;right:18px!important}
+[data-hero-after]{bottom:auto!important;top:78px!important;left:18px!important;right:18px!important}
 [data-hero-after] div:last-child{font-size:clamp(44px,13vw,80px)!important}
-[data-areas-grid]{grid-template-columns:minmax(0,1fr)!important;grid-template-rows:40vh minmax(0,1fr)!important}
+[data-areas-grid]{grid-template-columns:minmax(0,1fr)!important;grid-template-rows:minmax(0,1fr) auto!important;height:100dvh!important}[data-hero-pin],[data-wipe]{height:100dvh!important}[data-faq-side]{position:static!important}[data-marquee]{margin:56px calc(-1 * clamp(18px,4vw,64px)) 0!important;padding:26px 0!important}[data-marquee]>div{font-size:clamp(40px,11vw,52px)!important}
 [data-areas-stage]{order:-1}
-[data-areas-index]{padding:22px 20px calc(24px + env(safe-area-inset-bottom))!important;border-right:none!important;justify-content:flex-start!important;gap:12px!important}
-[data-areas-h2]{font-size:clamp(30px,8.5vw,44px)!important}
-[data-area-name]{font-size:clamp(30px,8vw,42px)!important}
+[data-areas-index]{padding:18px 20px calc(76px + env(safe-area-inset-bottom))!important;border-right:none!important;justify-content:flex-start!important;gap:12px!important}[data-area-row]{padding:12px 0 12px 16px!important}[data-areas-foot]{display:none!important}[data-m-only]{display:inline!important}[data-wipe-title]{font-size:clamp(40px,11vw,56px)!important}
+[data-areas-h2]{font-size:clamp(32px,8.5vw,40px)!important}
+[data-area-name]{font-size:clamp(26px,7vw,32px)!important}
 [data-area-copy]{font-size:14px!important}
 [data-two]{grid-template-columns:minmax(0,1fr)!important}
 [data-kv]{grid-template-columns:minmax(0,1fr)!important;gap:6px!important}
 [data-mbar]{display:flex!important}
+[data-hero-sec]{height:260vh!important}#haltung{padding-top:36px!important}[data-wipe]{justify-content:center!important;padding:0 18px!important}[data-wipe-inner]{align-items:center!important;text-align:center!important}[data-wipe-title]{align-items:center!important}
 [data-eq-card]{padding:16px!important}
 footer{padding-bottom:calc(104px + env(safe-area-inset-bottom))!important}
 }
@@ -142,17 +145,9 @@ html[data-menu="open"] [data-burger]::after{transform:translate(-50%,-50%) rotat
    zu sehen. Der Chip ist nur die sichtbare Marke, er liegt IM Link. */
 [data-map-open]{position:absolute;inset:0;z-index:2;display:block}
 [data-map-chip]{position:absolute;right:14px;bottom:14px;display:inline-flex;align-items:center;gap:8px;background:#050506;color:#F2EFEA;border:1px solid rgba(255,255,255,.18);padding:12px 14px;min-height:44px;font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.2em;text-transform:uppercase}
-/* Der rote Punkt sitzt in der Kartenmitte — und die Mitte ist das Studio: der
-   iframe wird über `ll=` auf die Koordinaten zentriert, ohne eigene Nadel.
-   Er liegt außerhalb des iframe, der Graufilter greift hier also nicht. */
-/* Nullgrosser Anker genau auf der Kartenmitte: die Nadel haengt mit ihrer
-   Spitze daran, der Puls geht konzentrisch von genau diesem Punkt aus. */
-[data-map-pin]{position:absolute;left:50%;top:50%;width:0;height:0;z-index:1;pointer-events:none}
-[data-map-pin] svg{position:absolute;left:-13px;bottom:0;display:block;filter:drop-shadow(0 2px 7px rgba(0,0,0,.6))}
-[data-map-puls]{position:absolute;left:-36px;top:-36px;width:72px;height:72px;border-radius:50%;border:1.5px solid rgba(225,6,0,.85);background:rgba(225,6,0,.14);animation:hs-puls 2.4s cubic-bezier(.2,.6,.35,1) infinite}
-/* Zwei Ringe versetzt: es geht nie ganz aus, die Stelle bleibt markiert. */
-[data-map-puls]+[data-map-puls]{animation-delay:1.2s}
-@keyframes hs-puls{0%{transform:scale(.16);opacity:0}12%{opacity:.9}100%{transform:scale(1);opacity:0}}
+/* Die pulsierende Marke in der Kartenmitte bringt das Design selbst mit
+   (hs-ping/hs-pin). Der iframe wird im Build auf `ll=` umgestellt, damit
+   Google keine zweite, unter dem Graufilter graue Nadel darunter setzt. */
 /* Der Ausweg für alle, die die Karte nicht laden wollen — er braucht dieselbe
    Trefferfläche wie der Knopf daneben */
 [data-if="mapOff"] a{display:inline-flex;align-items:center;min-height:44px}
@@ -183,226 +178,84 @@ html[data-menu="open"] [data-burger]::after{transform:translate(-50%,-50%) rotat
    Sekunde neu starten (Laufschrift springt, Punkte flimmern). Hier: einmal, dann Ruhe. */
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-iteration-count:1!important;scroll-behavior:auto!important}
-  [style*="hs-mq"],[style*="hs-blink"],[style*="hs-cue"],[data-map-puls]{animation:none!important}
+  [style*="hs-mq"],[style*="hs-blink"],[style*="hs-cue"]{animation:none!important}
 }
 
 /* ---- Telefon ---- */
 @media (max-width:900px){
-  /* WebKit vor Safari 18 kennt backdrop-filter nur mit Präfix; !important wie die Design-Regel,
-     damit der von JS gesetzte Inline-Wert (oben „none") nicht gewinnt */
+  /* Ab hier gilt: die mobile Fassung kommt 1:1 aus dem Design. Was frueher an
+     dieser Stelle stand — eigener Abstands-Rhythmus, eigene Hoehen, eigene
+     Hero- und Vorhang-Animationen — ist entfallen, weil das Design das
+     inzwischen selbst mitbringt (data-hero-sec, data-hero-pin, data-marquee,
+     data-wipe-word, data-faq-side, die pulsierende Kartenmarke).
+     Was hier bleibt, aendert am Bild nichts: Hersteller-Praefixe, die sicheren
+     Zonen randloser Telefone, Trefferflaechen fuer Finger — und alles, was zu
+     den Unterseiten gehoert, die es im Design gar nicht gibt. */
+
+  /* WebKit vor Safari 18 kennt backdrop-filter nur mit Praefix; !important wie
+     die Design-Regel, damit der von JS gesetzte Inline-Wert nicht gewinnt */
   [data-nav]{-webkit-backdrop-filter:blur(12px)!important}
-  /* viewport-fit=cover: Kerbe/Statusleiste (Querformat, Standalone) freihalten */
+  /* viewport-fit=cover: Kerbe und Statusleiste freihalten (Querformat, Standalone).
+     Im Hochformat sind diese Werte 0 — dort aendert die Regel nichts. */
   [data-nav]{padding-top:max(12px,env(safe-area-inset-top))!important;padding-left:max(18px,env(safe-area-inset-left))!important;padding-right:max(18px,env(safe-area-inset-right))!important}
   [data-overlay]{padding-top:max(clamp(90px,14vh,150px),calc(env(safe-area-inset-top) + 72px))!important;padding-left:max(18px,env(safe-area-inset-left))!important;padding-right:max(18px,env(safe-area-inset-right))!important}
-  /* Untere Leiste: das Polster für den Home-Indikator muss schwarz sein, nicht die 14-%-Trennfarbe */
+  /* Die untere Leiste traegt ihr Polster fuer den Home-Indikator in der
+     Trennfarbe (14 % Weiss) — auf dem iPhone ein grauer Streifen unter der
+     Leiste. Der Grund wird schwarz, die Trennlinie zieht die Kante. */
   [data-mbar]{background:#050506!important;gap:0!important;padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
   [data-mbar] a+a{border-left:1px solid rgba(255,255,255,.14)}
-  /* Formular einspaltig */
+  /* Overlay-Menue: kein Weiterscrollen der Seite dahinter */
+  [data-overlay]{overscroll-behavior:contain}
+
+  /* -- Trefferflaechen: ein Finger braucht 44 px, das Design rechnet mit Maus */
+  [data-overlay] a[href="mitglied-werden.html"]{padding:15px 22px!important}
+  [data-nav]>a:first-child{align-self:stretch!important;min-width:44px}
+  footer>div:last-child a{display:inline-flex;align-items:center;min-height:44px}
+
+  /* -- Karte: der Route-Link ueber die ganze Flaeche ist eine Ergaenzung, kein
+     Design-Element. Der Chip nach oben rechts, damit er nicht auf dem
+     Koordinaten-Feld liegt. */
+  [data-map-chip]{top:14px!important;bottom:auto!important}
+  /* Das Einwilligungsfeld (auch eine Ergaenzung — ohne Einwilligung laedt die
+     Karte nicht) braucht bei 390 px 279 px Hoehe, der 4:3-Rahmen bietet 266.
+     Engeres Polster statt eines anderen Seitenverhaeltnisses: die geladene
+     Karte behaelt damit exakt die Proportion des Designs. */
+  [data-if="mapOff"]>div>div{padding:16px!important;gap:10px!important}
+  [data-if="mapOff"]>div>div p{font-size:13.5px!important;line-height:1.6!important}
+
+  /* ================================================================
+     UNTERSEITEN — im Design nicht enthalten, deshalb hier gestaltet
+     ================================================================ */
   [data-form]{grid-template-columns:minmax(0,1fr)!important}
-  [data-termin]{grid-template-columns:minmax(0,1fr)!important;gap:14px!important}
+  [data-termin]{grid-template-columns:minmax(0,1fr)!important;gap:14px!important;padding-top:20px!important;padding-bottom:20px!important}
   [data-termin-tail]{align-items:flex-start!important;flex-direction:row!important;flex-wrap:wrap}
   [data-gal] [data-span="6"]{grid-column:span 12!important}
   [data-gal] [data-span="4"],[data-gal] [data-span="3"]{grid-column:span 6!important}
   /* Die Bilder stehen in Dreiergruppen: zweispaltig bliebe je Gruppe eine halbe
-     Zelle leer — im Bewegtbild-Raster (Container-Hintergrund = Linie) wäre das
+     Zelle leer — im Bewegtbild-Raster (Container-Hintergrund = Linie) waere das
      ein grauer Block. Die dritte Kachel nimmt deshalb die ganze Zeile. */
   [data-gal] [data-span="4"]+[data-span="4"]+[data-span="4"]{grid-column:span 12!important}
   [data-gal] figure:last-child:nth-child(odd){grid-column:1/-1!important}
+  /* ohne !important — das Bewegtbild-Raster setzt inline gap:1px, und dort SIND
+     die Fugen die Rasterlinien (Container-Hintergrund). */
+  [data-gal]{gap:8px}
   [data-row],[data-toc],[data-rights]{grid-template-columns:minmax(0,1fr)!important}
   [data-row]{gap:5px!important}
-  /* FAQ: die linke Spalte ist sticky — einspaltig läuft „Kurz geklärt." sonst über die Fragen */
-  #faq [data-two]>div:first-child{position:static!important}
-  /* Bereiche-Bühne: rechts „HSK — BRILON" kollidiert auf 375 px mit dem REC-Label */
-  [data-areas-stage]>div:last-child{display:none!important}
-
-  /* ---- TRAININGSBEREICHE: die ganze Ansicht steht still ----
-     Bild oben, darunter „Drei Flächen. Ein Anspruch." und die drei Zeilen —
-     und beim Scrollen wechselt NUR der Bereich: Kraft → Athletik →
-     Conditioning. Erst danach kommt die Ausstattung. Das ist die Choreografie
-     des Designs; die Zwischenfassung, in der die Liste unter einer klebenden
-     Bühne durchlief, war mein Missverständnis.
-
-     Der Fehler daran war nie das Kleben, sondern die Einheit: die Sektion stand
-     in svh (fest), der Klebeblock in dvh (folgt der Adressleiste). Blendet
-     Safari sie aus, wächst nur der Block, seine Klebestrecke schrumpft, er gibt
-     vor dem Ende der Sektion ab — und darunter stand ihr schwarzer Grund
-     (in WebKit nachgestellt: 80 px). Beide Höhen in DERSELBEN Einheit, und das
-     kann nicht mehr passieren; das steht unten im dvh-Block. */
-  /* Unten liegt die feste Probetraining-Leiste (72 px) ueber dem Inhalt — ohne
-     diesen Abstand wird der Zaehler „03 / 03“ von ihr abgeschnitten. */
-  [data-areas-index]{justify-content:center!important;padding-top:16px!important;padding-bottom:calc(88px + env(safe-area-inset-bottom))!important;gap:14px!important}
-  /* Auf kurzen Bildschirmen (iPhone SE) trug der Index mehr Inhalt als Platz —
-     der Zähler „03 / 03" wurde unten abgeschnitten. Die Bühne gibt dort ab. */
-  @media (max-height:760px){
-    [data-areas-index]{gap:10px!important;padding-top:10px!important}
-    [data-areas-h2]{font-size:clamp(26px,7vw,36px)!important}
-  }
-  /* Karte: 4:3 ist auf dem Telefon zu flach für das Einwilligungsfeld; der Koordinaten-Chip wandert nach unten */
-  #kontakt [data-two]>div:last-child{aspect-ratio:1/1!important}
-  #kontakt [data-two]>div:last-child>div:last-child{top:auto!important;bottom:14px!important}
-  /* … und die Route-Marke nach oben rechts, sonst liegt sie auf dem Chip.
-     Oben links sitzt Googles eigener Knopf im iframe — „Route" ist kurz genug,
-     dass sich die beiden auf 354 px nicht mehr überlappen. */
-  [data-map-chip]{top:14px!important;bottom:auto!important}
-
-  /* ================================================================
-     RHYTHMUS AUF DEM TELEFON
-     Die Abstände des Designs sind für 1500 px gerechnet: dort trägt ein
-     170-px-Sockel eine 1400 px breite Fläche. Auf 390 px steht dieselbe
-     Zahl über einer einzigen Textspalte und wirkt als Loch — die Seite
-     wurde dadurch 18,5 Bildschirme lang. Hier ein eigener, engerer
-     Takt: Sockel 52 px, Abstand zwischen Blöcken 24–32 px.
-     Desktop bleibt unberührt (alles nur ≤ 900 px).
-     ================================================================ */
-
-  /* Hero-HUD und Schlusszeile wechseln auf dem Telefon in einer CSS-Blende
-     (das Skript setzt nur noch 0/1, siehe HSK-PATCH 17) */
-  [data-hero-hud],[data-hero-after]{transition:opacity .5s ease}
-  /* Der Wipe-Titel sitzt im Design am unteren Rand — auf dem Telefon liegt er
-     damit hinter der Probetraining-Leiste, und über ihm stehen 730 px leeres Rot.
-     Mittig sitzt er frei und die Fläche wirkt nicht mehr wie ein Loch. */
-  /* Der rote Vorhang schiebt sich auf dem Telefon quer ins Bild — von links
-     nach rechts —, danach steigt die Schrift ein. Beides als CSS-Blende auf
-     dem Compositor: sie läuft unabhängig davon, wann das Skript wieder
-     drankommt, und kann deshalb nicht stottern (Safari reicht die Scroll-
-     Ereignisse beim Nachlauf gebündelt nach — daran lag es). Das Skript setzt
-     nur `data-wipe-auf`, siehe HSK-PATCH 19.
-     `clip-path` muss weg: das Design blendet den Vorhang darüber ein, hier
-     macht es die Verschiebung. */
-  [data-wipe]{will-change:transform;transform:translate3d(-101%,0,0);clip-path:none!important;transition:transform 1.15s cubic-bezier(.22,1,.36,1);justify-content:center!important;padding-bottom:calc(72px + env(safe-area-inset-bottom))!important}
-  [data-wipe][data-wipe-auf]{transform:translate3d(0,0,0)}
-  /* Erst schiebt sich das Rot gemächlich über die ganze Fläche (1,15 s), DANN
-     kommt die Schrift — die Verzögerung ist die volle Dauer des Einschubs. */
-  [data-wipe]>div{opacity:0;transform:translate3d(0,30px,0);transition:opacity .6s ease 1.2s,transform .8s cubic-bezier(.16,1,.3,1) 1.2s}
-  [data-wipe][data-wipe-auf]>div{opacity:1;transform:none}
-
-  /* -- Hero: die rote Fläche sitzt unten und braucht keinen Desktop-Sockel */
-  [data-red]{padding-top:22px!important;padding-bottom:calc(22px + env(safe-area-inset-bottom))!important}
-  /* Die rote Fläche fährt seitwärts aus dem Bild, wie am Rechner — der Film
-     läuft dahinter weiter. Aber NICHT Bild für Bild: Safari reicht die
-     Scroll-Ereignisse beim Nachlauf gebündelt nach, das hat sichtbar geruckelt.
-     Stattdessen dieselbe Mechanik wie beim roten Preis-Vorhang, die sich
-     bewährt hat: das Skript setzt einen Schaltpunkt (HSK-PATCH 17), die
-     Bewegung macht der Compositor über diese Blende — unabhängig davon, wann
-     das Skript wieder drankommt, und damit nicht zu stören. */
-  [data-red]{will-change:transform;transition:transform .9s cubic-bezier(.16,1,.3,1)}
-  [data-red] h1{margin-top:10px!important}
-  [data-red] p{margin-top:12px!important}
-  [data-red-cta]{margin-top:16px!important}
-  [data-red-facts]{margin-top:16px!important;padding-top:10px!important}
-  /* „Die Halle. Täglich 06–24." steht dort, wo die rote Fläche eben noch war —
-     sie ist zu diesem Zeitpunkt weggefahren, und die Probetraining-Leiste
-     erscheint erst nach dem Hero. Der Platz unten ist also frei. */
-  [data-hero-after]{top:auto!important;bottom:calc(26px + env(safe-area-inset-bottom))!important}
-
-  /* -- Sektions-Sockel */
-  #haltung{padding-top:52px!important}
-  #ausstattung>div{padding-top:52px!important;padding-bottom:40px!important}
-  #preise{padding-bottom:56px!important}
-  #partner{padding-top:52px!important;padding-bottom:56px!important}
-  #faq{padding-bottom:56px!important}
-  #faq>div{padding-top:44px!important;gap:20px!important}
-  #kontakt{padding-bottom:56px!important}
-  #kontakt>div{padding-top:44px!important}
-  #loslegen>div:last-child{padding-top:32px!important;padding-bottom:32px!important}
-  footer{padding-top:44px!important}
-  footer>div:first-child{gap:28px!important}
-
-  /* -- Haltung: Überschrift → Text → Zahlen → Bilder */
-  #haltung>div:first-child>h2{margin-top:16px!important}
-  #haltung>div:first-child>div:nth-child(3){margin-top:28px!important;gap:24px!important}
-  #haltung>div:first-child>div:nth-child(4){margin-top:32px!important}
-  /* Das Bildpaar steht im 12-Spalten-Raster mit 70–220 px Versatz. Auf einer
-     Telefonbreite bleiben davon zwei Briefmarken mit viel Leere ringsum —
-     also oben bündig nebeneinander, Bildunterschrift über die volle Breite. */
-  #haltung figure[data-px]{margin-top:0!important}
-  #haltung figure[data-px="-14"]{grid-column:1/span 5!important}
-  #haltung figure[data-px="10"]{grid-column:6/span 7!important;aspect-ratio:4/5!important}
-  #haltung div[data-px="-6"]{grid-column:1/span 12!important;margin-top:12px!important}
-  /* Ohne den Versatz würde der Parallax (±56 px, von sync() inline gesetzt) die
-     Bilder in das Zahlenraster darüber schieben — auf dem Telefon stehen sie still */
-  #haltung [data-px]{transform:none!important}
-  /* Laufschrift-Band: randlos über die volle Breite. Es liegt in einer Sektion
-     mit seitlichem Polster und endete sonst 18 px vor jedem Rand — die Schrift
-     verschwand dort in einer Kante, was aussah, als lade das Band noch. */
-  #haltung>div:last-child{margin-top:44px!important;padding-top:14px!important;padding-bottom:14px!important}
-  [data-band]{margin-left:calc(clamp(18px,4vw,64px) * -1)!important;margin-right:calc(clamp(18px,4vw,64px) * -1)!important}
-
-  /* -- Ausstattung: sechs gestapelte Karten waren allein 2,3 Bildschirme */
-  #ausstattung>div>div:nth-child(2){margin-top:24px!important}
-  [data-eq-card]{padding:14px!important;gap:14px!important}
-  [data-eq-card]>div:first-child{aspect-ratio:16/9!important}
-  #ausstattung>div>div:last-child{margin-top:28px!important;padding-top:20px!important;gap:18px!important}
-
-  /* -- Preise */
-  #preise>div>p{margin-bottom:22px!important}
-  #preise article{padding:20px!important;gap:14px!important}
-  #preise article>div:nth-child(3){font-size:56px!important}
-  /* Die Display-Zeilen des Designs stehen auf line-height .84–.86. Big Shoulders
-     reicht mit Umlaut aber bis 0,954 em über die Grundlinie — sobald eine Zeile
-     auf dem Telefon umbricht, stoßen die Punkte von Ä/Ö/Ü in die Zeile darüber. */
-  [data-hero-after] div:last-child,[data-wipe-title],#haltung h2,#ausstattung h2,#kontakt h2,#partner h2,#faq h2,
-  body[data-sub] main h1,body[data-sub] main h2{line-height:.96!important}
-  #preise>div>div:last-child{margin-top:28px!important;padding-top:20px!important}
-  #preise>div>div:last-child>div:first-child{margin-bottom:20px!important}
-  #preise>div>div:last-child>div:nth-child(2){gap:24px!important}
-
-  /* -- Partner: feste Mindesthöhen sind auf dem Telefon leere Kästen */
-  #partner>div>div:first-child{margin-bottom:24px!important}
-  #partner article{min-height:0!important;padding:22px!important;gap:20px!important}
-
-  /* -- FAQ + Standort */
-  [data-faq-head]{padding-top:16px!important;padding-bottom:16px!important}
-  [data-faq-body] p{margin-bottom:18px!important}
-  #kontakt h2{margin-top:16px!important;margin-bottom:24px!important}
-  #kontakt [data-two]{gap:20px!important}
-  [data-kv]{padding-top:12px!important;padding-bottom:12px!important;gap:10px!important}
-  #kontakt [data-two]>div:first-child>p{margin-top:16px!important}
-
-  /* -- Unterseiten: gleicher Takt.
-     NUR mit body[data-sub] — ohne die Einschränkung träfe die Regel auch die
-     Startseite und hängte 52 px unter die Ausstattung, also einen schwarzen
-     Spalt zwischen den roten Wipe und die rote Preisfläche. */
-  /* Nur EINE Kante trägt den Sockel — sonst addieren sich an jeder Naht zwei
-     (52 + 52 = 104 px, mit Innen-Sockel sogar 164). Das Design macht es genauso. */
+  [data-quali]{gap:6px!important}
+  [data-form] label{padding-top:16px!important;padding-bottom:16px!important}
+  /* Nur EINE Kante traegt den Sockel — sonst addieren sich an jeder Naht zwei. */
   body[data-sub] main>section[data-screen-label]:not(#loslegen){padding-top:52px!important;padding-bottom:0!important}
   body[data-sub] main>section[data-screen-label]:first-child{padding-top:96px!important;padding-bottom:0!important}
-  /* Das Loslegen-Band ist randlos (seine Polster sitzen auf den Kindern) */
   body[data-sub] main>section#loslegen{padding-top:0!important;padding-bottom:0!important}
-  /* Fortsetzungs-Sektionen tragen ihre Trennung als Haarlinie im Innencontainer;
-     dessen Desktop-Sockel (60 px) käme oben drauf */
   body[data-sub] main>section>div[style*="border-top:1px solid rgba(255,255,255,.12);padding-top"]{padding-top:36px!important}
-  /* Der wiederverwendete Sektionskopf steht auf der Landing bei 24 px */
   body[data-sub] main>section div[style*="margin-bottom:clamp(36px,4.6vw,64px)"]{margin-bottom:24px!important}
-  /* Die Rechtsseiten tragen kein data-screen-label — ohne eigene Regel blieben sie
-     als einzige im Desktop-Takt (152 px Kopfsockel) */
   body[data-sub] main>section[data-legal]{padding-top:96px!important;padding-bottom:52px!important}
+  body[data-sub] main h1,body[data-sub] main h2{line-height:.96!important}
   [data-legal-body] section{margin-bottom:32px!important}
   [data-toc]{margin-bottom:28px!important}
   footer>div:last-child{margin-top:28px!important;align-items:center!important}
-  footer>div:last-child a{display:inline-flex;align-items:center;min-height:44px}
-  /* Die Schlusszeile ist auf dem Telefon der einzige Weg zu Impressum und
-     Datenschutz — 13,7 px hohe Ziele reichen dafür nicht. */
-  [data-overlay] a[href="mitglied-werden.html"]{padding:15px 22px!important}
-  [data-nav]>a:first-child{align-self:stretch!important;min-width:44px}
   /* Lange deutsche Komposita in schmalen Spalten */
-  [data-legal-body] p,[data-row]>span:last-child,[data-termin] p,[data-faq-body] p,#haltung p,#preise>div>p{-webkit-hyphens:auto;hyphens:auto}
-  /* ohne !important — das Bewegtbild-Raster setzt inline gap:1px, und dort SIND
-     die Fugen die Rasterlinien (Container-Hintergrund). Mit !important würde
-     jede Haarlinie zu einem 8-px-Band. */
-  [data-gal]{gap:8px}
-  [data-termin]{padding-top:20px!important;padding-bottom:20px!important}
-  [data-quali]{gap:6px!important}
-  [data-form] label{padding-top:16px!important;padding-bottom:16px!important}
-
-  /* Kennzahlen-Trio: drei Zellen à 85 px tragen weder „10.000+" (99 px) noch
-     „Meister" (101 px) noch „06–24" (102 px) — der Text lief über die Rasterlinien */
-  [data-stats]{grid-template-columns:minmax(0,1fr)!important}
-  [data-stats]>div{display:flex!important;align-items:baseline;justify-content:space-between;gap:16px;padding:14px 18px!important}
-  [data-stats]>div>div:last-child{margin-top:0!important;text-align:right}
-
-  /* Overlay-Menü: kein Weiterscrollen der Seite dahinter */
-  [data-overlay]{overscroll-behavior:contain}
+  [data-legal-body] p,[data-row]>span:last-child,[data-termin] p,[data-faq-body] p{-webkit-hyphens:auto;hyphens:auto}
 }
 
 /* Der Wipe-Titel greift bei 390 px seine clamp-Untergrenze (64 px) ab und wird
@@ -411,38 +264,6 @@ html[data-menu="open"] [data-burger]::after{transform:translate(-50%,-50%) rotat
 @media (max-width:500px){
   [data-wipe-title]{font-size:12.8vw!important}
 }
-/* iOS: 100vh ist dort die Höhe OHNE Leisten — der untere Rand des Hero (rote
-   Fläche, Knopf) läge hinter der Safari-Leiste. svh ist die sichtbare Höhe. */
-/* Scroll-Strecken auf dem Telefon.
-
-   WICHTIG: Sektionshöhe und Klebeblock stehen in DERSELBEN Einheit. Stünde die
-   Sektion in svh (fest) und der Block in dvh (folgt der Adressleiste), wanderte
-   der Punkt, an dem der Block abgibt, sobald Safari die Leiste ein- oder
-   ausblendet — er gäbe zu früh ab und darunter stünde ein schwarzer Streifen.
-   Genau dieser Fehler steckte hier, und er ist die Ursache aller schwarzen
-   Flächen, die auf dem Telefon zu sehen waren. */
-@media (max-width:900px){
-  /* Der Hero trägt dieselbe Strecke wie am Rechner: der Film steht eine volle
-     Bildschirmhöhe lang, bevor die Haltung übernimmt. Am Bild ändert das
-     nichts — es wird nur länger gehalten. */
-  #top{height:200vh!important}
-  [data-areas]{height:250vh!important}
-  /* Der Vorhang legt sich über das Ende der Ausstattung, statt eine eigene
-     Bildschirmhöhe im Fluss zu belegen. Diese Höhe war schwarz, solange er
-     noch nicht da war — und schwarze Flächen sind hier das wiederkehrende
-     Problem. Ohne eigenen Platz kann gar keine entstehen. */
-  [data-wipe]{margin-top:-100vh!important}
-}
-@supports (height:100svh){
-  @media (max-width:900px){
-    #top{height:200svh!important}
-    #top>div{height:100svh!important}
-    [data-areas]{height:250svh!important}
-    [data-areas-grid]{height:100svh!important;grid-template-rows:44svh minmax(0,1fr)!important}
-    [data-wipe]{height:100svh!important;margin-top:-100svh!important}
-  }
-}
-
 /* ---- Unterseiten ---- */
 [data-gal]{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:clamp(10px,1.2vw,18px)}
 [data-gal] [data-span="6"]{grid-column:span 6}
@@ -500,43 +321,13 @@ html[data-menu="open"] [data-burger]::after{transform:translate(-50%,-50%) rotat
 [data-rights]{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 clamp(18px,3vw,36px);margin-bottom:24px;border-top:1px solid rgba(255,255,255,.12)}
 [data-rights] span{padding:13px 0;border-bottom:1px solid rgba(255,255,255,.12);font-size:15px;color:#DCDCE2}
 
-/* ---- iOS: die Adressleiste ändert die Bildschirmhöhe ----
-   `svh` ist die Höhe MIT eingeblendeter Leiste. Safari blendet sie beim
-   Scrollen aus — dann ist der sichtbare Bereich bis zu 145 px höher als jeder
-   Vollbild-Block, und darunter stünde ein Streifen der nächsten Sektion. `dvh`
-   folgt der Leiste, die Blöcke füllen den Bildschirm also in beiden Zuständen.
-
-   Beide Höhen — Sektion UND Klebeblock — stehen dabei in dvh. Das war der
-   Fehler der letzten Fassung: die Sektion in svh, der Block in dvh. Der Block
-   wuchs dann allein, seine Klebestrecke schrumpfte, und er gab vor dem Ende
-   der Sektion ab. In derselben Einheit wachsen beide zusammen; wo der Block
-   abgibt, verschiebt sich nicht. Und weil in diesem Moment ohnehin der
-   geklebte Block den ganzen Bildschirm füllt, ist von der Änderung nichts zu
-   sehen — alles, was sich verschiebt, liegt darunter außerhalb des Bildes.
-   Der Vorhang braucht keine Sektionshöhe: seine Sektion ist so hoch wie ihr
-   Inhalt, da gibt es nichts, was auseinanderlaufen könnte. */
-@supports (height:100dvh){
-  @media (max-width:900px){
-    #top{height:200dvh!important}
-    #top>div{height:100dvh!important}
-    /* 250 zu 100: die Klebestrecke ist die Differenz, also 150 dvh — eine halbe
-       Bildschirmhöhe je Bereich. Beide Werte in dvh, deshalb wandert der Punkt,
-       an dem das Raster abgibt, beim Ein- und Ausblenden der Adressleiste
-       nicht mehr. Und weil in diesem Moment ohnehin der geklebte Block den
-       ganzen Bildschirm füllt, ist von der Änderung nichts zu sehen. */
-    [data-areas]{height:250dvh!important}
-    [data-areas-grid]{height:100dvh!important;grid-template-rows:44dvh minmax(0,1fr)!important}
-    [data-wipe]{height:100dvh!important;margin-top:-100dvh!important}
-  }
-  @media (max-width:900px) and (max-height:760px){
-    [data-areas-grid]{grid-template-rows:36dvh minmax(0,1fr)!important}
-  }
-}
-/* Fallback ohne dvh */
-@media (max-width:900px) and (max-height:760px){
-  [data-areas-grid]{grid-template-rows:36svh minmax(0,1fr)!important}
-}
-
+/* Die Hoehen der Klebe-Sektionen kommen seit der Design-Ueberarbeitung aus dem
+   Design selbst: [data-hero-sec] 260 vh, [data-hero-pin] und [data-wipe] je
+   100 dvh, [data-areas-grid] 100 dvh. Sektion in vh (auf iOS die GROESSERE
+   Hoehe), Klebeblock in dvh (<= vh) — der Block kann seine Strecke damit nie
+   ueberwachsen, und er fuellt den sichtbaren Bereich in jedem Zustand der
+   Adressleiste exakt aus. Genau daran hatte meine eigene Fassung gekrankt
+   (Sektion svh, Block dvh). Hier steht deshalb nichts mehr. */
 
 /* ---- Druck ---- */
 @media print{
