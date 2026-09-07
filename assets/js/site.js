@@ -32,12 +32,14 @@
       };
       if (this._mq && this._mq.addEventListener) this._mq.addEventListener('change', this._onMq);
       const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      // HSK-PATCH 27: Kann der Browser scroll-gesteuerte CSS-Animationen (Safari 26,
-      // Chrome 115)? Dann hängt die rote Hero-Fläche direkt am Scrollweg und läuft
-      // dabei auf dem Compositor — flüssig UND am Finger. Das Skript hält sich dort
-      // heraus; die Schwellen unten sind nur der Ersatzweg für ältere Browser.
-      this._sda = false;
-      try { this._sda = !!(window.CSS && CSS.supports && CSS.supports('animation-timeline', 'view()')) && !reduced; } catch (e) {}
+      // HSK-PATCH 27: Jede Bereichszeile steigt beim Hereinscrollen ein. Das
+      // Kennzeichen setzt das Skript hier, weggenommen wird es in areasFx —
+      // dort liegen die Maße der Zeilen ohnehin schon vor. Ein Beobachter
+      // meldete sich unter Umständen erst eine halbe Sekunde später; hier
+      // passiert es im selben Zug wie der Bereichswechsel.
+      // Ohne Skript trägt keine Zeile das Kennzeichen — dann sind sie schlicht
+      // sichtbar, statt für immer unsichtbar zu bleiben.
+      if (this._mob) document.querySelectorAll('[data-area-row]').forEach((z) => z.setAttribute('data-verborgen', ''));
       // HSK-PATCH 2: Vorhang nur mit Vorhang-Markup, nie bei Anker-Aufruf
       const skipBoot = reduced || !document.querySelector('[data-if="booting"]') || !!location.hash;
       if (skipBoot) { this.setState({ booting: false }); this.skipIntroDelays(); }
@@ -271,23 +273,18 @@
         // volle Bildschirmhöhe lang da — er würde sichtbar einfrieren.
         this.setReelPaused((window.scrollY || 0) >= (this._heroH || window.innerHeight) || !!(this.reel && this.reel.userPaused));
         // Die rote Fläche fährt wie am Rechner seitwärts aus dem Bild, der Film
-        // läuft dahinter weiter. Kann der Browser scroll-gesteuerte Animationen,
-        // macht das die CSS-Zeitachse in site.css: am Scrollweg festgemacht und
-        // trotzdem auf dem Compositor. Nur für ältere Browser bleibt hier der
-        // Ersatzweg mit zwei Schwellen (damit er am Rand nicht flattert).
-        if (!this._sda) {
-          const red = document.querySelector('[data-red]');
-          if (red) {
-            const weg = this._redWeg ? p > 0.09 : p > 0.16;
-            if (this._redWeg !== weg) {
-              this._redWeg = weg;
-              red.style.transform = weg ? 'translate3d(-102%,0,0)' : 'translate3d(0,0,0)';
-            }
-          }
-          const afterM = document.querySelector('[data-hero-after]');
-          const afterOn = p > 0.34;
-          if (afterM && this._afterOn !== afterOn) { this._afterOn = afterOn; afterM.style.opacity = afterOn ? '1' : '0'; afterM.style.transform = 'none'; }
+        // läuft dahinter weiter — Bild für Bild am Scrollweg, genau wie dort.
+        // Das ist EIN Transform auf EINEM Element je Ereignis; teuer war nie das
+        // Verschieben, sondern die erzwungenen Layouts drumherum (Nr. 15/25/26).
+        const red = this._red || (this._red = document.querySelector('[data-red]'));
+        if (red) {
+          const t = Math.min(1, p / 0.6);
+          const q = 1 - Math.pow(1 - t, 3);
+          red.style.transform = 'translate3d(' + (-q * 102).toFixed(2) + '%,0,0)';
         }
+        const afterM = document.querySelector('[data-hero-after]');
+        const afterOn = p > 0.34;
+        if (afterM && this._afterOn !== afterOn) { this._afterOn = afterOn; afterM.style.opacity = afterOn ? '1' : '0'; afterM.style.transform = 'none'; }
         const hudM = document.querySelector('[data-hero-hud]');
         const hudOn = p < 0.3;
         if (hudM && this._hudOn !== hudOn) { this._hudOn = hudOn; hudM.style.opacity = hudOn ? '1' : '0'; }
@@ -328,6 +325,8 @@
         let naeher = Infinity; idx = 0;
         for (let k = 0; k < rows.length; k++) {
           const b = rows[k].getBoundingClientRect();
+          // sobald die Zeile von unten ins Bild kommt: einsteigen lassen
+          if (b.top < vh * 0.88 && rows[k].hasAttribute('data-verborgen')) rows[k].removeAttribute('data-verborgen');
           const d = Math.abs((b.top + b.bottom) / 2 - ziel);
           if (d < naeher) { naeher = d; idx = k; }
         }

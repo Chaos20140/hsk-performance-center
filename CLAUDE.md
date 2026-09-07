@@ -169,9 +169,9 @@ HUD: `[data-tc]` Timecode, `[data-seg]` 10 Segmente (nur Desktop, `data-hide-m`)
 
 | Was | Methode | Hooks |
 |---|---|---|
-| Rote Fläche fährt raus (Rechner seitwärts, Telefon nach unten), Video zoomt zurück, „Die Halle." erscheint | `heroFx` | `[data-red]`, `[data-hero-video]`, `[data-hero-after]`, `[data-nav-logo]` |
-| Trainingsbereiche — **Rechner:** 330 vh sticky, Index ↔ Bühne, Clip je Bereich. **Telefon:** Sektion so hoch wie ihr Inhalt, nur die Bühne klebt oben, die drei Zeilen laufen darunter durch (je 30 svh); aktiver Bereich aus den Zeilen gelesen, jede Zeile steigt beim Hereinscrollen ein | `areasFx`, `goArea` | `[data-areas]`, `[data-areas-stage]`, `[data-area-row]`, `[data-area-media]` |
-| Roter Wipe „Eine Leistung. Drei Laufzeiten." — **Rechner:** sticky bottom + clip-path am Scrollrad. **Telefon:** schiebt sich von links nach rechts herein, danach steigt die Schrift ein (CSS-Blende, Skript setzt nur `data-wipe-auf`); belegt dort keinen eigenen Platz im Fluss | `wipeFx` | `[data-eq]`, `[data-wipe]` |
+| Rote Fläche fährt seitwärts aus dem Bild (Rechner wie Telefon, Bild für Bild am Scrollweg), Video zoomt zurück, „Die Halle." erscheint | `heroFx` | `[data-red]`, `[data-hero-video]`, `[data-hero-after]`, `[data-nav-logo]` |
+| Trainingsbereiche — **Rechner:** 330 vh sticky, Index ↔ Bühne, Clip je Bereich. **Telefon:** Sektion so hoch wie ihr Inhalt, nur die Bühne klebt oben, die drei Zeilen laufen darunter durch (je 30 svh); aktiver Bereich aus den Zeilen gelesen, jede Zeile steigt beim Hereinscrollen ein (`data-verborgen`) | `areasFx`, `goArea` | `[data-areas]`, `[data-areas-stage]`, `[data-area-row]`, `[data-area-media]` |
+| Roter Wipe „Eine Leistung. Drei Laufzeiten." — **Rechner:** sticky bottom + clip-path am Scrollrad. **Telefon:** schiebt sich von links nach rechts herein, danach — erst wenn das Rot komplett steht — steigt die Schrift ein (CSS-Blende, Skript setzt nur `data-wipe-auf`); belegt dort keinen eigenen Platz im Fluss | `wipeFx` | `[data-eq]`, `[data-wipe]` |
 | Ausstattungs-Clips beim Hover | `eqEnter/eqLeave` | `[data-eq-card] video[data-src]` |
 | FAQ | `toggleFaq` | `[data-faq-head]`, `[data-faq-body]` (max-height) |
 | Nav-Hintergrund, SCRL %, Progress-Balken, Mobilleiste ab 0,85 vh, Parallax | `sync` | `[data-nav]`, `[data-scrl]`, `[data-progress]`, `[data-mbar]`, `[data-px]` |
@@ -442,7 +442,23 @@ Drei asserted Korrekturen in `legalPage()`:
     Bildschirmhöhe lang da. Der Hero-Film fror deshalb sichtbar ein. Wer „nicht mehr
     zu sehen" meint, muss die Sektionshöhe nehmen, nicht die Klebestrecke.
 
-28. **Ein Schaltpunkt mit CSS-Blende ist nicht immer die Antwort auf Ruckeln.** Beim
+29. **Eine scroll-gesteuerte Animation darf nur dort stehen, wo „sofort fertig" der
+    gewünschte Ruhezustand ist.** Live meldete die Zeitachse einen festgefrorenen
+    Fortschritt von 90 % bei Scrollposition 0 — die rote Hero-Fläche war damit weg,
+    bevor jemand gescrollt hatte. Das Design nutzt dieselbe Technik an vielen Stellen
+    gefahrlos, weil dort der Endzustand „sichtbar" ist. Meine Anwendung hatte den
+    Endzustand „verschwunden" — Fehlschlag = Inhalt fort. **Vor jeder neuen
+    Browser-Technik prüfen: Was passiert, wenn sie nicht greift?**
+30. **Lokal grün heißt nicht live grün.** Der Fehler trat in keiner lokalen Messung
+    auf, nur auf der ausgelieferten Seite. Seitdem gehört zur Prüfroutine: nach dem
+    Push dieselbe Messung noch einmal gegen die Live-URL — und zwar **ohne vorher zu
+    scrollen**, denn ein `scrollTo` verdeckte den Fehler.
+31. **Headless-WebKit läuft mit ~10 Bildern/s.** Jede Bild-für-Bild-Bewegung sieht
+    dort stufig aus, und der Zustand hinkt nach einem Sprung bis zu 1,5 s nach. Ich
+    hätte das fast für ein Ruckeln der Seite gehalten. Vor solchen Schlüssen die
+    Bildrate messen (`requestAnimationFrame` zählen).
+
+32. **Ein Schaltpunkt mit CSS-Blende ist nicht immer die Antwort auf Ruckeln.** Beim
     Vorhang hätte er zwar sauber animiert, aber vor dem Umschlagen eine bildschirmhohe
     leere Fläche stehen lassen — der Block belegt im Fluss eine volle Bildschirmhöhe.
     Die bessere Lösung war, die Animation ganz wegzulassen: ohne `position:sticky`
@@ -511,10 +527,53 @@ Gequetschte Raster auf 390 px:
 ```
 
 Nach dem Push: `curl -I` auf `/CLAUDE.md`, `/build/build.js`, `/src/` → müssen 404 sein.
+Und: dieselbe Messung noch einmal gegen die **Live-URL**, und zwar **ohne vorher zu
+scrollen** — der Fall „rote Hero-Fläche fehlt" trat nur dort auf und verschwand,
+sobald ein `scrollTo` vorausging (siehe Fehler Nr. 29/30).
 
 ---
 
 ## 9. Änderungslog (jede Änderung, neueste oben)
+
+- **2026-09-07 — Sechste Rückmeldung: „der rote Balken oben fehlt komplett"** (Tolunay):
+  - **Der Fehler: scroll-gesteuerte Animation stand live sofort auf „fertig".**
+    Auf der Live-Seite meldete die Zeitachse bei Scrollposition 0 einen
+    Fortschritt von 90 % — festgefroren, unabhängig vom Scrollen. Die Animation
+    war damit im Endzustand: die rote Fläche stand auf −398 px, also außerhalb
+    des Bildes, **bevor der Besucher überhaupt gescrollt hatte**. Lokal trat das
+    nie auf; ich habe es erst gesehen, als ich die Live-Seite selbst gemessen
+    habe. Ursache nicht abschließend geklärt — und genau deshalb ist die Technik
+    hier raus: eine Animation, deren Fehlschlag Inhalt verschwinden lässt, hat in
+    einer Kundenseite nichts zu suchen.
+    (Das Design selbst nutzt `animation-timeline` an vielen Stellen — dort ist der
+    Endzustand „sichtbar". Fällt sie aus, ist der Inhalt einfach da. Das ist der
+    Unterschied: **eine scroll-gesteuerte Animation darf nur dort stehen, wo
+    „sofort fertig" der gewünschte Ruhezustand ist.**)
+  - **Hero jetzt wie am Rechner:** die rote Fläche fährt Bild für Bild am
+    Scrollweg seitwärts aus dem Bild (HSK-PATCH 17). Ein Transform auf einem
+    Element je Ereignis — teuer war nie das Verschieben, sondern die erzwungenen
+    Layouts drumherum, und die sind seit Nr. 15/25/26 weg.
+  - **Bereiche:** jede Zeile steigt beim Hereinscrollen ein. Das Kennzeichen
+    dafür nimmt `areasFx` weg, wo die Maße der Zeilen ohnehin schon vorliegen —
+    ein IntersectionObserver meldete sich in der Messung bis zu einer halben
+    Sekunde später. Jede Zeile trägt jetzt 40 svh statt 30, damit der Wechsel
+    Kraft → Athletik → Conditioning Zeit hat (je gut ein Drittel Bildschirm).
+  - **Preise:** die Schrift kommt erst, wenn das Rot komplett steht — die
+    Verzögerung ist jetzt die volle Dauer der Vorhangblende (0,78 s statt 0,34 s).
+  - **Karte:** statt des roten Punkts die vertraute Nadel-Form, gefüllt im Rot des
+    Hauses, Spitze exakt auf der Kartenmitte (gemessen 0/0 px Abweichung). Der
+    Puls-Ring ist weg.
+  - Geprüft: Hero bei Scrollposition 0 **ohne jedes Zutun** (das war der Fehler) —
+    rote Fläche sichtbar; Verlauf über den Scrollweg; Bereiche Schritt für Schritt
+    inklusive Anker-Aufruf `#training` und einzelnem Sprung; Vorhang im
+    Zeitverlauf; 9 Seiten × 4 Breiten ohne Querlauf und Konsolenfehler; Desktop
+    unverändert nachgemessen. **Achtung bei Messungen:** Headless-WebKit läuft mit
+    ~10 Bildern/s, jede Bild-für-Bild-Bewegung sieht dort stufig aus und der
+    Zustand hinkt bis zu 1,5 s nach — das ist der Prüfstand, nicht die Seite.
+    Sicherheit: nur konstante Attributnamen, kein `innerHTML`/`eval`, CSP und
+    Fremdziele unverändert (das `xmlns` der Karten-Nadel entfernt, damit die
+    Fremdziel-Prüfung sauber bleibt).
+
 
 - **2026-09-07 — Fünfte Rückmeldung: „so hab ich das nicht gemeint"** (Tolunay):
   Drei Stellen, an denen ich die Absicht falsch getroffen hatte. Gemeinsamer

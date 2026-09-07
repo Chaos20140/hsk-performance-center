@@ -371,9 +371,15 @@ function build() {
     must(!/<iframe[^>]*\ssrc="https/.test(body), 'a third-party iframe still loads on view');
     // Die rote Marke sitzt in der Kartenmitte, also auf dem Studio. Sie liegt
     // außerhalb des iframe und bleibt deshalb vom Graufilter unberührt.
+    // Dieselbe Form, die Google selbst setzt — nur in Rot statt grau unter dem
+    // Filter. Die Spitze der Nadel sitzt auf der Kartenmitte, also auf dem Studio.
+    const nadel = '<span data-map-pin aria-hidden="true">' +
+      '<svg viewBox="0 0 24 34" width="26" height="37">' +
+      '<path d="M12 0C5.4 0 0 5.4 0 12c0 8.5 10.1 20.3 11.2 21.6.4.5 1.2.5 1.6 0C13.9 32.3 24 20.5 24 12 24 5.4 18.6 0 12 0z" fill="#E10600"/>' +
+      '<circle cx="12" cy="12" r="4.3" fill="#050506"/></svg></span>';
     const mapEnd = 'contrast(1.1)"></iframe>';
     must(body.indexOf(mapEnd) > -1, 'map iframe end not found');
-    body = body.replace(mapEnd, mapEnd + '<span data-map-pin aria-hidden="true"><span data-map-ping></span><span data-map-dot></span></span>');
+    body = body.replace(mapEnd, mapEnd + nadel);
     // Das Element-Attribut würde die Seiten-Policy aufweichen (volle URL an Google)
     const rp = 'referrerpolicy="no-referrer-when-downgrade"';
     must(body.indexOf(rp) > -1, 'map referrerpolicy not found');
@@ -797,12 +803,14 @@ function patchLogic(js) {
         "    };\n" +
         "    if (this._mq && this._mq.addEventListener) this._mq.addEventListener('change', this._onMq);\n" +
         "    const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;\n" +
-        "    // HSK-PATCH 27: Kann der Browser scroll-gesteuerte CSS-Animationen (Safari 26,\n" +
-        "    // Chrome 115)? Dann hängt die rote Hero-Fläche direkt am Scrollweg und läuft\n" +
-        "    // dabei auf dem Compositor — flüssig UND am Finger. Das Skript hält sich dort\n" +
-        "    // heraus; die Schwellen unten sind nur der Ersatzweg für ältere Browser.\n" +
-        "    this._sda = false;\n" +
-        "    try { this._sda = !!(window.CSS && CSS.supports && CSS.supports('animation-timeline', 'view()')) && !reduced; } catch (e) {}\n" +
+        "    // HSK-PATCH 27: Jede Bereichszeile steigt beim Hereinscrollen ein. Das\n" +
+        "    // Kennzeichen setzt das Skript hier, weggenommen wird es in areasFx —\n" +
+        "    // dort liegen die Maße der Zeilen ohnehin schon vor. Ein Beobachter\n" +
+        "    // meldete sich unter Umständen erst eine halbe Sekunde später; hier\n" +
+        "    // passiert es im selben Zug wie der Bereichswechsel.\n" +
+        "    // Ohne Skript trägt keine Zeile das Kennzeichen — dann sind sie schlicht\n" +
+        "    // sichtbar, statt für immer unsichtbar zu bleiben.\n" +
+        "    if (this._mob) document.querySelectorAll('[data-area-row]').forEach((z) => z.setAttribute('data-verborgen', ''));\n" +
         "    // HSK-PATCH 2: Vorhang nur mit Vorhang-Markup, nie bei Anker-Aufruf\n" +
         "    const skipBoot = reduced || !document.querySelector('[data-if=\"booting\"]') || !!location.hash;\n" +
         "    if (skipBoot) { this.setState({ booting: false }); this.skipIntroDelays(); }\n" +
@@ -895,23 +903,18 @@ function patchLogic(js) {
         "      // volle Bildschirmhöhe lang da — er würde sichtbar einfrieren.\n" +
         "      this.setReelPaused((window.scrollY || 0) >= (this._heroH || window.innerHeight) || !!(this.reel && this.reel.userPaused));\n" +
         "      // Die rote Fläche fährt wie am Rechner seitwärts aus dem Bild, der Film\n" +
-        "      // läuft dahinter weiter. Kann der Browser scroll-gesteuerte Animationen,\n" +
-        "      // macht das die CSS-Zeitachse in site.css: am Scrollweg festgemacht und\n" +
-        "      // trotzdem auf dem Compositor. Nur für ältere Browser bleibt hier der\n" +
-        "      // Ersatzweg mit zwei Schwellen (damit er am Rand nicht flattert).\n" +
-        "      if (!this._sda) {\n" +
-        "        const red = document.querySelector('[data-red]');\n" +
-        "        if (red) {\n" +
-        "          const weg = this._redWeg ? p > 0.09 : p > 0.16;\n" +
-        "          if (this._redWeg !== weg) {\n" +
-        "            this._redWeg = weg;\n" +
-        "            red.style.transform = weg ? 'translate3d(-102%,0,0)' : 'translate3d(0,0,0)';\n" +
-        "          }\n" +
-        "        }\n" +
-        "        const afterM = document.querySelector('[data-hero-after]');\n" +
-        "        const afterOn = p > 0.34;\n" +
-        "        if (afterM && this._afterOn !== afterOn) { this._afterOn = afterOn; afterM.style.opacity = afterOn ? '1' : '0'; afterM.style.transform = 'none'; }\n" +
+        "      // läuft dahinter weiter — Bild für Bild am Scrollweg, genau wie dort.\n" +
+        "      // Das ist EIN Transform auf EINEM Element je Ereignis; teuer war nie das\n" +
+        "      // Verschieben, sondern die erzwungenen Layouts drumherum (Nr. 15/25/26).\n" +
+        "      const red = this._red || (this._red = document.querySelector('[data-red]'));\n" +
+        "      if (red) {\n" +
+        "        const t = Math.min(1, p / 0.6);\n" +
+        "        const q = 1 - Math.pow(1 - t, 3);\n" +
+        "        red.style.transform = 'translate3d(' + (-q * 102).toFixed(2) + '%,0,0)';\n" +
         "      }\n" +
+        "      const afterM = document.querySelector('[data-hero-after]');\n" +
+        "      const afterOn = p > 0.34;\n" +
+        "      if (afterM && this._afterOn !== afterOn) { this._afterOn = afterOn; afterM.style.opacity = afterOn ? '1' : '0'; afterM.style.transform = 'none'; }\n" +
         "      const hudM = document.querySelector('[data-hero-hud]');\n" +
         "      const hudOn = p < 0.3;\n" +
         "      if (hudM && this._hudOn !== hudOn) { this._hudOn = hudOn; hudM.style.opacity = hudOn ? '1' : '0'; }\n" +
@@ -1009,6 +1012,8 @@ function patchLogic(js) {
         "      let naeher = Infinity; idx = 0;\n" +
         "      for (let k = 0; k < rows.length; k++) {\n" +
         "        const b = rows[k].getBoundingClientRect();\n" +
+        "        // sobald die Zeile von unten ins Bild kommt: einsteigen lassen\n" +
+        "        if (b.top < vh * 0.88 && rows[k].hasAttribute('data-verborgen')) rows[k].removeAttribute('data-verborgen');\n" +
         "        const d = Math.abs((b.top + b.bottom) / 2 - ziel);\n" +
         "        if (d < naeher) { naeher = d; idx = k; }\n" +
         "      }\n" +

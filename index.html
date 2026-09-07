@@ -145,10 +145,7 @@ html[data-menu="open"] [data-burger]::after{transform:translate(-50%,-50%) rotat
 /* Der rote Punkt sitzt in der Kartenmitte — und die Mitte ist das Studio: der
    iframe wird über `ll=` auf die Koordinaten zentriert, ohne eigene Nadel.
    Er liegt außerhalb des iframe, der Graufilter greift hier also nicht. */
-[data-map-pin]{position:absolute;left:50%;top:50%;width:0;height:0;z-index:1;pointer-events:none}
-[data-map-dot]{position:absolute;left:-6px;top:-6px;width:12px;height:12px;background:#E10600;box-shadow:0 0 0 3px rgba(5,5,6,.5),0 2px 12px rgba(0,0,0,.55)}
-[data-map-ping]{position:absolute;left:-20px;top:-20px;width:40px;height:40px;border:1px solid #E10600;animation:hs-ping 2.8s cubic-bezier(.16,1,.3,1) infinite}
-@keyframes hs-ping{0%{transform:scale(.3);opacity:.85}70%,100%{transform:scale(1);opacity:0}}
+[data-map-pin]{position:absolute;left:50%;top:50%;z-index:1;pointer-events:none;line-height:0;transform:translate(-50%,-100%);filter:drop-shadow(0 2px 7px rgba(0,0,0,.6))}
 /* Der Ausweg für alle, die die Karte nicht laden wollen — er braucht dieselbe
    Trefferfläche wie der Knopf daneben */
 [data-if="mapOff"] a{display:inline-flex;align-items:center;min-height:44px}
@@ -179,7 +176,7 @@ html[data-menu="open"] [data-burger]::after{transform:translate(-50%,-50%) rotat
    Sekunde neu starten (Laufschrift springt, Punkte flimmern). Hier: einmal, dann Ruhe. */
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-iteration-count:1!important;scroll-behavior:auto!important}
-  [style*="hs-mq"],[style*="hs-blink"],[style*="hs-cue"],[data-map-ping]{animation:none!important}
+  [style*="hs-mq"],[style*="hs-blink"],[style*="hs-cue"]{animation:none!important}
 }
 
 /* ---- Telefon ---- */
@@ -233,10 +230,14 @@ html[data-menu="open"] [data-burger]::after{transform:translate(-50%,-50%) rotat
   [data-areas-index]{justify-content:flex-start!important;padding:26px 20px calc(36px + env(safe-area-inset-bottom))!important;gap:16px!important}
   /* Die Zeilen tragen von Haus aus 167/144/121 px — verschieden hoch und
      zusammen nur 0,75 Bildschirmhöhen, man wischte an den drei Bereichen
-     vorbei. 30 svh (253 px) gleicht sie an und gibt jedem Bereich ein knappes
-     Drittel Bildschirm Weg. Mehr wäre Leere: bei 42 svh standen zwischen zwei
-     Zeilen 190 px nichts, und genau solche Flächen waren die Beschwerde. */
-  [data-area-row]{min-height:30svh;align-content:center}
+     vorbei. 40 svh (337 px) gleicht sie an und gibt jedem Bereich gut ein
+     Drittel Bildschirm Weg, damit der Wechsel Zeit hat. Leer wirkt das nicht,
+     weil der Text jeder Zeile stehen bleibt (nur der aktive ist voll da). */
+  [data-area-row]{min-height:40svh;align-content:center;transition:opacity .6s ease,transform .75s cubic-bezier(.16,1,.3,1)}
+  /* Jede Zeile steigt beim Hereinscrollen ein — Kraft, dann Athletik, dann
+     Conditioning. Das Kennzeichen setzt das Skript (HSK-PATCH 27); ohne
+     Skript trägt es keine Zeile und alle sind schlicht sichtbar. */
+  [data-area-row][data-verborgen]{opacity:0;transform:translate3d(0,26px,0)}
   /* Der Text steht auf dem Telefon immer — eingeklappt bliebe in der Zeile nur
      Leere, und Leere war hier bisher das Problem. Der aktive Bereich hebt sich
      stattdessen über die Deckkraft ab (`data-aktiv`, HSK-PATCH 28), zusammen
@@ -246,7 +247,7 @@ html[data-menu="open"] [data-burger]::after{transform:translate(-50%,-50%) rotat
   @media (max-height:760px){
     [data-areas-h2]{font-size:clamp(26px,7vw,36px)!important}
     [data-areas-stage]{height:38svh}
-    [data-area-row]{min-height:26svh}
+    [data-area-row]{min-height:34svh}
   }
   /* Karte: 4:3 ist auf dem Telefon zu flach für das Einwilligungsfeld; der Koordinaten-Chip wandert nach unten */
   #kontakt [data-two]>div:last-child{aspect-ratio:1/1!important}
@@ -282,15 +283,17 @@ html[data-menu="open"] [data-burger]::after{transform:translate(-50%,-50%) rotat
      macht es die Verschiebung. */
   [data-wipe]{will-change:transform;transform:translate3d(-101%,0,0);clip-path:none!important;transition:transform .75s cubic-bezier(.16,1,.3,1);justify-content:center!important;padding-bottom:calc(72px + env(safe-area-inset-bottom))!important}
   [data-wipe][data-wipe-auf]{transform:translate3d(0,0,0)}
-  [data-wipe]>div{opacity:0;transform:translate3d(0,30px,0);transition:opacity .5s ease .34s,transform .65s cubic-bezier(.16,1,.3,1) .34s}
+  /* Erst steht das Rot über der ganzen Fläche, DANN kommt die Schrift: die
+     Verzögerung ist die Dauer der Vorhangblende (0,75 s). */
+  [data-wipe]>div{opacity:0;transform:translate3d(0,30px,0);transition:opacity .55s ease .78s,transform .7s cubic-bezier(.16,1,.3,1) .78s}
   [data-wipe][data-wipe-auf]>div{opacity:1;transform:none}
 
   /* -- Hero: die rote Fläche sitzt unten und braucht keinen Desktop-Sockel */
   [data-red]{padding-top:22px!important;padding-bottom:calc(22px + env(safe-area-inset-bottom))!important}
-  /* Am Rechner fährt die rote Fläche als Spalte seitwärts aus dem Bild. Auf dem
-     Telefon liegt sie unten auf dem Film und deckt ihn zur Hälfte zu; sie fährt
-     beim ersten Scrollen nach unten weg und gibt ihn frei (HSK-PATCH 17). */
-  [data-red]{will-change:transform;transition:transform .6s cubic-bezier(.16,1,.3,1),opacity .45s ease}
+  /* Die rote Fläche fährt auch hier seitwärts aus dem Bild, wie am Rechner —
+     Bild für Bild am Scrollweg (HSK-PATCH 17), deshalb keine Blende, die
+     dagegenhielte. Der Film läuft dahinter weiter. */
+  [data-red]{will-change:transform;transition:none}
   [data-red] h1{margin-top:10px!important}
   [data-red] p{margin-top:12px!important}
   [data-red-cta]{margin-top:16px!important}
@@ -523,40 +526,6 @@ html[data-menu="open"] [data-burger]::after{transform:translate(-50%,-50%) rotat
   }
 }
 
-/* ---- Scroll-gesteuerte Animationen (Safari 26, Chrome 115) ----
-   Das ist der einzige Weg, eine Bewegung gleichzeitig AM SCROLLWEG festzumachen
-   und flüssig zu halten: der Browser rechnet sie auf dem Compositor, unabhängig
-   davon, wann das Skript wieder drankommt. Genau daran scheiterte jede
-   Bild-für-Bild-Fassung auf dem iPhone — Safari reicht die Scroll-Ereignisse
-   beim Nachlauf gebündelt nach.
-
-   Ohne Unterstützung greift der Ersatzweg im Skript (Schwellen + CSS-Blende,
-   HSK-PATCH 17/27). Deshalb steht hier `transition:none` — sonst liefen beide
-   Fassungen übereinander. */
-@supports (animation-timeline:view()){
-  @media (max-width:900px){
-    /* `contain` ist genau die Strecke, auf der der 150-dvh-Hero den Bildschirm
-       voll ausfüllt — also exakt die Strecke, die er geklebt bleibt. Damit
-       hängt die rote Fläche am Scrollweg, egal wie hoch die Adressleiste
-       gerade den Bildschirm macht. */
-    #top{view-timeline-name:--hero;view-timeline-axis:block}
-    /* Wie am Rechner: die rote Fläche fährt seitwärts aus dem Bild und gibt den
-       Film frei, der dahinter weiterläuft. */
-    [data-red]{animation:hs-rot-weg linear both;animation-timeline:--hero;animation-range:contain 0% contain 62%;transition:none!important}
-    [data-hero-after]{animation:hs-halle linear both;animation-timeline:--hero;animation-range:contain 45% contain 88%;transition:none!important}
-    /* Jede Bereichszeile steigt beim Hereinscrollen ein — Kraft, dann Athletik,
-       dann Conditioning, jede mit ihrem Bild oben auf der Bühne. */
-    [data-area-row]{animation:hs-zeile linear both;animation-timeline:view();animation-range:entry 12% entry 82%}
-  }
-}
-@keyframes hs-rot-weg{from{transform:translate3d(0,0,0)}to{transform:translate3d(-102%,0,0)}}
-@keyframes hs-halle{from{opacity:0;transform:translate3d(0,26px,0)}to{opacity:1;transform:none}}
-@keyframes hs-zeile{from{opacity:0;transform:translate3d(0,26px,0)}to{opacity:1;transform:none}}
-/* Wer weniger Bewegung will, bekommt den Schaltpunkt aus dem Skript — eine an
-   den Finger gekoppelte Fahrt ist genau das, was hier stört. */
-@media (prefers-reduced-motion:reduce){
-  [data-red],[data-hero-after],[data-area-row]{animation-name:none!important;animation-timeline:auto!important}
-}
 
 /* ---- Druck ---- */
 @media print{
@@ -874,7 +843,7 @@ html[data-menu="open"] [data-burger]::after{transform:translate(-50%,-50%) rotat
       </div>
       <div style="position:relative;aspect-ratio:4/3;background:#0E0E11;border:1px solid rgba(255,255,255,.12);overflow:hidden">
         <div data-if="mapOn" style="display:none">
-          <iframe title="Karte" data-map-frame data-src="https://www.google.com/maps?ll=51.3956,8.5681&amp;z=16&amp;output=embed" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" style="position:absolute;inset:0;width:100%;height:100%;border:0;filter:grayscale(1) invert(.92) contrast(1.1)"></iframe><span data-map-pin aria-hidden="true"><span data-map-ping></span><span data-map-dot></span></span>
+          <iframe title="Karte" data-map-frame data-src="https://www.google.com/maps?ll=51.3956,8.5681&amp;z=16&amp;output=embed" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" style="position:absolute;inset:0;width:100%;height:100%;border:0;filter:grayscale(1) invert(.92) contrast(1.1)"></iframe><span data-map-pin aria-hidden="true"><svg viewBox="0 0 24 34" width="26" height="37"><path d="M12 0C5.4 0 0 5.4 0 12c0 8.5 10.1 20.3 11.2 21.6.4.5 1.2.5 1.6 0C13.9 32.3 24 20.5 24 12 24 5.4 18.6 0 12 0z" fill="#E10600"/><circle cx="12" cy="12" r="4.3" fill="#050506"/></svg></span>
         </div>
         <div data-if="mapOff" style="display:contents">
           <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:clamp(20px,4vw,60px);background-image:linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px),linear-gradient(180deg,rgba(255,255,255,.05) 1px,transparent 1px);background-size:46px 46px">
