@@ -170,8 +170,8 @@ HUD: `[data-tc]` Timecode, `[data-seg]` 10 Segmente (nur Desktop, `data-hide-m`)
 | Was | Methode | Hooks |
 |---|---|---|
 | Rote Fläche fährt raus (Rechner seitwärts, Telefon nach unten), Video zoomt zurück, „Die Halle." erscheint | `heroFx` | `[data-red]`, `[data-hero-video]`, `[data-hero-after]`, `[data-nav-logo]` |
-| Trainingsbereiche — **Rechner:** 330 vh sticky, Index ↔ Bühne, Clip je Bereich. **Telefon:** Sektion so hoch wie ihr Inhalt, nur die Bühne klebt oben, die drei Zeilen laufen darunter durch (je 30 svh); aktiver Bereich aus den Zeilen gelesen | `areasFx`, `goArea` | `[data-areas]`, `[data-areas-stage]`, `[data-area-row]`, `[data-area-media]` |
-| Roter Wipe „Eine Leistung. Drei Laufzeiten." — **Rechner:** sticky bottom + clip-path am Scrollrad. **Telefon:** steht still im Fluss und kommt beim Scrollen von unten ins Bild (kein Skript) | `wipeFx` | `[data-eq]`, `[data-wipe]` |
+| Trainingsbereiche — **Rechner:** 330 vh sticky, Index ↔ Bühne, Clip je Bereich. **Telefon:** Sektion so hoch wie ihr Inhalt, nur die Bühne klebt oben, die drei Zeilen laufen darunter durch (je 30 svh); aktiver Bereich aus den Zeilen gelesen, jede Zeile steigt beim Hereinscrollen ein | `areasFx`, `goArea` | `[data-areas]`, `[data-areas-stage]`, `[data-area-row]`, `[data-area-media]` |
+| Roter Wipe „Eine Leistung. Drei Laufzeiten." — **Rechner:** sticky bottom + clip-path am Scrollrad. **Telefon:** schiebt sich von links nach rechts herein, danach steigt die Schrift ein (CSS-Blende, Skript setzt nur `data-wipe-auf`); belegt dort keinen eigenen Platz im Fluss | `wipeFx` | `[data-eq]`, `[data-wipe]` |
 | Ausstattungs-Clips beim Hover | `eqEnter/eqLeave` | `[data-eq-card] video[data-src]` |
 | FAQ | `toggleFaq` | `[data-faq-head]`, `[data-faq-body]` (max-height) |
 | Nav-Hintergrund, SCRL %, Progress-Balken, Mobilleiste ab 0,85 vh, Parallax | `sync` | `[data-nav]`, `[data-scrl]`, `[data-progress]`, `[data-mbar]`, `[data-px]` |
@@ -431,7 +431,18 @@ Drei asserted Korrekturen in `legalPage()`:
     falsch: in WebKit 26 gemessen, `gridTop` bleibt 0. `npx playwright install webkit`
     kostet eine Minute und hätte mir die halbe Fehlersuche gespart. **WebKit ist ab
     jetzt der Prüfstand für alles, was der Kunde auf dem iPhone sieht.**
-26. **Ein Schaltpunkt mit CSS-Blende ist nicht immer die Antwort auf Ruckeln.** Beim
+26. **Bewegung wegnehmen ist keine Lösung, wenn Bewegung gewünscht ist.** Ich habe
+    das Ruckeln zweimal dadurch behoben, dass ich die Animation entfernt habe — beim
+    Vorhang ganz, beim Hero-Balken auf einen Schaltpunkt. Der Kunde wollte beides:
+    die Bewegung UND flüssig. Die Antwort heißt scroll-gesteuerte CSS-Animation
+    (`animation-timeline`), nicht „weniger". **Erst prüfen, was der Browser kann,
+    dann den Umfang kürzen** — nicht umgekehrt.
+27. **`p >= 1` ist nicht „aus dem Bild".** Bei einer Klebesektion ist p=1 der Moment,
+    in dem der Block ANFÄNGT wegzuscrollen — danach steht er noch eine volle
+    Bildschirmhöhe lang da. Der Hero-Film fror deshalb sichtbar ein. Wer „nicht mehr
+    zu sehen" meint, muss die Sektionshöhe nehmen, nicht die Klebestrecke.
+
+28. **Ein Schaltpunkt mit CSS-Blende ist nicht immer die Antwort auf Ruckeln.** Beim
     Vorhang hätte er zwar sauber animiert, aber vor dem Umschlagen eine bildschirmhohe
     leere Fläche stehen lassen — der Block belegt im Fluss eine volle Bildschirmhöhe.
     Die bessere Lösung war, die Animation ganz wegzulassen: ohne `position:sticky`
@@ -483,7 +494,7 @@ Drei asserted Korrekturen in `legalPage()`:
 ```bash
 cd build && HSK_CANONICAL="https://chaos20140.github.io/hsk-performance-center/" node build.js   # muss "OK" sagen
 cd .. && node --check assets/js/site.js
-grep -c 'HSK-PATCH' assets/js/site.js                 # 32 (31 Marker + Kopfkommentar)
+grep -c 'HSK-PATCH' assets/js/site.js                 # 34 (33 Marker + Kopfkommentar)
 grep -ohE '(src|href)="https?://[^"]+"' *.html | sort -u   # nur maps / facebook / canonical
 ```
 
@@ -504,6 +515,51 @@ Nach dem Push: `curl -I` auf `/CLAUDE.md`, `/build/build.js`, `/src/` → müsse
 ---
 
 ## 9. Änderungslog (jede Änderung, neueste oben)
+
+- **2026-09-07 — Fünfte Rückmeldung: „so hab ich das nicht gemeint"** (Tolunay):
+  Drei Stellen, an denen ich die Absicht falsch getroffen hatte. Gemeinsamer
+  Nenner: ich hatte Bewegung **entfernt**, um sie flüssig zu bekommen — gewünscht
+  war Bewegung, die flüssig IST.
+  - **Der Schlüssel: scroll-gesteuerte CSS-Animationen.** Safari 26 kann sie
+    (`animation-timeline`, in WebKit 26.6 nachgeprüft: `view()`, benannte
+    Zeitachsen und `animation-range` alle da). Damit hängt eine Bewegung am
+    Scrollweg **und** läuft trotzdem auf dem Compositor — genau die Kombination,
+    an der jede Bild-für-Bild-Fassung im Skript gescheitert ist (Safari reicht
+    die Scroll-Ereignisse beim Nachlauf gebündelt nach). Ohne Unterstützung
+    greift weiter der Schwellen-Ersatzweg im Skript; `_sda` (HSK-PATCH 27)
+    entscheidet, und bei „weniger Bewegung" ist er immer aus.
+  - **Hero: die rote Fläche fährt jetzt seitwärts, nicht nach unten.** Wie am
+    Rechner, und am Scrollweg festgemacht statt an einer Schwelle — vorher
+    verschwand sie auf einen Schlag. `#top` trägt die Zeitachse `--hero`, der
+    Bereich `contain` ist exakt die Strecke, die der Hero geklebt bleibt.
+    Gemessen: 0 → −91 → −182 → −274 px, linear zum Finger. Der Film läuft
+    dahinter weiter — und zwar bis der Hero wirklich aus dem Bild ist: die
+    Pause hing an `p >= 1`, also am Beginn des Wegscrollens, und der Film fror
+    eine volle Bildschirmhöhe lang sichtbar ein.
+  - **Trainingsbereiche: jeder Bereich kommt einzeln.** Vorher standen alle drei
+    Zeilen gleich hell da, es „erschien" nichts. Jetzt steigt jede Zeile beim
+    Hereinscrollen ein (`view()`-Zeitachse), und der aktive Bereich hebt sich
+    über die Deckkraft ab (`data-aktiv`, HSK-PATCH 28) — der Text bleibt dabei
+    stehen, eingeklappt wäre in der Zeile nur wieder Leere. Bild oben wechselt
+    mit: Kraft → Athletik → Conditioning, dann „Kein Standard-Sortiment".
+  - **Preise: der rote Vorhang schiebt sich von links nach rechts herein,**
+    danach steigt die Schrift ein (0,34 s später). Beides eine CSS-Blende, das
+    Skript setzt nur `data-wipe-auf`. Damit dabei nichts leer stehen kann,
+    belegt der Vorhang auf dem Telefon **keinen eigenen Platz mehr im Fluss**
+    (negativer oberer Abstand in Höhe seiner selbst) — er legt sich über das
+    Ende der Ausstattung. Es gibt also keine Fläche, die schwarz bleiben könnte,
+    egal wie schnell jemand scrollt. Ausgelöst bei 1,9 Bildschirmen Restweg.
+  - Geprüft: WebKit 26 mit iPhone-Maßen; Hero, Bereiche und Vorhang über den
+    ganzen Scrollweg gemessen; Ersatzweg für ältere Browser eigens nachgestellt
+    (`CSS.supports` gestubbt, Animation abgeschaltet) — Balken fährt dort per
+    Schwelle nach links; reduzierte Bewegung schaltet die Zeitachsen ab und
+    lässt das Skript übernehmen. 9 Seiten × 4 Breiten ohne Querlauf und
+    Konsolenfehler. Desktop unverändert nachgemessen (200 vh / 330 vh, Raster
+    und Vorhang kleben, `clip-path` unberührt, Zeilen klappen weiter auf und zu,
+    kein negativer Abstand). Startseite auf dem Telefon 15,3 → 14,3 Bildschirme.
+    Sicherheit: nur konstante Attributnamen, kein `innerHTML`/`eval`, CSP und
+    Fremdziele unverändert.
+
 
 - **2026-09-07 — Vierte Rückmeldung vom Gerät** (Tolunay, iPhone-Screenshots 12:14/12:15):
   - **Karte: roter Punkt aufs Studio, ganze Fläche öffnet die Route.** Google setzt

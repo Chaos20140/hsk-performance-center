@@ -797,6 +797,12 @@ function patchLogic(js) {
         "    };\n" +
         "    if (this._mq && this._mq.addEventListener) this._mq.addEventListener('change', this._onMq);\n" +
         "    const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;\n" +
+        "    // HSK-PATCH 27: Kann der Browser scroll-gesteuerte CSS-Animationen (Safari 26,\n" +
+        "    // Chrome 115)? Dann hängt die rote Hero-Fläche direkt am Scrollweg und läuft\n" +
+        "    // dabei auf dem Compositor — flüssig UND am Finger. Das Skript hält sich dort\n" +
+        "    // heraus; die Schwellen unten sind nur der Ersatzweg für ältere Browser.\n" +
+        "    this._sda = false;\n" +
+        "    try { this._sda = !!(window.CSS && CSS.supports && CSS.supports('animation-timeline', 'view()')) && !reduced; } catch (e) {}\n" +
         "    // HSK-PATCH 2: Vorhang nur mit Vorhang-Markup, nie bei Anker-Aufruf\n" +
         "    const skipBoot = reduced || !document.querySelector('[data-if=\"booting\"]') || !!location.hash;\n" +
         "    if (skipBoot) { this.setState({ booting: false }); this.skipIntroDelays(); }\n" +
@@ -884,27 +890,31 @@ function patchLogic(js) {
   patch("  heroFx(p) {\n    const q = 1 - Math.pow(1 - p, 3);",
         "  heroFx(p) {\n" +
         "    if (this._mob) { // HSK-PATCH 17\n" +
-        "      this.setReelPaused(p >= 1 || !!(this.reel && this.reel.userPaused));\n" +
-        "      // Die rote Fläche liegt auf dem Telefon unten auf dem Film und deckt ihn\n" +
-        "      // zur Hälfte zu. Beim ersten Scrollen fährt sie nach unten weg und gibt\n" +
-        "      // den Film frei; danach übernimmt „Die Halle\". Ein Schaltpunkt, die\n" +
-        "      // Bewegung macht die CSS-Blende (site.css) auf dem Compositor.\n" +
-        "      // Zwei Schwellen, damit die Fläche am Umschlagpunkt nicht flattert.\n" +
-        "      const red = document.querySelector('[data-red]');\n" +
-        "      if (red) {\n" +
-        "        const weg = this._redWeg ? p > 0.09 : p > 0.16;\n" +
-        "        if (this._redWeg !== weg) {\n" +
-        "          this._redWeg = weg;\n" +
-        "          red.style.transform = weg ? 'translate3d(0,102%,0)' : 'translate3d(0,0,0)';\n" +
-        "          red.style.opacity = weg ? '0' : '1';\n" +
+        "      // Der Film läuft, solange vom Hero noch etwas im Bild ist. `p >= 1` wäre\n" +
+        "      // zu früh: dort beginnt der Hero erst wegzuscrollen und steht noch eine\n" +
+        "      // volle Bildschirmhöhe lang da — er würde sichtbar einfrieren.\n" +
+        "      this.setReelPaused((window.scrollY || 0) >= (this._heroH || window.innerHeight) || !!(this.reel && this.reel.userPaused));\n" +
+        "      // Die rote Fläche fährt wie am Rechner seitwärts aus dem Bild, der Film\n" +
+        "      // läuft dahinter weiter. Kann der Browser scroll-gesteuerte Animationen,\n" +
+        "      // macht das die CSS-Zeitachse in site.css: am Scrollweg festgemacht und\n" +
+        "      // trotzdem auf dem Compositor. Nur für ältere Browser bleibt hier der\n" +
+        "      // Ersatzweg mit zwei Schwellen (damit er am Rand nicht flattert).\n" +
+        "      if (!this._sda) {\n" +
+        "        const red = document.querySelector('[data-red]');\n" +
+        "        if (red) {\n" +
+        "          const weg = this._redWeg ? p > 0.09 : p > 0.16;\n" +
+        "          if (this._redWeg !== weg) {\n" +
+        "            this._redWeg = weg;\n" +
+        "            red.style.transform = weg ? 'translate3d(-102%,0,0)' : 'translate3d(0,0,0)';\n" +
+        "          }\n" +
         "        }\n" +
+        "        const afterM = document.querySelector('[data-hero-after]');\n" +
+        "        const afterOn = p > 0.34;\n" +
+        "        if (afterM && this._afterOn !== afterOn) { this._afterOn = afterOn; afterM.style.opacity = afterOn ? '1' : '0'; afterM.style.transform = 'none'; }\n" +
         "      }\n" +
         "      const hudM = document.querySelector('[data-hero-hud]');\n" +
         "      const hudOn = p < 0.3;\n" +
         "      if (hudM && this._hudOn !== hudOn) { this._hudOn = hudOn; hudM.style.opacity = hudOn ? '1' : '0'; }\n" +
-        "      const afterM = document.querySelector('[data-hero-after]');\n" +
-        "      const afterOn = p > 0.34;\n" +
-        "      if (afterM && this._afterOn !== afterOn) { this._afterOn = afterOn; afterM.style.opacity = afterOn ? '1' : '0'; afterM.style.transform = 'none'; }\n" +
         "      this._overRed = false;\n" +
         "      return;\n" +
         "    }\n" +
@@ -925,16 +935,28 @@ function patchLogic(js) {
   //     translate3d blieb es stufig, denn nicht das Zeichnen ist das Problem,
   //     sondern der Takt, in dem die Werte ankommen. Und ein Schaltpunkt mit
   //     CSS-Blende wäre zwar glatt, ließe aber vor dem Umschlagen eine
-  //     bildschirmhohe schwarze Fläche stehen: der Vorhang belegt im Fluss eine
-  //     volle Bildschirmhöhe, und die ist ohne Rot einfach leer.
+  //     bildschirmhohe schwarze Fläche stehen.
   //
-  //     Auf dem Telefon steht er deshalb still (site.css: position:static,
-  //     kein clip-path). Er kommt dann von unten ins Bild, weil die Seite
-  //     scrollt — und Scrollen ist auf dem Telefon die einzige Bewegung, die
-  //     garantiert flüssig ist. Kein Skript, keine Lücke, kein Ruckeln.
+  //     Auf dem Telefon schiebt er sich deshalb quer ins Bild — von links nach
+  //     rechts, als eine einzige CSS-Blende auf dem Compositor, danach steigt
+  //     die Schrift ein. Das Skript setzt dafür nur EIN Attribut.
+  //
+  //     Damit dabei nichts leer stehen kann, belegt der Vorhang auf dem Telefon
+  //     keinen eigenen Platz mehr im Fluss (site.css: negativer oberer Abstand
+  //     in Höhe seiner selbst). Er legt sich über das Ende der Ausstattung.
+  //     Es gibt also gar keine Fläche mehr, die schwarz bleiben könnte — egal
+  //     wie schnell jemand scrollt. Ausgelöst bei 1,9 Bildschirmen Restweg,
+  //     rote Phase danach knapp eine Bildschirmhöhe bis zu den Preisen.
   patch("    const p = Math.min(1, Math.max(0, 1 - (r.bottom - vh) / vh));\n" +
         "    const q = 1 - Math.pow(1 - p, 2);",
-        "    if (this._mob) return; // HSK-PATCH 19\n" +
+        "    if (this._mob) { // HSK-PATCH 19\n" +
+        "      const auf = this._wipeAuf ? r.bottom < vh * 2.2 : r.bottom < vh * 1.9;\n" +
+        "      if (this._wipeAuf !== auf) {\n" +
+        "        this._wipeAuf = auf;\n" +
+        "        if (auf) w.setAttribute('data-wipe-auf', ''); else w.removeAttribute('data-wipe-auf');\n" +
+        "      }\n" +
+        "      return;\n" +
+        "    }\n" +
         "    const p = Math.min(1, Math.max(0, 1 - (r.bottom - vh) / vh));\n" +
         "    const q = 1 - Math.pow(1 - p, 2);", 'wipe transform');
 
@@ -995,6 +1017,15 @@ function patchLogic(js) {
         "      const p = Math.min(0.999, Math.max(0, -r.top / Math.max(1, span)));\n" +
         "      idx = Math.min(2, Math.floor(p * 3));\n" +
         "    }", 'areas index');
+
+  // 28) Der aktive Bereich als Attribut. Auf dem Telefon steht der Text jeder
+  //     Zeile dauerhaft (eingeklappt bliebe dort nur Leere), der aktive hebt
+  //     sich stattdessen über die Deckkraft ab — das entscheidet site.css.
+  //     Am Rechner ändert das Attribut nichts, dort klappt weiter auf und zu.
+  patch("      if (barEl) barEl.style.transform = on ? 'scaleY(1)' : 'scaleY(0)';",
+        "      if (barEl) barEl.style.transform = on ? 'scaleY(1)' : 'scaleY(0)';\n" +
+        "      if (on) row.setAttribute('data-aktiv', ''); else row.removeAttribute('data-aktiv'); // HSK-PATCH 28",
+        'aktive Zeile');
 
   // 24) Tippt jemand eine Zeile an, soll sie unter der Bühne zu stehen kommen —
   //     die Desktop-Rechnung zielt auf eine Klebestrecke, die es dort nicht gibt.
@@ -1123,7 +1154,7 @@ function patchLogic(js) {
         "      if (d >= 2) el.style.animationDelay = Math.max(0, d - 2.3).toFixed(2) + 's';\n" +
         "    });\n  }\n  bootReel() {", 'skipIntroDelays');
 
-  must(count(/HSK-PATCH/g, js) === 31, 'expected 31 HSK-PATCH markers, got ' + count(/HSK-PATCH/g, js));
+  must(count(/HSK-PATCH/g, js) === 33, 'expected 33 HSK-PATCH markers, got ' + count(/HSK-PATCH/g, js));
   return js;
 }
 

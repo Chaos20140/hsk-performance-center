@@ -32,6 +32,12 @@
       };
       if (this._mq && this._mq.addEventListener) this._mq.addEventListener('change', this._onMq);
       const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      // HSK-PATCH 27: Kann der Browser scroll-gesteuerte CSS-Animationen (Safari 26,
+      // Chrome 115)? Dann hängt die rote Hero-Fläche direkt am Scrollweg und läuft
+      // dabei auf dem Compositor — flüssig UND am Finger. Das Skript hält sich dort
+      // heraus; die Schwellen unten sind nur der Ersatzweg für ältere Browser.
+      this._sda = false;
+      try { this._sda = !!(window.CSS && CSS.supports && CSS.supports('animation-timeline', 'view()')) && !reduced; } catch (e) {}
       // HSK-PATCH 2: Vorhang nur mit Vorhang-Markup, nie bei Anker-Aufruf
       const skipBoot = reduced || !document.querySelector('[data-if="booting"]') || !!location.hash;
       if (skipBoot) { this.setState({ booting: false }); this.skipIntroDelays(); }
@@ -260,27 +266,31 @@
     }
     heroFx(p) {
       if (this._mob) { // HSK-PATCH 17
-        this.setReelPaused(p >= 1 || !!(this.reel && this.reel.userPaused));
-        // Die rote Fläche liegt auf dem Telefon unten auf dem Film und deckt ihn
-        // zur Hälfte zu. Beim ersten Scrollen fährt sie nach unten weg und gibt
-        // den Film frei; danach übernimmt „Die Halle". Ein Schaltpunkt, die
-        // Bewegung macht die CSS-Blende (site.css) auf dem Compositor.
-        // Zwei Schwellen, damit die Fläche am Umschlagpunkt nicht flattert.
-        const red = document.querySelector('[data-red]');
-        if (red) {
-          const weg = this._redWeg ? p > 0.09 : p > 0.16;
-          if (this._redWeg !== weg) {
-            this._redWeg = weg;
-            red.style.transform = weg ? 'translate3d(0,102%,0)' : 'translate3d(0,0,0)';
-            red.style.opacity = weg ? '0' : '1';
+        // Der Film läuft, solange vom Hero noch etwas im Bild ist. `p >= 1` wäre
+        // zu früh: dort beginnt der Hero erst wegzuscrollen und steht noch eine
+        // volle Bildschirmhöhe lang da — er würde sichtbar einfrieren.
+        this.setReelPaused((window.scrollY || 0) >= (this._heroH || window.innerHeight) || !!(this.reel && this.reel.userPaused));
+        // Die rote Fläche fährt wie am Rechner seitwärts aus dem Bild, der Film
+        // läuft dahinter weiter. Kann der Browser scroll-gesteuerte Animationen,
+        // macht das die CSS-Zeitachse in site.css: am Scrollweg festgemacht und
+        // trotzdem auf dem Compositor. Nur für ältere Browser bleibt hier der
+        // Ersatzweg mit zwei Schwellen (damit er am Rand nicht flattert).
+        if (!this._sda) {
+          const red = document.querySelector('[data-red]');
+          if (red) {
+            const weg = this._redWeg ? p > 0.09 : p > 0.16;
+            if (this._redWeg !== weg) {
+              this._redWeg = weg;
+              red.style.transform = weg ? 'translate3d(-102%,0,0)' : 'translate3d(0,0,0)';
+            }
           }
+          const afterM = document.querySelector('[data-hero-after]');
+          const afterOn = p > 0.34;
+          if (afterM && this._afterOn !== afterOn) { this._afterOn = afterOn; afterM.style.opacity = afterOn ? '1' : '0'; afterM.style.transform = 'none'; }
         }
         const hudM = document.querySelector('[data-hero-hud]');
         const hudOn = p < 0.3;
         if (hudM && this._hudOn !== hudOn) { this._hudOn = hudOn; hudM.style.opacity = hudOn ? '1' : '0'; }
-        const afterM = document.querySelector('[data-hero-after]');
-        const afterOn = p > 0.34;
-        if (afterM && this._afterOn !== afterOn) { this._afterOn = afterOn; afterM.style.opacity = afterOn ? '1' : '0'; afterM.style.transform = 'none'; }
         this._overRed = false;
         return;
       }
@@ -335,6 +345,7 @@
         if (name) name.style.color = on ? '#F2EFEA' : '#5A5A62';
         if (copy) { copy.style.maxHeight = on ? '160px' : '0px'; copy.style.opacity = on ? '1' : '0'; copy.style.marginTop = on ? '14px' : '0px'; }
         if (barEl) barEl.style.transform = on ? 'scaleY(1)' : 'scaleY(0)';
+        if (on) row.setAttribute('data-aktiv', ''); else row.removeAttribute('data-aktiv'); // HSK-PATCH 28
       });
       document.querySelectorAll('[data-area-media]').forEach((m, i) => {
         const on = i === idx;
@@ -356,7 +367,14 @@
       const w = document.querySelector('[data-wipe]');
       if (!sec || !w) return;
       const r = sec.getBoundingClientRect();
-      if (this._mob) return; // HSK-PATCH 19
+      if (this._mob) { // HSK-PATCH 19
+        const auf = this._wipeAuf ? r.bottom < vh * 2.2 : r.bottom < vh * 1.9;
+        if (this._wipeAuf !== auf) {
+          this._wipeAuf = auf;
+          if (auf) w.setAttribute('data-wipe-auf', ''); else w.removeAttribute('data-wipe-auf');
+        }
+        return;
+      }
       const p = Math.min(1, Math.max(0, 1 - (r.bottom - vh) / vh));
       const q = 1 - Math.pow(1 - p, 2);
       w.style.clipPath = 'inset(' + ((1 - q) * 100).toFixed(2) + '% 0 0 0)';
