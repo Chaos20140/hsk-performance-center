@@ -226,13 +226,16 @@
       const total = Math.max(1, document.documentElement.scrollHeight - vh);
       const prog = y / total;
       const scrl = document.querySelector('[data-scrl]');
-      if (scrl) scrl.textContent = 'SCRL ' + String(Math.round(prog * 100)).padStart(2, '0') + '%';
+      if (scrl) { const s = 'SCRL ' + String(Math.round(prog * 100)).padStart(2, '0') + '%'; if (this._scrl !== s) { this._scrl = s; scrl.textContent = s; } } // HSK-PATCH 26
       const mbar = document.querySelector('[data-mbar]');
-      if (mbar) { const on = y > vh * 0.85; mbar.style.transform = on ? 'translate3d(0,0,0)' : 'translate3d(0,110%,0)'; mbar.style.transition = 'transform .5s cubic-bezier(.16,1,.3,1)'; }
+      if (mbar) { const on = y > vh * 0.85; if (this._mbarOn !== on) { this._mbarOn = on; mbar.style.transform = on ? 'translate3d(0,0,0)' : 'translate3d(0,110%,0)'; mbar.style.transition = 'transform .5s cubic-bezier(.16,1,.3,1)'; } } // HSK-PATCH 25
       const bar = document.querySelector('[data-progress]');
       if (bar) bar.style.transform = 'scaleX(' + prog.toFixed(4) + ')';
-      const hero = document.getElementById('top'); // HSK-PATCH 15
-      const heroSpan = hero ? Math.max(1, hero.offsetHeight - vh) : vh;
+      if (this._heroVh !== vh) { // HSK-PATCH 15
+        const hero = document.getElementById('top');
+        this._heroVh = vh; this._heroH = hero ? hero.offsetHeight : 0;
+      }
+      const heroSpan = Math.max(1, (this._heroH || vh * 2) - vh);
       const p = Math.min(1, Math.max(0, y / heroSpan));
       this.heroFx(p);
       const nav = document.querySelector('[data-nav]');
@@ -258,11 +261,25 @@
     heroFx(p) {
       if (this._mob) { // HSK-PATCH 17
         this.setReelPaused(p >= 1 || !!(this.reel && this.reel.userPaused));
+        // Die rote Fläche liegt auf dem Telefon unten auf dem Film und deckt ihn
+        // zur Hälfte zu. Beim ersten Scrollen fährt sie nach unten weg und gibt
+        // den Film frei; danach übernimmt „Die Halle". Ein Schaltpunkt, die
+        // Bewegung macht die CSS-Blende (site.css) auf dem Compositor.
+        // Zwei Schwellen, damit die Fläche am Umschlagpunkt nicht flattert.
+        const red = document.querySelector('[data-red]');
+        if (red) {
+          const weg = this._redWeg ? p > 0.09 : p > 0.16;
+          if (this._redWeg !== weg) {
+            this._redWeg = weg;
+            red.style.transform = weg ? 'translate3d(0,102%,0)' : 'translate3d(0,0,0)';
+            red.style.opacity = weg ? '0' : '1';
+          }
+        }
         const hudM = document.querySelector('[data-hero-hud]');
         const hudOn = p < 0.3;
         if (hudM && this._hudOn !== hudOn) { this._hudOn = hudOn; hudM.style.opacity = hudOn ? '1' : '0'; }
         const afterM = document.querySelector('[data-hero-after]');
-        const afterOn = p > 0.45;
+        const afterOn = p > 0.34;
         if (afterM && this._afterOn !== afterOn) { this._afterOn = afterOn; afterM.style.opacity = afterOn ? '1' : '0'; afterM.style.transform = 'none'; }
         this._overRed = false;
         return;
@@ -292,9 +309,23 @@
         if (this._activeArea !== -1) { this._activeArea = -1; document.querySelectorAll('[data-area-media] video').forEach((v) => { if (!v.paused) v.pause(); }); }
         return;
       }
-      const span = r.height - vh;
-      const p = Math.min(0.999, Math.max(0, -r.top / Math.max(1, span)));
-      const idx = Math.min(2, Math.floor(p * 3));
+      let idx; // HSK-PATCH 23
+      if (this._mob) {
+        const rows = this._rows && this._rows.length ? this._rows : (this._rows = document.querySelectorAll('[data-area-row]'));
+        const stage = this._stage || (this._stage = document.querySelector('[data-areas-stage]'));
+        const oben = stage ? stage.getBoundingClientRect().bottom : 0;
+        const ziel = oben + (vh - oben) / 2;
+        let naeher = Infinity; idx = 0;
+        for (let k = 0; k < rows.length; k++) {
+          const b = rows[k].getBoundingClientRect();
+          const d = Math.abs((b.top + b.bottom) / 2 - ziel);
+          if (d < naeher) { naeher = d; idx = k; }
+        }
+      } else {
+        const span = r.height - vh;
+        const p = Math.min(0.999, Math.max(0, -r.top / Math.max(1, span)));
+        idx = Math.min(2, Math.floor(p * 3));
+      }
       if (idx === this._activeArea) return;
       this._activeArea = idx;
       const labels = ['03 / 10 — KREUZHEBEN', '05 / 10 — SPRINTBAHN', '07 / 10 — AUSDAUER'];
@@ -325,15 +356,10 @@
       const w = document.querySelector('[data-wipe]');
       if (!sec || !w) return;
       const r = sec.getBoundingClientRect();
+      if (this._mob) return; // HSK-PATCH 19
       const p = Math.min(1, Math.max(0, 1 - (r.bottom - vh) / vh));
       const q = 1 - Math.pow(1 - p, 2);
-      if (this._mob) { // HSK-PATCH 19
-        w.style.clipPath = 'none';
-        w.style.transform = 'translate3d(0,' + ((1 - q) * 100).toFixed(2) + '%,0)';
-      } else {
-        w.style.transform = '';
-        w.style.clipPath = 'inset(' + ((1 - q) * 100).toFixed(2) + '% 0 0 0)';
-      }
+      w.style.clipPath = 'inset(' + ((1 - q) * 100).toFixed(2) + '% 0 0 0)';
       const t = w.querySelector('[data-wipe-title]');
       if (t) t.style.transform = 'translate3d(0,' + ((1 - q) * 60).toFixed(1) + 'px,0)';
     }
@@ -370,6 +396,12 @@
           const i = parseInt(e.currentTarget.dataset.areaRow, 10);
           const sec = document.querySelector('[data-areas]');
           if (!sec) return;
+          if (this._mob) { // HSK-PATCH 24
+            const row = document.querySelector('[data-area-row="' + i + '"]');
+            const stage = document.querySelector('[data-areas-stage]');
+            if (row) window.scrollTo({ top: Math.max(0, row.getBoundingClientRect().top + window.scrollY - (stage ? stage.offsetHeight : 0) - 16), behavior: 'smooth' });
+            return;
+          }
           const vh = window.innerHeight, top = sec.getBoundingClientRect().top + window.scrollY;
           const span = sec.offsetHeight - vh;
           window.scrollTo({ top: top + span * (i / 3 + 0.08), behavior: 'smooth' });
@@ -404,26 +436,35 @@
 
   /* Karte: der iframe trägt data-src und bekommt src erst, wenn sein Block
      sichtbar wird — also nach dem Klick (oder mit gemerkter Einwilligung).
-     Der Link darüber öffnet den Ort in der Karten-App: Apple Karten auf
-     Apple-Geräten, sonst Google Maps. Das iframe selbst schluckt Klicks. */
+
+     Darüber liegt EIN Link über die ganze Kartenfläche: er startet die Route
+     zum Studio, in Apple Karten auf Apple-Geräten, sonst in Google Maps. Das
+     iframe schluckt Klicks ohnehin; so ist die ganze Karte das Ziel statt einer
+     Marke in der Ecke, und Googles eigener Knopf im iframe (oben links) ist
+     abgedeckt statt doppelt belegt. Der sichtbare Chip sitzt IM Link — es gibt
+     also genau ein Ziel, nicht zwei sich überlappende. */
   function armMap(block) {
     var frame = block.querySelector('[data-map-frame]');
     if (!frame) return;
     if (!frame.getAttribute('src')) frame.setAttribute('src', frame.getAttribute('data-src'));
     var wrap = frame.parentElement;
     if (!wrap || wrap.querySelector('[data-map-open]')) return;
-    var q = 'HSK Performance Center, Strackestraße 22, 59929 Brilon';
+    var ziel = 'Strackestraße 22, 59929 Brilon';
     var apple = false;
     try { apple = /Apple/.test(navigator.vendor || ''); } catch (e) {}
     var a = document.createElement('a');
     a.setAttribute('data-map-open', '');
-    a.href = apple ? 'https://maps.apple.com/?q=' + encodeURIComponent(q)
-                   : 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(q);
+    a.href = apple ? 'https://maps.apple.com/?daddr=' + encodeURIComponent(ziel) + '&dirflg=d'
+                   : 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(ziel);
     a.target = '_blank';
     a.rel = 'noopener noreferrer';
-    var label = document.createElement('span'); label.textContent = 'In Karten öffnen';
+    a.setAttribute('aria-label', 'Route zum HSK Performance Center, ' + ziel + ', in der Karten-App öffnen');
+    var chip = document.createElement('span');
+    chip.setAttribute('data-map-chip', '');
+    chip.appendChild(document.createTextNode('Route'));
     var arrow = document.createElement('span'); arrow.textContent = '↗'; arrow.setAttribute('aria-hidden', 'true');
-    a.appendChild(label); a.appendChild(arrow);
+    chip.appendChild(arrow);
+    a.appendChild(chip);
     wrap.appendChild(a);
   }
 

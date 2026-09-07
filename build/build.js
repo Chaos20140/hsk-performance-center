@@ -22,6 +22,10 @@ const ORIGIN = new URL(CANONICAL).origin;
 const BASE = new URL(CANONICAL).pathname;            // z. B. /hsk-performance-center/
 const FORM_MODE = process.env.HSK_FORM_MODE || 'mailto';
 must(FORM_MODE === 'mailto' || FORM_MODE === 'demo', 'HSK_FORM_MODE muss mailto oder demo sein, nicht ' + FORM_MODE);
+/* Eine Quelle für den Standort: strukturierte Daten, Kartenmitte und Route.
+   Die Kartenmitte IST die Marke — weichen die Werte auseinander, zeigt der rote
+   Punkt auf die falsche Stelle. */
+const GEO = { lat: 51.3956, lng: 8.5681, adresse: 'Strackestraße 22, 59929 Brilon' };
 const read = (p) => fs.readFileSync(p, 'utf8');
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const count = (re, s) => (s.match(re) || []).length;
@@ -301,7 +305,7 @@ function jsonLd() {
     telephone: '+49 160 90285812',
     email: 'sb@hsk.fitness',
     address: { '@type': 'PostalAddress', streetAddress: 'Strackestraße 22', postalCode: '59929', addressLocality: 'Brilon', addressCountry: 'DE' },
-    geo: { '@type': 'GeoCoordinates', latitude: 51.3956, longitude: 8.5681 },
+    geo: { '@type': 'GeoCoordinates', latitude: GEO.lat, longitude: GEO.lng },
     openingHoursSpecification: [{ '@type': 'OpeningHoursSpecification', dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'], opens: '06:00', closes: '24:00' }],
     founder: { '@type': 'Person', name: 'Steve Brenke' },
     sameAs: ['https://www.facebook.com/HSKPerformancecenter/']
@@ -356,10 +360,20 @@ function build() {
   // Der Karten-<iframe> im Design trägt src — in einem display:none-Block lädt
   // ein iframe trotzdem. Also data-src; site.js setzt src erst nach dem Klick.
   {
+    // Mit `q=Adresse` setzt Google eine eigene Stecknadel. Sie steht unter dem
+    // Filter (grayscale) grau im Bild — die Adresse ist damit auf einer grauen
+    // Karte grau markiert. Mit `ll=` zentriert Google denselben Punkt OHNE
+    // Nadel; die Marke setzen wir selbst, im Rot des Hauses. Geprüft: die
+    // Kartenmitte trifft die Nadel der Adress-Fassung exakt.
     const mapSrc = 'src="https://www.google.com/maps?q=Strackestra%C3%9Fe%2022%2C%2059929%20Brilon&amp;output=embed"';
     must(body.indexOf(mapSrc) > -1, 'map iframe src not found');
-    body = body.replace(mapSrc, 'data-map-frame data-' + mapSrc);
+    body = body.replace(mapSrc, 'data-map-frame data-src="https://www.google.com/maps?ll=' + GEO.lat + ',' + GEO.lng + '&amp;z=16&amp;output=embed"');
     must(!/<iframe[^>]*\ssrc="https/.test(body), 'a third-party iframe still loads on view');
+    // Die rote Marke sitzt in der Kartenmitte, also auf dem Studio. Sie liegt
+    // außerhalb des iframe und bleibt deshalb vom Graufilter unberührt.
+    const mapEnd = 'contrast(1.1)"></iframe>';
+    must(body.indexOf(mapEnd) > -1, 'map iframe end not found');
+    body = body.replace(mapEnd, mapEnd + '<span data-map-pin aria-hidden="true"><span data-map-ping></span><span data-map-dot></span></span>');
     // Das Element-Attribut würde die Seiten-Policy aufweichen (volle URL an Google)
     const rp = 'referrerpolicy="no-referrer-when-downgrade"';
     must(body.indexOf(rp) > -1, 'map referrerpolicy not found');
@@ -368,6 +382,13 @@ function build() {
     const gate = 'Die Karte wird von Google Maps geladen. Dabei wird deine IP-Adresse an Google übertragen.';
     must(body.indexOf(gate) > -1, 'map gate copy not found');
     body = body.replace(gate, 'Die Karte wird von Google Maps geladen. Dabei wird deine IP-Adresse an Google übertragen und Google kann Cookies setzen.');
+    // Wer die Karte nicht laden will, soll denselben Weg bekommen wie alle
+    // anderen: die Route, nicht nur die Suche nach der Adresse.
+    const suche = 'href="https://www.google.com/maps/search/?api=1&amp;query=Strackestra%C3%9Fe+22+59929+Brilon"';
+    must(body.indexOf(suche) > -1, 'map consent link not found');
+    body = body.replace(suche, 'href="https://www.google.com/maps/dir/?api=1&amp;destination=' + encodeURIComponent(GEO.adresse) + '"');
+    must(body.indexOf('In Google Maps öffnen ↗') > -1, 'map consent link label not found');
+    body = body.replace('In Google Maps öffnen ↗', 'Route in Google Maps ↗');
   }
 
   // FAQ-Einleitung: die Nummer ist auf dem Telefon nur als Link wählbar
@@ -864,11 +885,25 @@ function patchLogic(js) {
         "  heroFx(p) {\n" +
         "    if (this._mob) { // HSK-PATCH 17\n" +
         "      this.setReelPaused(p >= 1 || !!(this.reel && this.reel.userPaused));\n" +
+        "      // Die rote Fläche liegt auf dem Telefon unten auf dem Film und deckt ihn\n" +
+        "      // zur Hälfte zu. Beim ersten Scrollen fährt sie nach unten weg und gibt\n" +
+        "      // den Film frei; danach übernimmt „Die Halle\". Ein Schaltpunkt, die\n" +
+        "      // Bewegung macht die CSS-Blende (site.css) auf dem Compositor.\n" +
+        "      // Zwei Schwellen, damit die Fläche am Umschlagpunkt nicht flattert.\n" +
+        "      const red = document.querySelector('[data-red]');\n" +
+        "      if (red) {\n" +
+        "        const weg = this._redWeg ? p > 0.09 : p > 0.16;\n" +
+        "        if (this._redWeg !== weg) {\n" +
+        "          this._redWeg = weg;\n" +
+        "          red.style.transform = weg ? 'translate3d(0,102%,0)' : 'translate3d(0,0,0)';\n" +
+        "          red.style.opacity = weg ? '0' : '1';\n" +
+        "        }\n" +
+        "      }\n" +
         "      const hudM = document.querySelector('[data-hero-hud]');\n" +
         "      const hudOn = p < 0.3;\n" +
         "      if (hudM && this._hudOn !== hudOn) { this._hudOn = hudOn; hudM.style.opacity = hudOn ? '1' : '0'; }\n" +
         "      const afterM = document.querySelector('[data-hero-after]');\n" +
-        "      const afterOn = p > 0.45;\n" +
+        "      const afterOn = p > 0.34;\n" +
         "      if (afterM && this._afterOn !== afterOn) { this._afterOn = afterOn; afterM.style.opacity = afterOn ? '1' : '0'; afterM.style.transform = 'none'; }\n" +
         "      this._overRed = false;\n" +
         "      return;\n" +
@@ -882,17 +917,26 @@ function patchLogic(js) {
   patch("    document.querySelectorAll('[data-px]').forEach((el) => {",
         "    if (!this._mob) document.querySelectorAll('[data-px]').forEach((el) => { // HSK-PATCH 18", 'parallax mobile');
 
-  // 19) Der rote Wipe: clip-path zwingt jeden Frame zu einem Neuzeichnen des
-  //     ganzen Blocks. Auf dem Telefon dieselbe Bewegung als translate3d — das
-  //     läuft auf dem Compositor und bleibt auch beim Nachlauf-Scrollen glatt.
-  patch("    w.style.clipPath = 'inset(' + ((1 - q) * 100).toFixed(2) + '% 0 0 0)';",
-        "    if (this._mob) { // HSK-PATCH 19\n" +
-        "      w.style.clipPath = 'none';\n" +
-        "      w.style.transform = 'translate3d(0,' + ((1 - q) * 100).toFixed(2) + '%,0)';\n" +
-        "    } else {\n" +
-        "      w.style.transform = '';\n" +
-        "      w.style.clipPath = 'inset(' + ((1 - q) * 100).toFixed(2) + '% 0 0 0)';\n" +
-        "    }", 'wipe transform');
+  // 19) Der rote Vorhang. Am Rechner läuft er am Scrollrad: der Block klebt am
+  //     unteren Rand und gibt sich Bild für Bild über clip-path frei, während
+  //     die Ausstattung darunter stehen bleibt. Auf dem Telefon ging genau das
+  //     schief. Safari liefert die Scroll-Ereignisse beim Nachlauf gebündelt
+  //     nach — der Vorhang sprang in Stufen hoch statt zu gleiten. Als
+  //     translate3d blieb es stufig, denn nicht das Zeichnen ist das Problem,
+  //     sondern der Takt, in dem die Werte ankommen. Und ein Schaltpunkt mit
+  //     CSS-Blende wäre zwar glatt, ließe aber vor dem Umschlagen eine
+  //     bildschirmhohe schwarze Fläche stehen: der Vorhang belegt im Fluss eine
+  //     volle Bildschirmhöhe, und die ist ohne Rot einfach leer.
+  //
+  //     Auf dem Telefon steht er deshalb still (site.css: position:static,
+  //     kein clip-path). Er kommt dann von unten ins Bild, weil die Seite
+  //     scrollt — und Scrollen ist auf dem Telefon die einzige Bewegung, die
+  //     garantiert flüssig ist. Kein Skript, keine Lücke, kein Ruckeln.
+  patch("    const p = Math.min(1, Math.max(0, 1 - (r.bottom - vh) / vh));\n" +
+        "    const q = 1 - Math.pow(1 - p, 2);",
+        "    if (this._mob) return; // HSK-PATCH 19\n" +
+        "    const p = Math.min(1, Math.max(0, 1 - (r.bottom - vh) / vh));\n" +
+        "    const q = 1 - Math.pow(1 - p, 2);", 'wipe transform');
 
   // 20) Timecode und Segmentleiste stehen unter `data-hide-m`, sind auf dem Telefon
   //     also ausgeblendet — die Bild-für-Bild-Schleife schrieb dort trotzdem elf
@@ -921,14 +965,79 @@ function patchLogic(js) {
         "        v.muted = true; v.loop = true; const pr = v.play(); if (pr && pr.catch) pr.catch(() => {});\n" +
         "        v.style.opacity = '1';\n      }", 'areas video mobile');
 
+  // 23) Welcher Trainingsbereich gerade dran ist.
+  //     Am Rechner klebt das Raster eine gerechnete Strecke lang und der Bereich
+  //     ergibt sich aus dem Fortschritt darin. Auf dem Telefon ging diese Rechnung
+  //     nicht auf: die Sektionshöhe stand in svh (fest), der Klebeblock in dvh
+  //     (wächst, sobald Safari die Adressleiste ausblendet). Der Block löste sich
+  //     dadurch zu früh — in WebKit nachgestellt und gemessen: 80 px Loch, und
+  //     darunter der schwarze Sektionsgrund. Auf dem Telefon klebt jetzt nur die
+  //     Bühne, die drei Zeilen laufen darunter durch (site.css), und der aktive
+  //     Bereich wird aus den Zeilen selbst gelesen. Damit hängt nichts mehr an
+  //     einer Viewport-Rechnung, die sich unter dem Finger ändern kann.
+  patch("    const span = r.height - vh;\n" +
+        "    const p = Math.min(0.999, Math.max(0, -r.top / Math.max(1, span)));\n" +
+        "    const idx = Math.min(2, Math.floor(p * 3));",
+        "    let idx; // HSK-PATCH 23\n" +
+        "    if (this._mob) {\n" +
+        "      const rows = this._rows && this._rows.length ? this._rows : (this._rows = document.querySelectorAll('[data-area-row]'));\n" +
+        "      const stage = this._stage || (this._stage = document.querySelector('[data-areas-stage]'));\n" +
+        "      const oben = stage ? stage.getBoundingClientRect().bottom : 0;\n" +
+        "      const ziel = oben + (vh - oben) / 2;\n" +
+        "      let naeher = Infinity; idx = 0;\n" +
+        "      for (let k = 0; k < rows.length; k++) {\n" +
+        "        const b = rows[k].getBoundingClientRect();\n" +
+        "        const d = Math.abs((b.top + b.bottom) / 2 - ziel);\n" +
+        "        if (d < naeher) { naeher = d; idx = k; }\n" +
+        "      }\n" +
+        "    } else {\n" +
+        "      const span = r.height - vh;\n" +
+        "      const p = Math.min(0.999, Math.max(0, -r.top / Math.max(1, span)));\n" +
+        "      idx = Math.min(2, Math.floor(p * 3));\n" +
+        "    }", 'areas index');
+
+  // 24) Tippt jemand eine Zeile an, soll sie unter der Bühne zu stehen kommen —
+  //     die Desktop-Rechnung zielt auf eine Klebestrecke, die es dort nicht gibt.
+  patch("        const vh = window.innerHeight, top = sec.getBoundingClientRect().top + window.scrollY;\n" +
+        "        const span = sec.offsetHeight - vh;\n" +
+        "        window.scrollTo({ top: top + span * (i / 3 + 0.08), behavior: 'smooth' });",
+        "        if (this._mob) { // HSK-PATCH 24\n" +
+        "          const row = document.querySelector('[data-area-row=\"' + i + '\"]');\n" +
+        "          const stage = document.querySelector('[data-areas-stage]');\n" +
+        "          if (row) window.scrollTo({ top: Math.max(0, row.getBoundingClientRect().top + window.scrollY - (stage ? stage.offsetHeight : 0) - 16), behavior: 'smooth' });\n" +
+        "          return;\n" +
+        "        }\n" +
+        "        const vh = window.innerHeight, top = sec.getBoundingClientRect().top + window.scrollY;\n" +
+        "        const span = sec.offsetHeight - vh;\n" +
+        "        window.scrollTo({ top: top + span * (i / 3 + 0.08), behavior: 'smooth' });", 'goArea mobile');
+
+  // 25) Bei jedem Scroll-Ereignis wurden Werte geschrieben, die sich fast nie
+  //     ändern (Leiste ein/aus, Fortschrittstext). Jeder Schreibvorgang macht
+  //     die darauf folgende Messung (getBoundingClientRect) zu einem erzwungenen
+  //     Neu-Layout — auf dem Telefon der eigentliche Grund für das Stocken.
+  //     Jetzt wird nur geschrieben, wenn sich etwas geändert hat.
+  patch("    if (mbar) { const on = y > vh * 0.85; mbar.style.transform = on ? 'translate3d(0,0,0)' : 'translate3d(0,110%,0)'; mbar.style.transition = 'transform .5s cubic-bezier(.16,1,.3,1)'; }",
+        "    if (mbar) { const on = y > vh * 0.85; if (this._mbarOn !== on) { this._mbarOn = on; mbar.style.transform = on ? 'translate3d(0,0,0)' : 'translate3d(0,110%,0)'; mbar.style.transition = 'transform .5s cubic-bezier(.16,1,.3,1)'; } } // HSK-PATCH 25",
+        'mbar guard');
+  patch("    if (scrl) scrl.textContent = 'SCRL ' + String(Math.round(prog * 100)).padStart(2, '0') + '%';",
+        "    if (scrl) { const s = 'SCRL ' + String(Math.round(prog * 100)).padStart(2, '0') + '%'; if (this._scrl !== s) { this._scrl = s; scrl.textContent = s; } } // HSK-PATCH 26",
+        'scrl guard');
+
   // 15) Der Hero-Effekt (rote Fläche fährt raus, Film zoomt zurück, „Die Halle"
   //     blendet ein) lief über eine feste Bildschirmhöhe. Das stimmt nur, solange
   //     die Sektion 200 vh hoch ist — auf dem Telefon sind es 150, die Klebestrecke
   //     also eine halbe Bildschirmhöhe. Der Effekt wird jetzt aus der tatsächlichen
   //     Sektionshöhe abgeleitet und ist damit von der CSS-Höhe unabhängig.
+  //     Gemessen wird sie nur, wenn sich die Bildschirmhöhe geändert hat: die
+  //     Höhe steht in Viewport-Einheiten, hängt also allein an vh — und ein
+  //     offsetHeight nach einem Stil-Schreibvorgang erzwingt sonst bei JEDEM
+  //     Scroll-Ereignis ein neues Layout.
   patch("    const p = Math.min(1, Math.max(0, y / vh));\n    this.heroFx(p);",
-        "    const hero = document.getElementById('top'); // HSK-PATCH 15\n" +
-        "    const heroSpan = hero ? Math.max(1, hero.offsetHeight - vh) : vh;\n" +
+        "    if (this._heroVh !== vh) { // HSK-PATCH 15\n" +
+        "      const hero = document.getElementById('top');\n" +
+        "      this._heroVh = vh; this._heroH = hero ? hero.offsetHeight : 0;\n" +
+        "    }\n" +
+        "    const heroSpan = Math.max(1, (this._heroH || vh * 2) - vh);\n" +
         "    const p = Math.min(1, Math.max(0, y / heroSpan));\n    this.heroFx(p);", 'hero span');
 
   // 13) Pause-Knopf im HUD (WCAG 2.2.2) — ein Nutzerstopp überdauert das Scrollen
@@ -1014,7 +1123,7 @@ function patchLogic(js) {
         "      if (d >= 2) el.style.animationDelay = Math.max(0, d - 2.3).toFixed(2) + 's';\n" +
         "    });\n  }\n  bootReel() {", 'skipIntroDelays');
 
-  must(count(/HSK-PATCH/g, js) === 27, 'expected 27 HSK-PATCH markers, got ' + count(/HSK-PATCH/g, js));
+  must(count(/HSK-PATCH/g, js) === 31, 'expected 31 HSK-PATCH markers, got ' + count(/HSK-PATCH/g, js));
   return js;
 }
 
@@ -1042,26 +1151,35 @@ ${patchLogic(logicJs).trim().replace(/^/gm, '  ')}
 
   /* Karte: der iframe trägt data-src und bekommt src erst, wenn sein Block
      sichtbar wird — also nach dem Klick (oder mit gemerkter Einwilligung).
-     Der Link darüber öffnet den Ort in der Karten-App: Apple Karten auf
-     Apple-Geräten, sonst Google Maps. Das iframe selbst schluckt Klicks. */
+
+     Darüber liegt EIN Link über die ganze Kartenfläche: er startet die Route
+     zum Studio, in Apple Karten auf Apple-Geräten, sonst in Google Maps. Das
+     iframe schluckt Klicks ohnehin; so ist die ganze Karte das Ziel statt einer
+     Marke in der Ecke, und Googles eigener Knopf im iframe (oben links) ist
+     abgedeckt statt doppelt belegt. Der sichtbare Chip sitzt IM Link — es gibt
+     also genau ein Ziel, nicht zwei sich überlappende. */
   function armMap(block) {
     var frame = block.querySelector('[data-map-frame]');
     if (!frame) return;
     if (!frame.getAttribute('src')) frame.setAttribute('src', frame.getAttribute('data-src'));
     var wrap = frame.parentElement;
     if (!wrap || wrap.querySelector('[data-map-open]')) return;
-    var q = 'HSK Performance Center, Strackestraße 22, 59929 Brilon';
+    var ziel = 'Strackestraße 22, 59929 Brilon';
     var apple = false;
     try { apple = /Apple/.test(navigator.vendor || ''); } catch (e) {}
     var a = document.createElement('a');
     a.setAttribute('data-map-open', '');
-    a.href = apple ? 'https://maps.apple.com/?q=' + encodeURIComponent(q)
-                   : 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(q);
+    a.href = apple ? 'https://maps.apple.com/?daddr=' + encodeURIComponent(ziel) + '&dirflg=d'
+                   : 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(ziel);
     a.target = '_blank';
     a.rel = 'noopener noreferrer';
-    var label = document.createElement('span'); label.textContent = 'In Karten öffnen';
+    a.setAttribute('aria-label', 'Route zum HSK Performance Center, ' + ziel + ', in der Karten-App öffnen');
+    var chip = document.createElement('span');
+    chip.setAttribute('data-map-chip', '');
+    chip.appendChild(document.createTextNode('Route'));
     var arrow = document.createElement('span'); arrow.textContent = '↗'; arrow.setAttribute('aria-hidden', 'true');
-    a.appendChild(label); a.appendChild(arrow);
+    chip.appendChild(arrow);
+    a.appendChild(chip);
     wrap.appendChild(a);
   }
 

@@ -45,14 +45,25 @@ html[data-menu="open"] [data-burger]::after{transform:translate(-50%,-50%) rotat
   [data-reel-layer="0"]{background-image:url(assets/m-racks-poster.jpg)}
 }
 
-/* Karte: Link in die Karten-App, liegt über dem iframe (das Klicks schluckt) */
-[data-map-open]{position:absolute;right:14px;bottom:14px;z-index:2;display:inline-flex;align-items:center;gap:8px;background:#050506;color:#F2EFEA;border:1px solid rgba(255,255,255,.18);padding:12px 14px;min-height:44px;font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.2em;text-transform:uppercase}
+/* Karte: die GANZE Fläche führt in die Karten-App und startet die Route. Das
+   iframe schluckt Klicks ohnehin, und Googles eigener Knopf darin (oben links)
+   wäre daneben ein zweites, überlappendes Ziel — genau das war auf dem Telefon
+   zu sehen. Der Chip ist nur die sichtbare Marke, er liegt IM Link. */
+[data-map-open]{position:absolute;inset:0;z-index:2;display:block}
+[data-map-chip]{position:absolute;right:14px;bottom:14px;display:inline-flex;align-items:center;gap:8px;background:#050506;color:#F2EFEA;border:1px solid rgba(255,255,255,.18);padding:12px 14px;min-height:44px;font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.2em;text-transform:uppercase}
+/* Der rote Punkt sitzt in der Kartenmitte — und die Mitte ist das Studio: der
+   iframe wird über `ll=` auf die Koordinaten zentriert, ohne eigene Nadel.
+   Er liegt außerhalb des iframe, der Graufilter greift hier also nicht. */
+[data-map-pin]{position:absolute;left:50%;top:50%;width:0;height:0;z-index:1;pointer-events:none}
+[data-map-dot]{position:absolute;left:-6px;top:-6px;width:12px;height:12px;background:#E10600;box-shadow:0 0 0 3px rgba(5,5,6,.5),0 2px 12px rgba(0,0,0,.55)}
+[data-map-ping]{position:absolute;left:-20px;top:-20px;width:40px;height:40px;border:1px solid #E10600;animation:hs-ping 2.8s cubic-bezier(.16,1,.3,1) infinite}
+@keyframes hs-ping{0%{transform:scale(.3);opacity:.85}70%,100%{transform:scale(1);opacity:0}}
 /* Der Ausweg für alle, die die Karte nicht laden wollen — er braucht dieselbe
    Trefferfläche wie der Knopf daneben */
 [data-if="mapOff"] a{display:inline-flex;align-items:center;min-height:44px}
 [data-if="mapOff"] button{padding:15px 22px}
 @media (hover:hover) and (pointer:fine){
-  [data-map-open]:hover{color:#E10600;border-color:#E10600}
+  [data-map-open]:hover [data-map-chip]{color:#E10600;border-color:#E10600}
   [data-termin-tail] a:hover{background:#F2EFEA;color:#050506}
   [data-form] button:hover{background:#F2EFEA;color:#050506}
   [data-sent-mail]:hover{background:#F2EFEA;color:#050506}
@@ -77,7 +88,7 @@ html[data-menu="open"] [data-burger]::after{transform:translate(-50%,-50%) rotat
    Sekunde neu starten (Laufschrift springt, Punkte flimmern). Hier: einmal, dann Ruhe. */
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-iteration-count:1!important;scroll-behavior:auto!important}
-  [style*="hs-mq"],[style*="hs-blink"],[style*="hs-cue"]{animation:none!important}
+  [style*="hs-mq"],[style*="hs-blink"],[style*="hs-cue"],[data-map-ping]{animation:none!important}
 }
 
 /* ---- Telefon ---- */
@@ -108,23 +119,48 @@ html[data-menu="open"] [data-burger]::after{transform:translate(-50%,-50%) rotat
   #faq [data-two]>div:first-child{position:static!important}
   /* Bereiche-Bühne: rechts „HSK — BRILON" kollidiert auf 375 px mit dem REC-Label */
   [data-areas-stage]>div:last-child{display:none!important}
-  /* Der Index steht im Design oben („flex-start", damit die Liste nicht wandert).
-     Auf 844 px bleiben darunter ~280 px leerer Klebe-Raum stehen — er wirkt wie
-     ein Abbruch der Seite. Zentriert füllt der Block den Platz, ohne dass die
-     Zeilen beim Bereichswechsel springen (die Höhe ändert sich symmetrisch). */
-  [data-areas-index]{justify-content:center!important;padding-top:20px!important;padding-bottom:calc(20px + env(safe-area-inset-bottom))!important;gap:14px!important}
-  /* Auf kurzen Bildschirmen (iPhone SE, 667 px) trug der Index 388 px Inhalt in
-     374 px Platz — der Zähler „03 / 03" wurde unten abgeschnitten. Die Bühne gibt
-     dort ab. */
+
+  /* ---- TRAININGSBEREICHE: die Bühne klebt, die Liste läuft darunter durch ----
+     Vorher war es umgekehrt: das ganze Raster klebte eine gerechnete Strecke
+     lang. Die Sektion trug 250 svh, der Klebeblock 100 dvh. svh ist fest, dvh
+     folgt der Adressleiste — blendet Safari sie beim Scrollen aus, wächst nur
+     der Block. Der Punkt, an dem er sich löst, wandert damit nach oben, der
+     Block gibt vor dem Ende der Sektion ab und darunter steht ihr schwarzer
+     Grund. In WebKit mit iPhone-Maßen nachgestellt und gemessen: 80 px Loch.
+     Genau diese schwarze Fläche war auf dem Telefon zu sehen.
+
+     Jetzt trägt die Sektion die Höhe ihres Inhalts. Es gibt keine Strecke mehr,
+     die mit der Adressleiste auseinanderlaufen könnte: die Bühne klebt oben,
+     jede der drei Zeilen bekommt darunter ihre eigene Bildschirmhälfte, und der
+     aktive Bereich wird aus den Zeilen gelesen (HSK-PATCH 23). Runterscrollen
+     heißt damit: Kraft mit Bild, weiter — Athletik, weiter — Conditioning. */
+  [data-areas]{height:auto!important}
+  /* overflow:hidden würde aus dem Raster einen Scroll-Container machen — die
+     Bühne darin klebte dann an IHM statt am Bildschirm, also gar nicht. */
+  [data-areas-grid]{position:static!important;height:auto!important;overflow:visible!important;display:flex!important;flex-direction:column!important}
+  [data-areas-stage]{order:-1;position:sticky!important;top:0;height:44svh;flex:0 0 auto}
+  [data-areas-index]{justify-content:flex-start!important;padding:26px 20px calc(36px + env(safe-area-inset-bottom))!important;gap:16px!important}
+  /* Die Zeilen tragen von Haus aus 167/144/121 px — verschieden hoch und
+     zusammen nur 0,75 Bildschirmhöhen, man wischte an den drei Bereichen
+     vorbei. 30 svh (253 px) gleicht sie an und gibt jedem Bereich ein knappes
+     Drittel Bildschirm Weg. Mehr wäre Leere: bei 42 svh standen zwischen zwei
+     Zeilen 190 px nichts, und genau solche Flächen waren die Beschwerde. */
+  [data-area-row]{min-height:30svh;align-content:center}
+  /* Der Text steht auf dem Telefon immer. Eingeklappt blieb in der Zeile nur
+     Leere — und Leere war hier bisher das Problem. */
+  [data-area-copy]{max-height:none!important;opacity:1!important;margin-top:12px!important}
   @media (max-height:760px){
-    [data-areas-index]{gap:10px!important;padding-top:14px!important}
     [data-areas-h2]{font-size:clamp(26px,7vw,36px)!important}
+    [data-areas-stage]{height:38svh}
+    [data-area-row]{min-height:26svh}
   }
   /* Karte: 4:3 ist auf dem Telefon zu flach für das Einwilligungsfeld; der Koordinaten-Chip wandert nach unten */
   #kontakt [data-two]>div:last-child{aspect-ratio:1/1!important}
   #kontakt [data-two]>div:last-child>div:last-child{top:auto!important;bottom:14px!important}
-  /* … und der Kartenlink dann nach oben rechts, sonst liegt er auf dem Chip */
-  [data-map-open]{top:14px!important;bottom:auto!important}
+  /* … und die Route-Marke nach oben rechts, sonst liegt sie auf dem Chip.
+     Oben links sitzt Googles eigener Knopf im iframe — „Route" ist kurz genug,
+     dass sich die beiden auf 354 px nicht mehr überlappen. */
+  [data-map-chip]{top:14px!important;bottom:auto!important}
 
   /* ================================================================
      RHYTHMUS AUF DEM TELEFON
@@ -142,16 +178,28 @@ html[data-menu="open"] [data-burger]::after{transform:translate(-50%,-50%) rotat
   /* Der Wipe-Titel sitzt im Design am unteren Rand — auf dem Telefon liegt er
      damit hinter der Probetraining-Leiste, und über ihm stehen 730 px leeres Rot.
      Mittig sitzt er frei und die Fläche wirkt nicht mehr wie ein Loch. */
-  [data-wipe]{will-change:transform;justify-content:center!important;padding-bottom:calc(72px + env(safe-area-inset-bottom))!important}
+  /* Der Vorhang steht auf dem Telefon still. Am Rechner klebt er am unteren
+     Rand und gibt sich beim Scrollen frei — auf dem Telefon ruckelte genau
+     diese Bild-für-Bild-Bewegung (Safari reicht die Scroll-Ereignisse beim
+     Nachlauf gebündelt nach). Ohne Kleben und ohne clip-path kommt er von
+     unten ins Bild, weil die Seite scrollt. Das ist dieselbe Bewegung, nur
+     macht sie der Browser — und Scrollen ruckelt nicht. Siehe HSK-PATCH 19. */
+  [data-wipe]{position:static!important;transform:none!important;clip-path:none!important;justify-content:center!important;padding-bottom:calc(72px + env(safe-area-inset-bottom))!important}
 
   /* -- Hero: die rote Fläche sitzt unten und braucht keinen Desktop-Sockel */
   [data-red]{padding-top:22px!important;padding-bottom:calc(22px + env(safe-area-inset-bottom))!important}
+  /* Am Rechner fährt die rote Fläche als Spalte seitwärts aus dem Bild. Auf dem
+     Telefon liegt sie unten auf dem Film und deckt ihn zur Hälfte zu; sie fährt
+     beim ersten Scrollen nach unten weg und gibt ihn frei (HSK-PATCH 17). */
+  [data-red]{will-change:transform;transition:transform .6s cubic-bezier(.16,1,.3,1),opacity .45s ease}
   [data-red] h1{margin-top:10px!important}
   [data-red] p{margin-top:12px!important}
   [data-red-cta]{margin-top:16px!important}
   [data-red-facts]{margin-top:16px!important;padding-top:10px!important}
-  /* „Die Halle. Täglich 06–24." lag auf dem HUD (beide oben) — jetzt darunter */
-  [data-hero-after]{top:112px!important}
+  /* „Die Halle. Täglich 06–24." steht dort, wo die rote Fläche eben noch war —
+     sie ist zu diesem Zeitpunkt weggefahren, und die Probetraining-Leiste
+     erscheint erst nach dem Hero. Der Platz unten ist also frei. */
+  [data-hero-after]{top:auto!important;bottom:calc(26px + env(safe-area-inset-bottom))!important}
 
   /* -- Sektions-Sockel */
   #haltung{padding-top:52px!important}
@@ -271,25 +319,22 @@ html[data-menu="open"] [data-burger]::after{transform:translate(-50%,-50%) rotat
 }
 /* iOS: 100vh ist dort die Höhe OHNE Leisten — der untere Rand des Hero (rote
    Fläche, Knopf) läge hinter der Safari-Leiste. svh ist die sichtbare Höhe. */
-/* Scroll-Strecken der Sticky-Sektionen: am Rechner fährt die rote Fläche über
-   eine volle Bildschirmhöhe seitwärts aus dem Bild, und jeder Trainingsbereich
-   bekommt 110 vh Weg. Auf dem Telefon steht die rote Fläche unten und die
-   Bühne ist 38 svh hoch — dieselben Strecken fühlen sich dort an, als hinge
-   das Scrollen. Hero 200→150, Bereiche 330→210 (je Bereich 37 vh). */
+/* Scroll-Strecke des Hero: am Rechner fährt die rote Fläche über eine volle
+   Bildschirmhöhe seitwärts aus dem Bild. Auf dem Telefon steht sie unten und
+   fährt nach unten weg — eine halbe Bildschirmhöhe reicht dafür.
+
+   WICHTIG: Sektionshöhe und Klebeblock stehen in DERSELBEN Einheit. Stünde die
+   Sektion in svh (fest) und der Block in dvh (folgt der Adressleiste), wanderte
+   der Punkt, an dem der Block abgibt, sobald Safari die Leiste ein- oder
+   ausblendet — der Hero gäbe zu früh ab und darunter stünde ein schwarzer
+   Streifen. Genau dieser Fehler steckte hier. */
 @media (max-width:900px){
   #top{height:150vh!important}
-  [data-areas]{height:250vh!important}
 }
 @supports (height:100svh){
   @media (max-width:900px){
     #top{height:150svh!important}
     #top>div{height:100svh!important}
-    /* 250 statt 210: bei 210 blieben je Bereich nur 0,37 Bildschirmhöhen — man
-       wischte an Kraft/Athletik/Conditioning vorbei, ohne den Wechsel zu sehen.
-       Jetzt 0,5 pro Bereich. */
-    [data-areas]{height:250svh!important}
-    [data-areas-grid]{height:100svh!important;grid-template-rows:44svh minmax(0,1fr)!important}
-    /* (svh = Höhe MIT Adressleiste; die Feinjustierung darauf steht unten in dvh) */
     [data-wipe]{height:100svh!important}
   }
 }
@@ -354,24 +399,24 @@ html[data-menu="open"] [data-burger]::after{transform:translate(-50%,-50%) rotat
 /* ---- iOS: die Adressleiste ändert die Bildschirmhöhe ----
    `svh` ist die Höhe MIT eingeblendeter Leiste. Safari blendet sie beim
    Scrollen aus — dann ist der sichtbare Bereich bis zu 145 px höher als jeder
-   Vollbild-Block, und unter dem Hero, der Bühne und dem roten Wipe steht ein
-   Streifen der nächsten Sektion. `dvh` folgt der Leiste, die Blöcke füllen den
-   Bildschirm also in beiden Zuständen. Die Sektions-HÖHEN bleiben in `svh`:
-   sie bestimmen die Scroll-Strecke, und die darf sich beim Ein- und Ausblenden
-   der Leiste nicht ändern (sonst springt die Seite unter dem Finger weg). */
+   Vollbild-Block, und darunter stünde ein Streifen der nächsten Sektion. `dvh`
+   folgt der Leiste, die Blöcke füllen den Bildschirm also in beiden Zuständen.
+
+   Beide Höhen — Sektion UND Klebeblock — stehen dabei in dvh. Das war der
+   Fehler der letzten Fassung: die Sektion in svh, der Block in dvh. Der Block
+   wuchs dann allein, seine Klebestrecke schrumpfte, und er gab vor dem Ende
+   der Sektion ab. In derselben Einheit wachsen beide zusammen; wo der Block
+   abgibt, verschiebt sich nicht. Und weil in diesem Moment ohnehin der
+   geklebte Block den ganzen Bildschirm füllt, ist von der Änderung nichts zu
+   sehen — alles, was sich verschiebt, liegt darunter außerhalb des Bildes.
+   Der Vorhang braucht keine Sektionshöhe: seine Sektion ist so hoch wie ihr
+   Inhalt, da gibt es nichts, was auseinanderlaufen könnte. */
 @supports (height:100dvh){
   @media (max-width:900px){
+    #top{height:150dvh!important}
     #top>div{height:100dvh!important}
-    [data-areas-grid]{height:100dvh!important;grid-template-rows:42dvh minmax(0,1fr)!important}
     [data-wipe]{height:100dvh!important}
   }
-  @media (max-width:900px) and (max-height:760px){
-    [data-areas-grid]{grid-template-rows:34dvh minmax(0,1fr)!important}
-  }
-}
-/* Fallback ohne dvh */
-@media (max-width:900px) and (max-height:760px){
-  [data-areas-grid]{grid-template-rows:34svh minmax(0,1fr)!important}
 }
 
 /* ---- Druck ---- */

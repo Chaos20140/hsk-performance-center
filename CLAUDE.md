@@ -169,14 +169,14 @@ HUD: `[data-tc]` Timecode, `[data-seg]` 10 Segmente (nur Desktop, `data-hide-m`)
 
 | Was | Methode | Hooks |
 |---|---|---|
-| Rote Fläche fährt raus, Video zoomt zurück, „Die Halle." erscheint | `heroFx` | `[data-red]`, `[data-hero-video]`, `[data-hero-after]`, `[data-nav-logo]` |
-| Trainingsbereiche: 330vh sticky, Index ↔ Bühne, Clip je Bereich | `areasFx`, `goArea` | `[data-areas]`, `[data-area-row]`, `[data-area-media]` |
-| Roter Wipe „Eine Leistung. Drei Laufzeiten." | `wipeFx` | `[data-eq]`, `[data-wipe]` (sticky bottom, clip-path) |
+| Rote Fläche fährt raus (Rechner seitwärts, Telefon nach unten), Video zoomt zurück, „Die Halle." erscheint | `heroFx` | `[data-red]`, `[data-hero-video]`, `[data-hero-after]`, `[data-nav-logo]` |
+| Trainingsbereiche — **Rechner:** 330 vh sticky, Index ↔ Bühne, Clip je Bereich. **Telefon:** Sektion so hoch wie ihr Inhalt, nur die Bühne klebt oben, die drei Zeilen laufen darunter durch (je 30 svh); aktiver Bereich aus den Zeilen gelesen | `areasFx`, `goArea` | `[data-areas]`, `[data-areas-stage]`, `[data-area-row]`, `[data-area-media]` |
+| Roter Wipe „Eine Leistung. Drei Laufzeiten." — **Rechner:** sticky bottom + clip-path am Scrollrad. **Telefon:** steht still im Fluss und kommt beim Scrollen von unten ins Bild (kein Skript) | `wipeFx` | `[data-eq]`, `[data-wipe]` |
 | Ausstattungs-Clips beim Hover | `eqEnter/eqLeave` | `[data-eq-card] video[data-src]` |
 | FAQ | `toggleFaq` | `[data-faq-head]`, `[data-faq-body]` (max-height) |
 | Nav-Hintergrund, SCRL %, Progress-Balken, Mobilleiste ab 0,85 vh, Parallax | `sync` | `[data-nav]`, `[data-scrl]`, `[data-progress]`, `[data-mbar]`, `[data-px]` |
 | Öffnungsstatus | `renderVals().statusText` | `h >= 6` → „JETZT GEÖFFNET · BIS 24 UHR" |
-| Karte | `loadMap` + Shim | `[data-if="mapOn"/"mapOff"]`, `[data-map-frame]`, `[data-map-open]` |
+| Karte: `ll=`-Einbettung ohne Google-Nadel, eigene rote Marke in der Mitte, ganze Fläche startet die Route (Apple Karten / Google Maps) | `loadMap` + `armMap` im Shim | `[data-if="mapOn"/"mapOff"]`, `[data-map-frame]`, `[data-map-open]`, `[data-map-pin]` |
 
 Scroll-getriebene Reveals laufen über `animation-timeline: view()`; ohne Support
 (Firefox/ältere Safari) spielt die Animation einmal beim Laden und endet dank `both`
@@ -413,6 +413,30 @@ Drei asserted Korrekturen in `legalPage()`:
 22. **Der Anker-Sprung passiert in Chromium nach DOMContentLoaded.** `scrollY` war beim
     Mount noch 0, also lud der Hero-Clip trotz `#preise`. Der Hash zählt jetzt als
     „nicht im Bild".
+23. **Sektionshöhe in `svh`, Klebeblock in `dvh` — das läuft auseinander.** Ich hatte
+    das sogar als Absicht kommentiert („die Scroll-Strecke darf sich nicht ändern").
+    Falsch: die Klebestrecke ist Sektionshöhe **minus** Blockhöhe. Bleibt die eine
+    fest und wächst die andere mit der Adressleiste, wandert der Punkt, an dem der
+    Block abgibt — er löst sich vor dem Ende der Sektion, und darunter steht deren
+    Grund. Regel: **beide Höhen in derselben Einheit**, oder besser: gar keine
+    gerechnete Strecke, sondern eine Sektion, die so hoch ist wie ihr Inhalt.
+24. **Ich habe das Symptom behandelt, nicht die Ursache.** Auf „schwarze Fläche in den
+    Trainingsbereichen" habe ich die langsam ladenden Bühnenbilder optimiert — das war
+    richtig, aber es war nicht der Fehler. Der Kunde meldete dieselbe Fläche eine Runde
+    später wieder. Merke: eine plausible Erklärung ist noch keine belegte. Erst
+    reproduzieren, dann messen, dann reparieren.
+25. **Erste These im echten Browser prüfen, bevor ich darauf baue.** Ich war sicher,
+    `body{overflow-x:hidden}` mache in WebKit den Body zum Scroll-Container und töte
+    jedes `position:sticky`. Klang schlüssig, erklärte alle drei Beschwerden — und war
+    falsch: in WebKit 26 gemessen, `gridTop` bleibt 0. `npx playwright install webkit`
+    kostet eine Minute und hätte mir die halbe Fehlersuche gespart. **WebKit ist ab
+    jetzt der Prüfstand für alles, was der Kunde auf dem iPhone sieht.**
+26. **Ein Schaltpunkt mit CSS-Blende ist nicht immer die Antwort auf Ruckeln.** Beim
+    Vorhang hätte er zwar sauber animiert, aber vor dem Umschlagen eine bildschirmhohe
+    leere Fläche stehen lassen — der Block belegt im Fluss eine volle Bildschirmhöhe.
+    Die bessere Lösung war, die Animation ganz wegzulassen: ohne `position:sticky`
+    kommt er von unten ins Bild, weil die Seite scrollt. **Die flüssigste Bewegung auf
+    dem Telefon ist die, die der Browser ohnehin macht.**
 
 ### v1-Lehren, die weiter gelten (Kurzfassung; Details in Git `588ed26:CLAUDE.md`)
 - Design-RPC `GetFile`: `content` ist **immer** Base64, `isBase64` heißt nur „binär".
@@ -459,7 +483,7 @@ Drei asserted Korrekturen in `legalPage()`:
 ```bash
 cd build && HSK_CANONICAL="https://chaos20140.github.io/hsk-performance-center/" node build.js   # muss "OK" sagen
 cd .. && node --check assets/js/site.js
-grep -c 'HSK-PATCH' assets/js/site.js                 # 28 (27 Marker + Kopfkommentar)
+grep -c 'HSK-PATCH' assets/js/site.js                 # 32 (31 Marker + Kopfkommentar)
 grep -ohE '(src|href)="https?://[^"]+"' *.html | sort -u   # nur maps / facebook / canonical
 ```
 
@@ -480,6 +504,65 @@ Nach dem Push: `curl -I` auf `/CLAUDE.md`, `/build/build.js`, `/src/` → müsse
 ---
 
 ## 9. Änderungslog (jede Änderung, neueste oben)
+
+- **2026-09-07 — Vierte Rückmeldung vom Gerät** (Tolunay, iPhone-Screenshots 12:14/12:15):
+  - **Karte: roter Punkt aufs Studio, ganze Fläche öffnet die Route.** Google setzt
+    mit `q=Adresse` eine eigene Nadel — unter dem Graufilter der Karte steht sie
+    grau im Bild, die Adresse war also auf einer grauen Karte grau markiert.
+    Mit `ll=51.3956,8.5681&z=16` zentriert Google denselben Punkt **ohne** Nadel
+    (in WebKit gegen die Adress-Fassung geprüft: die Kartenmitte trifft deren
+    Nadelspitze). Die Marke setzen wir jetzt selbst — `[data-map-pin]` in der
+    Mitte, außerhalb des iframe, also ungefiltert im Rot des Hauses.
+    Der Link liegt nicht mehr als Chip in der Ecke, sondern über der **ganzen**
+    Karte und startet die Route: Apple Karten auf Apple-Geräten
+    (`maps.apple.com/?daddr=…&dirflg=d`), sonst Google Maps
+    (`maps/dir/?api=1&destination=…`). Das räumt nebenbei die Überlappung mit
+    Googles eigenem Knopf oben links auf — die war im Screenshot zu sehen.
+    Der Koordinaten-Wert lebt ab jetzt an EINER Stelle (`GEO` in build.js) und
+    speist strukturierte Daten, Kartenmitte und Route.
+  - **Hero: der rote Banner fährt beim Scrollen weg.** Am Rechner fährt die rote
+    Fläche seitwärts aus dem Bild; auf dem Telefon lag sie unten auf dem Film und
+    blieb den ganzen Hero über liegen — der Film war nie zu sehen, und die
+    Schlusszeile „Die Halle" stand daneben statt an ihrer Stelle. Jetzt: ein
+    Schaltpunkt bei 16 % der Hero-Strecke (zurück bei 9 %), die Bewegung macht
+    eine CSS-Blende auf dem Compositor. „Die Halle" sitzt wieder unten.
+  - **Schwarze Fläche in den Trainingsbereichen — die eigentliche Ursache.**
+    Die letzte Runde hat das Symptom (langsam ladende Bilder) behandelt, nicht den
+    Fehler. Der lag in der Geometrie: die Sektion stand in `250svh` (fest), der
+    Klebeblock in `100dvh` (folgt der Adressleiste). Blendet Safari die Leiste
+    aus, wächst **nur der Block** — seine Klebestrecke schrumpft, er gibt vor dem
+    Ende der Sektion ab, und darunter steht ihr schwarzer Grund. In WebKit mit
+    iPhone-Maßen nachgestellt und gemessen: **80 px Loch**.
+    Zwei Konsequenzen: (a) Hero und Vorhang stehen jetzt in **derselben** Einheit
+    wie ihr Klebeblock (`150dvh` / `100dvh`). (b) Die Bereiche haben gar keine
+    gerechnete Strecke mehr: die Sektion ist so hoch wie ihr Inhalt, die **Bühne**
+    klebt oben, die drei Zeilen laufen darunter durch (je 30 svh), und der aktive
+    Bereich wird aus den Zeilen gelesen (HSK-PATCH 23/24). Damit ist es genau das,
+    was Tolunay beschrieben hat: runterscrollen → Kraft mit Bild, weiter →
+    Athletik, weiter → Conditioning mit den Laufbändern. Gemessen über 31 Punkte
+    der Sektion: kein Loch, und die Bühne bleibt beim Leistenwechsel bei 0.
+    Nebeneffekt: die Startseite ist auf dem Telefon 16,2 → 15,3 Bildschirme kurz.
+  - **Roter Vorhang ruckelt nicht mehr.** Er lief Bild für Bild am Scroll-Ereignis;
+    Safari reicht die beim Nachlauf gebündelt nach, daher die Stufen. Ein
+    Schaltpunkt mit CSS-Blende wäre glatt gewesen, hätte aber vor dem Umschlagen
+    eine bildschirmhohe schwarze Fläche stehen lassen (der Vorhang belegt im Fluss
+    eine volle Bildschirmhöhe). Deshalb steht er auf dem Telefon jetzt **still**
+    (`position:static`, kein `clip-path`, kein Skript) und kommt von unten ins
+    Bild, **weil die Seite scrollt**. Gemessen: 0 → 40 → 60 → 80 → 100 %, linear
+    zum Scrollweg. Scrollen ist die einzige Bewegung, die auf dem Telefon
+    garantiert flüssig ist.
+  - **Weniger erzwungene Layouts pro Scroll-Ereignis.** `hero.offsetHeight` wurde
+    bei JEDEM Ereignis nach einem Stil-Schreibvorgang gelesen — das erzwingt jedes
+    Mal ein neues Layout. Jetzt gemessen, wenn sich die Bildschirmhöhe ändert
+    (die Höhe hängt nur an ihr). Leiste und Fortschrittstext werden nur noch
+    geschrieben, wenn sich ihr Wert ändert (HSK-PATCH 15/25/26).
+  - Desktop unverändert nachgemessen: Sektion 330 vh, Raster klebt, Vorhang mit
+    `clip-path`, Hero 200 vh, Seitenlänge 15,71 Bildschirme (vorher 15,69).
+  - Geprüft: 9 Seiten × 4 Breiten (390/768/1440/1920) ohne Querlauf und ohne
+    Konsolenfehler, reduzierte Bewegung schaltet den Kartenpuls ab, Link ohne
+    Apple-Kennung auf Google Maps. Sicherheit: kein `innerHTML`/`eval`, CSP
+    unverändert, keine neuen Fremdziele außer `maps.apple.com` (nur als Link).
+
 
 - **2026-09-07 — Drei Rückmeldungen vom Gerät** (Tolunay, iPhone-Screenshots 02:18):
   - **Laufschrift-Band nicht randlos.** Das Band in „Haltung" liegt in einer Sektion
