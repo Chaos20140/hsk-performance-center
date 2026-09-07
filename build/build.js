@@ -141,6 +141,38 @@ function lazyImages(html) {
   return html.replace(/<img (?![^>]*loading=)([^>]*src="assets\/(?!hsk-logo)[^"]*"[^>]*)>/g, '<img loading="lazy" decoding="async" $1>');
 }
 
+/* Wo eine 720-px-Fassung im Repo liegt, bekommt das Bild ein srcset. Die
+   Originale sind 1100–1920 px breit — auf einer 354-px-Spalte lädt das Telefon
+   sonst das Dreifache dessen, was es zeigen kann. Die Bühne der Trainings-
+   bereiche stand deshalb auf langsamem Netz sekundenlang schwarz. */
+function srcsetImages(html) {
+  return html.replace(/<img ([^>]*?)src="assets\/([a-z0-9-]+)\.jpg"([^>]*)>/g, (m, vor, name, nach) => {
+    if (/srcset=/.test(m)) return m;
+    const klein = path.join(OUT, 'assets', name + '-720.jpg');
+    if (!fs.existsSync(klein)) return m;
+    const orig = path.join(OUT, 'assets', name + '.jpg');
+    const breite = jpegBreite(orig);
+    if (!breite || breite <= 800) return m;
+    return '<img ' + vor + 'src="assets/' + name + '.jpg" srcset="assets/' + name + '-720.jpg 720w, assets/' + name + '.jpg ' + breite + 'w"' +
+      ' sizes="(max-width: 900px) 100vw, 50vw"' + nach + '>';
+  });
+}
+
+/* Breite aus dem JPEG-Kopf lesen (SOF0/SOF2-Segment) — kein Fremdcode nötig. */
+function jpegBreite(datei) {
+  const b = fs.readFileSync(datei);
+  let i = 2;
+  while (i < b.length - 9) {
+    if (b[i] !== 0xFF) { i++; continue; }
+    const marker = b[i + 1];
+    if (marker >= 0xC0 && marker <= 0xCF && marker !== 0xC4 && marker !== 0xC8 && marker !== 0xCC) {
+      return b.readUInt16BE(i + 7);
+    }
+    i += 2 + b.readUInt16BE(i + 2);
+  }
+  return 0;
+}
+
 /* Auf Unterseiten zeigen die Anker der Leiste/des Menüs/des Footers zurück
    auf die Startseite. */
 function anchorsToIndex(html) {
@@ -178,6 +210,7 @@ function processFragment(html, hoverPrefix, counter) {
   html = rewritePageLinks(hv.html);
   html = localizeMedia(html).s;
   html = lazyImages(html);
+  html = srcsetImages(html);
   // Alle Videos sind stumme Atmosphäre; das Bild daneben trägt den Alt-Text.
   html = html.replace(/<video( [^>]*)>/g, '<video$1 aria-hidden="true">');
   // <wbr> ist eine Umbruchgelegenheit OHNE Trennzeichen (richtig für URLs, falsch
@@ -387,6 +420,23 @@ function build() {
     body = body.replace(v0, 'data-src="assets/cine-rise.mp4" data-src-mobile="assets/m-racks.mp4"');
     must(fs.existsSync(path.join(OUT, 'assets', 'm-racks-poster.jpg')), 'mobile poster missing');
     must(!/poster="assets\/cine-rise-poster\.jpg"/.test(body), 'hero poster attribute left');
+  }
+
+  // Das erste Bühnenbild der Trainingsbereiche trägt die ganze Sektion — es darf
+  // nicht faul laden, sonst steht dort beim schnellen Wischen eine schwarze Fläche.
+  {
+    const b1 = '<img src="assets/p-kraft.jpg" alt="Kraftbereich"';
+    must(body.indexOf(b1) > -1, 'stage image 1 not found');
+    body = body.replace(b1, '<img loading="eager" fetchpriority="high" src="assets/p-kraft.jpg" alt="Kraftbereich"');
+  }
+
+  // Die Laufschrift ist im Design ein randloses Band. In „Haltung" liegt sie aber
+  // in einer Sektion mit seitlichem Polster und endet deshalb 18 px vor jedem
+  // Rand — auf dem Telefon sieht das aus, als sei das Band nicht fertig geladen.
+  {
+    const band = '<div style="margin-top:clamp(80px,10vw,150px);background:#E10600;color:#050506;overflow:hidden;padding:clamp(16px,1.8vw,24px) 0">';
+    must(body.indexOf(band) > -1, 'haltung marquee band not found');
+    body = body.replace(band, band.replace('<div style="', '<div data-band style="'));
   }
 
   // Kennzahlen-Raster (Startseite „2001 / 06–24 / 5,0"): drei Zellen à 85 px

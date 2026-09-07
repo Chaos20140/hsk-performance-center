@@ -481,6 +481,28 @@ Nach dem Push: `curl -I` auf `/CLAUDE.md`, `/build/build.js`, `/src/` → müsse
 
 ## 9. Änderungslog (jede Änderung, neueste oben)
 
+- **2026-09-07 — Drei Rückmeldungen vom Gerät** (Tolunay, iPhone-Screenshots 02:18):
+  - **Laufschrift-Band nicht randlos.** Das Band in „Haltung" liegt in einer Sektion
+    mit seitlichem Polster und endete 18 px vor jedem Rand — die Schrift verschwand
+    in einer Kante, was aussah, als lade das Band noch. Build setzt jetzt
+    `[data-band]`, `site.css` zieht es mit negativen Außenabständen über das Polster.
+    Gemessen: links 0, rechts 0, Breite = Fensterbreite.
+  - **Schwarzer Bildschirm in den Trainingsbereichen.** Ursache gefunden: die drei
+    Bühnenbilder (366 + 161 + 316 KB) laden faul; auf 700 kbit/s waren sie nach
+    5 Sekunden **noch nicht da**, und die Bühne ist `#0E0E11` — also schwarz.
+    → Erstes Bild `loading="eager" fetchpriority="high"`, und **`srcset` generisch
+    im Build**: für jedes JPEG mit einer `-720.jpg`-Fassung im Repo (20 Stück,
+    3,30 → 0,75 MB). Die Breite fürs `srcset` liest `jpegBreite()` aus dem
+    JPEG-Kopf (SOF-Segment), ohne Fremdcode. Auf langsamem Netz stehen die Bilder
+    jetzt nach ~1 s.
+  - **Bereichswechsel zu schnell.** Bei 210 svh blieben je Bereich 0,37 Bildschirm-
+    höhen — man wischte an Kraft/Athletik/Conditioning vorbei, ohne den Wechsel zu
+    sehen. Jetzt 250 svh = 0,5 je Bereich (Tolunay wollte die Choreografie sehen).
+  - **Wipe-Titel hinter der Leiste.** „Eine Leistung. Drei Laufzeiten." saß am
+    unteren Rand und lag damit 106 px hinter der Probetraining-Leiste, darüber
+    730 px leeres Rot. Auf dem Telefon jetzt mittig (`justify-content:center`)
+    mit `padding-bottom:calc(72px + safe-area)`; Abstand zur Leiste 308 px.
+
 - **2026-09-06 (3) — Design-Durchsicht Telefon** (Workflow, 8 Dimensionen × 2 Skeptiker,
   158 Agenten; 40 bestätigt, 35 verworfen). Umgesetzt:
   - **Typografie**: Display-Zeilen auf dem Telefon `line-height:.96` — Big Shoulders

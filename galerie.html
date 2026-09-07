@@ -229,7 +229,10 @@ html[data-menu="open"] [data-burger]::after{transform:translate(-50%,-50%) rotat
   /* Hero-HUD und Schlusszeile wechseln auf dem Telefon in einer CSS-Blende
      (das Skript setzt nur noch 0/1, siehe HSK-PATCH 17) */
   [data-hero-hud],[data-hero-after]{transition:opacity .5s ease}
-  [data-wipe]{will-change:transform}
+  /* Der Wipe-Titel sitzt im Design am unteren Rand — auf dem Telefon liegt er
+     damit hinter der Probetraining-Leiste, und über ihm stehen 730 px leeres Rot.
+     Mittig sitzt er frei und die Fläche wirkt nicht mehr wie ein Loch. */
+  [data-wipe]{will-change:transform;justify-content:center!important;padding-bottom:calc(72px + env(safe-area-inset-bottom))!important}
 
   /* -- Hero: die rote Fläche sitzt unten und braucht keinen Desktop-Sockel */
   [data-red]{padding-top:22px!important;padding-bottom:calc(22px + env(safe-area-inset-bottom))!important}
@@ -267,8 +270,11 @@ html[data-menu="open"] [data-burger]::after{transform:translate(-50%,-50%) rotat
   /* Ohne den Versatz würde der Parallax (±56 px, von sync() inline gesetzt) die
      Bilder in das Zahlenraster darüber schieben — auf dem Telefon stehen sie still */
   #haltung [data-px]{transform:none!important}
-  /* Laufschrift-Band */
-  #haltung>div:last-child{margin-top:44px!important;padding-top:12px!important;padding-bottom:12px!important}
+  /* Laufschrift-Band: randlos über die volle Breite. Es liegt in einer Sektion
+     mit seitlichem Polster und endete sonst 18 px vor jedem Rand — die Schrift
+     verschwand dort in einer Kante, was aussah, als lade das Band noch. */
+  #haltung>div:last-child{margin-top:44px!important;padding-top:14px!important;padding-bottom:14px!important}
+  [data-band]{margin-left:calc(clamp(18px,4vw,64px) * -1)!important;margin-right:calc(clamp(18px,4vw,64px) * -1)!important}
 
   /* -- Ausstattung: sechs gestapelte Karten waren allein 2,3 Bildschirme */
   #ausstattung>div>div:nth-child(2){margin-top:24px!important}
@@ -362,13 +368,16 @@ html[data-menu="open"] [data-burger]::after{transform:translate(-50%,-50%) rotat
    das Scrollen. Hero 200→150, Bereiche 330→210 (je Bereich 37 vh). */
 @media (max-width:900px){
   #top{height:150vh!important}
-  [data-areas]{height:210vh!important}
+  [data-areas]{height:250vh!important}
 }
 @supports (height:100svh){
   @media (max-width:900px){
     #top{height:150svh!important}
     #top>div{height:100svh!important}
-    [data-areas]{height:210svh!important}
+    /* 250 statt 210: bei 210 blieben je Bereich nur 0,37 Bildschirmhöhen — man
+       wischte an Kraft/Athletik/Conditioning vorbei, ohne den Wechsel zu sehen.
+       Jetzt 0,5 pro Bereich. */
+    [data-areas]{height:250svh!important}
     [data-areas-grid]{height:100svh!important;grid-template-rows:44svh minmax(0,1fr)!important}
     /* (svh = Höhe MIT Adressleiste; die Feinjustierung darauf steht unten in dvh) */
     [data-wipe]{height:100svh!important}
@@ -519,22 +528,22 @@ html[data-menu="open"] [data-burger]::after{transform:translate(-50%,-50%) rotat
 
 <section data-screen-label="Fotos" style="position:relative;background:#050506;padding:0 clamp(18px,4vw,64px) clamp(60px,8vw,120px)">
   <div data-gal style="max-width:1500px;margin:0 auto">
-    <figure data-span="6" style="aspect-ratio:16/10"><img loading="eager" fetchpriority="high" src="assets/gal-hall.jpg" alt="Die Halle: Sprintbahn, Racks und Spiegelwand"><figcaption>01 — Die Halle</figcaption></figure>
-    <figure data-span="3" style="aspect-ratio:4/5"><img loading="lazy" decoding="async" src="assets/gal-chalk.jpg" alt="Chalk auf der Lifting-Plattform"><figcaption>02 — Chalk</figcaption></figure>
-    <figure data-span="3" style="aspect-ratio:4/5"><img loading="lazy" decoding="async" src="assets/gal-led.jpg" alt="Rotes Lichtband über der Spiegelwand"><figcaption>03 — Lichtband</figcaption></figure>
-    <figure data-span="4" style="aspect-ratio:4/3"><img loading="lazy" decoding="async" src="assets/eq-racks.jpg" alt="Racks und Cages"><figcaption>04 — Racks &amp; Cages</figcaption></figure>
-    <figure data-span="4" style="aspect-ratio:4/3"><img loading="lazy" decoding="async" src="assets/eq-platform.jpg" alt="Lifting-Plattform"><figcaption>05 — Plattform</figcaption></figure>
-    <figure data-span="4" style="aspect-ratio:4/3"><img loading="lazy" decoding="async" src="assets/eq-plates.jpg" alt="Competition Plates"><figcaption>06 — Competition Plates</figcaption></figure>
-    <figure data-span="6" style="aspect-ratio:16/10"><img loading="lazy" decoding="async" src="assets/p-kraft.jpg" alt="Kraftbereich"><figcaption>07 — Kraft</figcaption></figure>
-    <figure data-span="6" style="aspect-ratio:16/10"><img loading="lazy" decoding="async" src="assets/p-functional.jpg" alt="Athletikfläche mit Sprintbahn"><figcaption>08 — Athletik</figcaption></figure>
-    <figure data-span="4" style="aspect-ratio:4/3"><img loading="lazy" decoding="async" src="assets/gal-cardio.jpg" alt="Laufband im Conditioning-Bereich"><figcaption>09 — Conditioning</figcaption></figure>
-    <figure data-span="4" style="aspect-ratio:4/3"><img loading="lazy" decoding="async" src="assets/g-kettle.jpg" alt="Kettlebells in einer Reihe"><figcaption>10 — Kettlebells</figcaption></figure>
-    <figure data-span="4" style="aspect-ratio:4/3"><img loading="lazy" decoding="async" src="assets/g-dumbbell.jpg" alt="Hantelscheiben am Rack, dahinter die Sprintbahn"><figcaption>11 — Scheiben</figcaption></figure>
-    <figure data-span="6" style="aspect-ratio:16/10"><img loading="lazy" decoding="async" src="assets/gal-locker.jpg" alt="Umkleide mit roten Lichtlinien"><figcaption>12 — Umkleide</figcaption></figure>
-    <figure data-span="6" style="aspect-ratio:16/10"><img loading="lazy" decoding="async" src="assets/gal-stack.jpg" alt="Scheibenstapel an der Maschine"><figcaption>13 — Scheibenstapel</figcaption></figure>
-    <figure data-span="4" style="aspect-ratio:4/3"><img loading="lazy" decoding="async" src="assets/eq-machines.jpg" alt="Spezialmaschinen"><figcaption>14 — Spezialmaschinen</figcaption></figure>
-    <figure data-span="4" style="aspect-ratio:4/3"><img loading="lazy" decoding="async" src="assets/eq-sled.jpg" alt="Sprintbahn mit Schlitten"><figcaption>15 — Sprintbahn</figcaption></figure>
-    <figure data-span="4" style="aspect-ratio:4/3"><img loading="lazy" decoding="async" src="assets/p-cardio.jpg" alt="Laufbänder"><figcaption>16 — Laufbänder</figcaption></figure>
+    <figure data-span="6" style="aspect-ratio:16/10"><img loading="eager" fetchpriority="high" src="assets/gal-hall.jpg" srcset="assets/gal-hall-720.jpg 720w, assets/gal-hall.jpg 1600w" sizes="(max-width: 900px) 100vw, 50vw" alt="Die Halle: Sprintbahn, Racks und Spiegelwand"><figcaption>01 — Die Halle</figcaption></figure>
+    <figure data-span="3" style="aspect-ratio:4/5"><img loading="lazy" decoding="async" src="assets/gal-chalk.jpg" srcset="assets/gal-chalk-720.jpg 720w, assets/gal-chalk.jpg 1500w" sizes="(max-width: 900px) 100vw, 50vw" alt="Chalk auf der Lifting-Plattform"><figcaption>02 — Chalk</figcaption></figure>
+    <figure data-span="3" style="aspect-ratio:4/5"><img loading="lazy" decoding="async" src="assets/gal-led.jpg" srcset="assets/gal-led-720.jpg 720w, assets/gal-led.jpg 1500w" sizes="(max-width: 900px) 100vw, 50vw" alt="Rotes Lichtband über der Spiegelwand"><figcaption>03 — Lichtband</figcaption></figure>
+    <figure data-span="4" style="aspect-ratio:4/3"><img loading="lazy" decoding="async" src="assets/eq-racks.jpg" srcset="assets/eq-racks-720.jpg 720w, assets/eq-racks.jpg 1100w" sizes="(max-width: 900px) 100vw, 50vw" alt="Racks und Cages"><figcaption>04 — Racks &amp; Cages</figcaption></figure>
+    <figure data-span="4" style="aspect-ratio:4/3"><img loading="lazy" decoding="async" src="assets/eq-platform.jpg" srcset="assets/eq-platform-720.jpg 720w, assets/eq-platform.jpg 1100w" sizes="(max-width: 900px) 100vw, 50vw" alt="Lifting-Plattform"><figcaption>05 — Plattform</figcaption></figure>
+    <figure data-span="4" style="aspect-ratio:4/3"><img loading="lazy" decoding="async" src="assets/eq-plates.jpg" srcset="assets/eq-plates-720.jpg 720w, assets/eq-plates.jpg 1100w" sizes="(max-width: 900px) 100vw, 50vw" alt="Competition Plates"><figcaption>06 — Competition Plates</figcaption></figure>
+    <figure data-span="6" style="aspect-ratio:16/10"><img loading="lazy" decoding="async" src="assets/p-kraft.jpg" srcset="assets/p-kraft-720.jpg 720w, assets/p-kraft.jpg 1400w" sizes="(max-width: 900px) 100vw, 50vw" alt="Kraftbereich"><figcaption>07 — Kraft</figcaption></figure>
+    <figure data-span="6" style="aspect-ratio:16/10"><img loading="lazy" decoding="async" src="assets/p-functional.jpg" srcset="assets/p-functional-720.jpg 720w, assets/p-functional.jpg 1400w" sizes="(max-width: 900px) 100vw, 50vw" alt="Athletikfläche mit Sprintbahn"><figcaption>08 — Athletik</figcaption></figure>
+    <figure data-span="4" style="aspect-ratio:4/3"><img loading="lazy" decoding="async" src="assets/gal-cardio.jpg" srcset="assets/gal-cardio-720.jpg 720w, assets/gal-cardio.jpg 1300w" sizes="(max-width: 900px) 100vw, 50vw" alt="Laufband im Conditioning-Bereich"><figcaption>09 — Conditioning</figcaption></figure>
+    <figure data-span="4" style="aspect-ratio:4/3"><img loading="lazy" decoding="async" src="assets/g-kettle.jpg" srcset="assets/g-kettle-720.jpg 720w, assets/g-kettle.jpg 1200w" sizes="(max-width: 900px) 100vw, 50vw" alt="Kettlebells in einer Reihe"><figcaption>10 — Kettlebells</figcaption></figure>
+    <figure data-span="4" style="aspect-ratio:4/3"><img loading="lazy" decoding="async" src="assets/g-dumbbell.jpg" srcset="assets/g-dumbbell-720.jpg 720w, assets/g-dumbbell.jpg 1200w" sizes="(max-width: 900px) 100vw, 50vw" alt="Hantelscheiben am Rack, dahinter die Sprintbahn"><figcaption>11 — Scheiben</figcaption></figure>
+    <figure data-span="6" style="aspect-ratio:16/10"><img loading="lazy" decoding="async" src="assets/gal-locker.jpg" srcset="assets/gal-locker-720.jpg 720w, assets/gal-locker.jpg 1500w" sizes="(max-width: 900px) 100vw, 50vw" alt="Umkleide mit roten Lichtlinien"><figcaption>12 — Umkleide</figcaption></figure>
+    <figure data-span="6" style="aspect-ratio:16/10"><img loading="lazy" decoding="async" src="assets/gal-stack.jpg" srcset="assets/gal-stack-720.jpg 720w, assets/gal-stack.jpg 1500w" sizes="(max-width: 900px) 100vw, 50vw" alt="Scheibenstapel an der Maschine"><figcaption>13 — Scheibenstapel</figcaption></figure>
+    <figure data-span="4" style="aspect-ratio:4/3"><img loading="lazy" decoding="async" src="assets/eq-machines.jpg" srcset="assets/eq-machines-720.jpg 720w, assets/eq-machines.jpg 1100w" sizes="(max-width: 900px) 100vw, 50vw" alt="Spezialmaschinen"><figcaption>14 — Spezialmaschinen</figcaption></figure>
+    <figure data-span="4" style="aspect-ratio:4/3"><img loading="lazy" decoding="async" src="assets/eq-sled.jpg" srcset="assets/eq-sled-720.jpg 720w, assets/eq-sled.jpg 1100w" sizes="(max-width: 900px) 100vw, 50vw" alt="Sprintbahn mit Schlitten"><figcaption>15 — Sprintbahn</figcaption></figure>
+    <figure data-span="4" style="aspect-ratio:4/3"><img loading="lazy" decoding="async" src="assets/p-cardio.jpg" srcset="assets/p-cardio-720.jpg 720w, assets/p-cardio.jpg 1100w" sizes="(max-width: 900px) 100vw, 50vw" alt="Laufbänder"><figcaption>16 — Laufbänder</figcaption></figure>
   </div>
 </section>
 
@@ -548,10 +557,10 @@ html[data-menu="open"] [data-burger]::after{transform:translate(-50%,-50%) rotat
       <p style="margin:0;max-width:40ch;font-size:clamp(15px,1.15vw,18px);line-height:1.7;color:#C4C4CA;text-wrap:pretty">Beim Hover läuft der Clip. Auf dem Telefon: einmal antippen.</p>
     </div>
     <div data-gal style="gap:1px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.12)">
-      <figure data-span="6" data-eq-card data-on-pointerenter="eqEnter" data-on-pointerleave="eqLeave" style="aspect-ratio:16/9;background:#050506"><img loading="lazy" decoding="async" src="assets/p-mirror.jpg" alt="Spiegelwand"><video data-src="assets/v-mirror.mp4" data-src-mobile="assets/v-mirror-m.mp4" muted="muted" loop="loop" playsinline="playsinline" preload="none" style="opacity:0;transition:opacity .6s ease" aria-hidden="true"></video><figcaption><span style="display:inline-block;width:6px;height:6px;background:#E10600;margin-right:8px;vertical-align:middle"></span>REC — Spiegelwand</figcaption></figure>
+      <figure data-span="6" data-eq-card data-on-pointerenter="eqEnter" data-on-pointerleave="eqLeave" style="aspect-ratio:16/9;background:#050506"><img loading="lazy" decoding="async" src="assets/p-mirror.jpg" srcset="assets/p-mirror-720.jpg 720w, assets/p-mirror.jpg 1400w" sizes="(max-width: 900px) 100vw, 50vw" alt="Spiegelwand"><video data-src="assets/v-mirror.mp4" data-src-mobile="assets/v-mirror-m.mp4" muted="muted" loop="loop" playsinline="playsinline" preload="none" style="opacity:0;transition:opacity .6s ease" aria-hidden="true"></video><figcaption><span style="display:inline-block;width:6px;height:6px;background:#E10600;margin-right:8px;vertical-align:middle"></span>REC — Spiegelwand</figcaption></figure>
       <figure data-span="6" data-eq-card data-on-pointerenter="eqEnter" data-on-pointerleave="eqLeave" style="aspect-ratio:16/9;background:#050506"><img loading="lazy" decoding="async" src="assets/cine-descent-poster.jpg" alt="Abstieg in die Halle"><video data-src="assets/cine-descent.mp4" data-src-mobile="assets/cine-descent-m.mp4" muted="muted" loop="loop" playsinline="playsinline" preload="none" style="opacity:0;transition:opacity .6s ease" aria-hidden="true"></video><figcaption><span style="display:inline-block;width:6px;height:6px;background:#E10600;margin-right:8px;vertical-align:middle"></span>REC — Abstieg</figcaption></figure>
-      <figure data-span="4" data-eq-card data-on-pointerenter="eqEnter" data-on-pointerleave="eqLeave" style="aspect-ratio:16/10;background:#050506"><img loading="lazy" decoding="async" src="assets/g-dumbbell.jpg" alt="Hantelscheiben"><video data-src="assets/v-dumbbells.mp4" data-src-mobile="assets/v-dumbbells-m.mp4" muted="muted" loop="loop" playsinline="playsinline" preload="none" style="opacity:0;transition:opacity .6s ease" aria-hidden="true"></video><figcaption><span style="display:inline-block;width:6px;height:6px;background:#E10600;margin-right:8px;vertical-align:middle"></span>REC — Hanteln</figcaption></figure>
-      <figure data-span="4" data-eq-card data-on-pointerenter="eqEnter" data-on-pointerleave="eqLeave" style="aspect-ratio:16/10;background:#050506"><img loading="lazy" decoding="async" src="assets/g-kettle.jpg" alt="Kettlebells"><video data-src="assets/v-kettle.mp4" data-src-mobile="assets/v-kettle-m.mp4" muted="muted" loop="loop" playsinline="playsinline" preload="none" style="opacity:0;transition:opacity .6s ease" aria-hidden="true"></video><figcaption><span style="display:inline-block;width:6px;height:6px;background:#E10600;margin-right:8px;vertical-align:middle"></span>REC — Kettlebells</figcaption></figure>
+      <figure data-span="4" data-eq-card data-on-pointerenter="eqEnter" data-on-pointerleave="eqLeave" style="aspect-ratio:16/10;background:#050506"><img loading="lazy" decoding="async" src="assets/g-dumbbell.jpg" srcset="assets/g-dumbbell-720.jpg 720w, assets/g-dumbbell.jpg 1200w" sizes="(max-width: 900px) 100vw, 50vw" alt="Hantelscheiben"><video data-src="assets/v-dumbbells.mp4" data-src-mobile="assets/v-dumbbells-m.mp4" muted="muted" loop="loop" playsinline="playsinline" preload="none" style="opacity:0;transition:opacity .6s ease" aria-hidden="true"></video><figcaption><span style="display:inline-block;width:6px;height:6px;background:#E10600;margin-right:8px;vertical-align:middle"></span>REC — Hanteln</figcaption></figure>
+      <figure data-span="4" data-eq-card data-on-pointerenter="eqEnter" data-on-pointerleave="eqLeave" style="aspect-ratio:16/10;background:#050506"><img loading="lazy" decoding="async" src="assets/g-kettle.jpg" srcset="assets/g-kettle-720.jpg 720w, assets/g-kettle.jpg 1200w" sizes="(max-width: 900px) 100vw, 50vw" alt="Kettlebells"><video data-src="assets/v-kettle.mp4" data-src-mobile="assets/v-kettle-m.mp4" muted="muted" loop="loop" playsinline="playsinline" preload="none" style="opacity:0;transition:opacity .6s ease" aria-hidden="true"></video><figcaption><span style="display:inline-block;width:6px;height:6px;background:#E10600;margin-right:8px;vertical-align:middle"></span>REC — Kettlebells</figcaption></figure>
       <figure data-span="4" data-eq-card data-on-pointerenter="eqEnter" data-on-pointerleave="eqLeave" style="aspect-ratio:16/10;background:#050506"><img loading="lazy" decoding="async" src="assets/v-crane-poster.jpg" alt="Die Halle in der Weite"><video data-src="assets/v-crane.mp4" data-src-mobile="assets/v-crane-m.mp4" muted="muted" loop="loop" playsinline="playsinline" preload="none" style="opacity:0;transition:opacity .6s ease" aria-hidden="true"></video><figcaption><span style="display:inline-block;width:6px;height:6px;background:#E10600;margin-right:8px;vertical-align:middle"></span>REC — Weite</figcaption></figure>
     </div>
   </div>
