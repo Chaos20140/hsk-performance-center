@@ -374,6 +374,7 @@ function build() {
     // Dieselbe Form, die Google selbst setzt — nur in Rot statt grau unter dem
     // Filter. Die Spitze der Nadel sitzt auf der Kartenmitte, also auf dem Studio.
     const nadel = '<span data-map-pin aria-hidden="true">' +
+      '<span data-map-puls></span><span data-map-puls></span>' +
       '<svg viewBox="0 0 24 34" width="26" height="37">' +
       '<path d="M12 0C5.4 0 0 5.4 0 12c0 8.5 10.1 20.3 11.2 21.6.4.5 1.2.5 1.6 0C13.9 32.3 24 20.5 24 12 24 5.4 18.6 0 12 0z" fill="#E10600"/>' +
       '<circle cx="12" cy="12" r="4.3" fill="#050506"/></svg></span>';
@@ -803,14 +804,6 @@ function patchLogic(js) {
         "    };\n" +
         "    if (this._mq && this._mq.addEventListener) this._mq.addEventListener('change', this._onMq);\n" +
         "    const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;\n" +
-        "    // HSK-PATCH 27: Jede Bereichszeile steigt beim Hereinscrollen ein. Das\n" +
-        "    // Kennzeichen setzt das Skript hier, weggenommen wird es in areasFx —\n" +
-        "    // dort liegen die Maße der Zeilen ohnehin schon vor. Ein Beobachter\n" +
-        "    // meldete sich unter Umständen erst eine halbe Sekunde später; hier\n" +
-        "    // passiert es im selben Zug wie der Bereichswechsel.\n" +
-        "    // Ohne Skript trägt keine Zeile das Kennzeichen — dann sind sie schlicht\n" +
-        "    // sichtbar, statt für immer unsichtbar zu bleiben.\n" +
-        "    if (this._mob) document.querySelectorAll('[data-area-row]').forEach((z) => z.setAttribute('data-verborgen', ''));\n" +
         "    // HSK-PATCH 2: Vorhang nur mit Vorhang-Markup, nie bei Anker-Aufruf\n" +
         "    const skipBoot = reduced || !document.querySelector('[data-if=\"booting\"]') || !!location.hash;\n" +
         "    if (skipBoot) { this.setState({ booting: false }); this.skipIntroDelays(); }\n" +
@@ -903,14 +896,18 @@ function patchLogic(js) {
         "      // volle Bildschirmhöhe lang da — er würde sichtbar einfrieren.\n" +
         "      this.setReelPaused((window.scrollY || 0) >= (this._heroH || window.innerHeight) || !!(this.reel && this.reel.userPaused));\n" +
         "      // Die rote Fläche fährt wie am Rechner seitwärts aus dem Bild, der Film\n" +
-        "      // läuft dahinter weiter — Bild für Bild am Scrollweg, genau wie dort.\n" +
-        "      // Das ist EIN Transform auf EINEM Element je Ereignis; teuer war nie das\n" +
-        "      // Verschieben, sondern die erzwungenen Layouts drumherum (Nr. 15/25/26).\n" +
+        "      // läuft dahinter weiter. Bild für Bild ging nicht: Safari reicht die\n" +
+        "      // Scroll-Ereignisse beim Nachlauf gebündelt nach, das ruckelte sichtbar.\n" +
+        "      // Also ein Schaltpunkt und eine CSS-Blende (site.css) — dieselbe Mechanik\n" +
+        "      // wie beim roten Preis-Vorhang. Zwei Schwellen, damit sie am Umschlag\n" +
+        "      // nicht flattert; die untere greift erst nach dem Scrollen zurück.\n" +
         "      const red = this._red || (this._red = document.querySelector('[data-red]'));\n" +
         "      if (red) {\n" +
-        "        const t = Math.min(1, p / 0.6);\n" +
-        "        const q = 1 - Math.pow(1 - t, 3);\n" +
-        "        red.style.transform = 'translate3d(' + (-q * 102).toFixed(2) + '%,0,0)';\n" +
+        "        const weg = this._redWeg ? p > 0.04 : p > 0.09;\n" +
+        "        if (this._redWeg !== weg) {\n" +
+        "          this._redWeg = weg;\n" +
+        "          red.style.transform = weg ? 'translate3d(-102%,0,0)' : 'translate3d(0,0,0)';\n" +
+        "        }\n" +
         "      }\n" +
         "      const afterM = document.querySelector('[data-hero-after]');\n" +
         "      const afterOn = p > 0.34;\n" +
@@ -990,61 +987,32 @@ function patchLogic(js) {
         "        v.muted = true; v.loop = true; const pr = v.play(); if (pr && pr.catch) pr.catch(() => {});\n" +
         "        v.style.opacity = '1';\n      }", 'areas video mobile');
 
-  // 23) Welcher Trainingsbereich gerade dran ist.
-  //     Am Rechner klebt das Raster eine gerechnete Strecke lang und der Bereich
-  //     ergibt sich aus dem Fortschritt darin. Auf dem Telefon ging diese Rechnung
-  //     nicht auf: die Sektionshöhe stand in svh (fest), der Klebeblock in dvh
-  //     (wächst, sobald Safari die Adressleiste ausblendet). Der Block löste sich
-  //     dadurch zu früh — in WebKit nachgestellt und gemessen: 80 px Loch, und
-  //     darunter der schwarze Sektionsgrund. Auf dem Telefon klebt jetzt nur die
-  //     Bühne, die drei Zeilen laufen darunter durch (site.css), und der aktive
-  //     Bereich wird aus den Zeilen selbst gelesen. Damit hängt nichts mehr an
-  //     einer Viewport-Rechnung, die sich unter dem Finger ändern kann.
+  // 23) Welcher Trainingsbereich gerade dran ist — aus dem Fortschritt in der
+  //     Klebestrecke. Die ist Sektionshöhe MINUS Höhe des klebenden Rasters,
+  //     nicht minus Bildschirmhöhe: auf dem Telefon sind das dieselben 100 dvh,
+  //     aber gemessen statt angenommen stimmt der Wechsel auch in dem Moment,
+  //     in dem Safari die Adressleiste ein- oder ausblendet und beide Werte
+  //     kurz auseinanderliegen. Gemessen wird nur bei geänderter Bildschirm-
+  //     höhe — ein offsetHeight nach einem Stil-Schreibvorgang erzwänge sonst
+  //     bei jedem Scroll-Ereignis ein neues Layout.
   patch("    const span = r.height - vh;\n" +
-        "    const p = Math.min(0.999, Math.max(0, -r.top / Math.max(1, span)));\n" +
-        "    const idx = Math.min(2, Math.floor(p * 3));",
-        "    let idx; // HSK-PATCH 23\n" +
-        "    if (this._mob) {\n" +
-        "      const rows = this._rows && this._rows.length ? this._rows : (this._rows = document.querySelectorAll('[data-area-row]'));\n" +
-        "      const stage = this._stage || (this._stage = document.querySelector('[data-areas-stage]'));\n" +
-        "      const oben = stage ? stage.getBoundingClientRect().bottom : 0;\n" +
-        "      const ziel = oben + (vh - oben) / 2;\n" +
-        "      let naeher = Infinity; idx = 0;\n" +
-        "      for (let k = 0; k < rows.length; k++) {\n" +
-        "        const b = rows[k].getBoundingClientRect();\n" +
-        "        // sobald die Zeile von unten ins Bild kommt: einsteigen lassen\n" +
-        "        if (b.top < vh * 0.88 && rows[k].hasAttribute('data-verborgen')) rows[k].removeAttribute('data-verborgen');\n" +
-        "        const d = Math.abs((b.top + b.bottom) / 2 - ziel);\n" +
-        "        if (d < naeher) { naeher = d; idx = k; }\n" +
-        "      }\n" +
-        "    } else {\n" +
-        "      const span = r.height - vh;\n" +
-        "      const p = Math.min(0.999, Math.max(0, -r.top / Math.max(1, span)));\n" +
-        "      idx = Math.min(2, Math.floor(p * 3));\n" +
-        "    }", 'areas index');
+        "    const p = Math.min(0.999, Math.max(0, -r.top / Math.max(1, span)));",
+        "    if (this._gridVh !== vh) { // HSK-PATCH 23\n" +
+        "      const g = document.querySelector('[data-areas-grid]');\n" +
+        "      this._gridVh = vh; this._gridH = g ? g.offsetHeight : 0;\n" +
+        "    }\n" +
+        "    const span = r.height - (this._gridH || vh);\n" +
+        "    const p = Math.min(0.999, Math.max(0, -r.top / Math.max(1, span)));", 'areas index');
 
-  // 28) Der aktive Bereich als Attribut. Auf dem Telefon steht der Text jeder
-  //     Zeile dauerhaft (eingeklappt bliebe dort nur Leere), der aktive hebt
-  //     sich stattdessen über die Deckkraft ab — das entscheidet site.css.
-  //     Am Rechner ändert das Attribut nichts, dort klappt weiter auf und zu.
-  patch("      if (barEl) barEl.style.transform = on ? 'scaleY(1)' : 'scaleY(0)';",
-        "      if (barEl) barEl.style.transform = on ? 'scaleY(1)' : 'scaleY(0)';\n" +
-        "      if (on) row.setAttribute('data-aktiv', ''); else row.removeAttribute('data-aktiv'); // HSK-PATCH 28",
-        'aktive Zeile');
-
-  // 24) Tippt jemand eine Zeile an, soll sie unter der Bühne zu stehen kommen —
-  //     die Desktop-Rechnung zielt auf eine Klebestrecke, die es dort nicht gibt.
+  // 24) Tippt jemand eine Zeile an, muss das Ziel auf derselben Klebestrecke
+  //     liegen wie der Bereichswechsel — sonst springt es woandershin, als der
+  //     angetippte Bereich steht.
   patch("        const vh = window.innerHeight, top = sec.getBoundingClientRect().top + window.scrollY;\n" +
         "        const span = sec.offsetHeight - vh;\n" +
         "        window.scrollTo({ top: top + span * (i / 3 + 0.08), behavior: 'smooth' });",
-        "        if (this._mob) { // HSK-PATCH 24\n" +
-        "          const row = document.querySelector('[data-area-row=\"' + i + '\"]');\n" +
-        "          const stage = document.querySelector('[data-areas-stage]');\n" +
-        "          if (row) window.scrollTo({ top: Math.max(0, row.getBoundingClientRect().top + window.scrollY - (stage ? stage.offsetHeight : 0) - 16), behavior: 'smooth' });\n" +
-        "          return;\n" +
-        "        }\n" +
-        "        const vh = window.innerHeight, top = sec.getBoundingClientRect().top + window.scrollY;\n" +
-        "        const span = sec.offsetHeight - vh;\n" +
+        "        const top = sec.getBoundingClientRect().top + window.scrollY; // HSK-PATCH 24\n" +
+        "        const grid = sec.querySelector('[data-areas-grid]');\n" +
+        "        const span = Math.max(1, sec.offsetHeight - (grid ? grid.offsetHeight : window.innerHeight));\n" +
         "        window.scrollTo({ top: top + span * (i / 3 + 0.08), behavior: 'smooth' });", 'goArea mobile');
 
   // 25) Bei jedem Scroll-Ereignis wurden Werte geschrieben, die sich fast nie
@@ -1159,7 +1127,7 @@ function patchLogic(js) {
         "      if (d >= 2) el.style.animationDelay = Math.max(0, d - 2.3).toFixed(2) + 's';\n" +
         "    });\n  }\n  bootReel() {", 'skipIntroDelays');
 
-  must(count(/HSK-PATCH/g, js) === 33, 'expected 33 HSK-PATCH markers, got ' + count(/HSK-PATCH/g, js));
+  must(count(/HSK-PATCH/g, js) === 31, 'expected 31 HSK-PATCH markers, got ' + count(/HSK-PATCH/g, js));
   return js;
 }
 

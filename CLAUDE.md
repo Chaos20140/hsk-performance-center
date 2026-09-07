@@ -169,8 +169,8 @@ HUD: `[data-tc]` Timecode, `[data-seg]` 10 Segmente (nur Desktop, `data-hide-m`)
 
 | Was | Methode | Hooks |
 |---|---|---|
-| Rote Fläche fährt seitwärts aus dem Bild (Rechner wie Telefon, Bild für Bild am Scrollweg), Video zoomt zurück, „Die Halle." erscheint | `heroFx` | `[data-red]`, `[data-hero-video]`, `[data-hero-after]`, `[data-nav-logo]` |
-| Trainingsbereiche — **Rechner:** 330 vh sticky, Index ↔ Bühne, Clip je Bereich. **Telefon:** Sektion so hoch wie ihr Inhalt, nur die Bühne klebt oben, die drei Zeilen laufen darunter durch (je 30 svh); aktiver Bereich aus den Zeilen gelesen, jede Zeile steigt beim Hereinscrollen ein (`data-verborgen`) | `areasFx`, `goArea` | `[data-areas]`, `[data-areas-stage]`, `[data-area-row]`, `[data-area-media]` |
+| Rote Fläche fährt seitwärts aus dem Bild — Rechner Bild für Bild, Telefon als CSS-Blende an einem Schaltpunkt —, Video zoomt zurück, „Die Halle." erscheint | `heroFx` | `[data-red]`, `[data-hero-video]`, `[data-hero-after]`, `[data-nav-logo]` |
+| Trainingsbereiche: das ganze Raster klebt, nur der Bereich wechselt — Rechner 330 vh, Telefon 250 dvh (Klebestrecke = Sektion minus Raster, **gemessen**) | `areasFx`, `goArea` | `[data-areas]`, `[data-areas-grid]`, `[data-area-row]`, `[data-area-media]` |
 | Roter Wipe „Eine Leistung. Drei Laufzeiten." — **Rechner:** sticky bottom + clip-path am Scrollrad. **Telefon:** schiebt sich von links nach rechts herein, danach — erst wenn das Rot komplett steht — steigt die Schrift ein (CSS-Blende, Skript setzt nur `data-wipe-auf`); belegt dort keinen eigenen Platz im Fluss | `wipeFx` | `[data-eq]`, `[data-wipe]` |
 | Ausstattungs-Clips beim Hover | `eqEnter/eqLeave` | `[data-eq-card] video[data-src]` |
 | FAQ | `toggleFaq` | `[data-faq-head]`, `[data-faq-body]` (max-height) |
@@ -458,7 +458,20 @@ Drei asserted Korrekturen in `legalPage()`:
     hätte das fast für ein Ruckeln der Seite gehalten. Vor solchen Schlüssen die
     Bildrate messen (`requestAnimationFrame` zählen).
 
-32. **Ein Schaltpunkt mit CSS-Blende ist nicht immer die Antwort auf Ruckeln.** Beim
+32. **„Funktioniert nicht wie gewollt" hieß dreimal: ich hatte die Choreografie
+    umgebaut, statt den Fehler darin zu beheben.** Die Bereiche sollten immer schon
+    die feststehende Ansicht des Designs sein — Bild oben, Liste darunter, nur der
+    Bereich wechselt. Ich habe stattdessen die Konstruktion ersetzt, weil sie einen
+    Geometriefehler hatte. **Erst den Fehler isolieren, dann entscheiden, ob die
+    Konstruktion wirklich falsch war.** Hier war sie es nie; falsch war nur die
+    Einheit (svh gegen dvh).
+33. **Bild für Bild am Scrollweg ruckelt auf dem iPhone — auch bei einem einzigen
+    Transform.** Ich hatte gehofft, es liege allein an den erzwungenen Layouts
+    drumherum. Tut es nicht: Safari reicht die Scroll-Ereignisse beim Nachlauf
+    gebündelt nach, und dagegen hilft keine Optimierung. Auf dem Telefon gilt:
+    Schaltpunkt + CSS-Blende, oder gar keine Bewegung.
+
+34. **Ein Schaltpunkt mit CSS-Blende ist nicht immer die Antwort auf Ruckeln.** Beim
     Vorhang hätte er zwar sauber animiert, aber vor dem Umschlagen eine bildschirmhohe
     leere Fläche stehen lassen — der Block belegt im Fluss eine volle Bildschirmhöhe.
     Die bessere Lösung war, die Animation ganz wegzulassen: ohne `position:sticky`
@@ -510,7 +523,7 @@ Drei asserted Korrekturen in `legalPage()`:
 ```bash
 cd build && HSK_CANONICAL="https://chaos20140.github.io/hsk-performance-center/" node build.js   # muss "OK" sagen
 cd .. && node --check assets/js/site.js
-grep -c 'HSK-PATCH' assets/js/site.js                 # 34 (33 Marker + Kopfkommentar)
+grep -c 'HSK-PATCH' assets/js/site.js                 # 32 (31 Marker + Kopfkommentar)
 grep -ohE '(src|href)="https?://[^"]+"' *.html | sort -u   # nur maps / facebook / canonical
 ```
 
@@ -534,6 +547,44 @@ sobald ein `scrollTo` vorausging (siehe Fehler Nr. 29/30).
 ---
 
 ## 9. Änderungslog (jede Änderung, neueste oben)
+
+- **2026-09-07 — Siebte Rückmeldung** (Tolunay):
+  - **Bereiche zurück auf die feststehende Ansicht.** Gewünscht war von Anfang an
+    die Choreografie des Designs: Bild oben, darunter „Drei Flächen. Ein
+    Anspruch." und die drei Zeilen — und beim Scrollen wechselt **nur** der
+    Bereich, Kraft → Athletik → Conditioning, erst danach die Ausstattung. Meine
+    Zwischenfassung (Bühne klebt, Liste läuft darunter durch) war ein
+    Missverständnis. Der Fehler daran war nie das Kleben, sondern die Einheit:
+    Sektion in svh, Klebeblock in dvh. Jetzt beide in dvh — 250 zu 100, also
+    150 dvh Klebestrecke, eine halbe Bildschirmhöhe je Bereich. Gemessen über
+    13 Punkte: Rasteroberkante bleibt 0, Zähler 01 → 02 → 03, kein Loch; auch
+    nicht, wenn die Adressleiste mitten in der Sektion ein- oder ausblendet.
+  - **Roter Hero-Balken ruckelte.** Bild für Bild am Scrollweg war die falsche
+    Antwort — Safari reicht die Scroll-Ereignisse beim Nachlauf gebündelt nach.
+    Jetzt dieselbe Mechanik wie beim roten Preis-Vorhang, die sich bewährt hat:
+    ein Schaltpunkt im Skript, die Bewegung macht eine CSS-Blende (0,9 s) auf dem
+    Compositor. Damit kann sie gar nicht stocken.
+  - **Hero gestreckt:** 150 → 200 dvh, wie am Rechner. Am Bild ändert das nichts,
+    der Film steht nur länger, bevor die Haltung übernimmt.
+  - **Preise langsamer:** das Rot schiebt sich jetzt in 1,15 s über die Fläche
+    (vorher 0,75), die Schrift folgt danach. Gemessen: Rot ab 0,2 s unterwegs,
+    voll bei 1,1 s, Schrift von 1,3 bis 1,9 s.
+  - **Karte pulsiert:** zwei versetzte Ringe gehen von der Nadelspitze aus, also
+    genau vom Studio. Der erste Versuch lief mit einer Kurve, die sofort ans Ende
+    schoss — sichtbar war er nur einen Wimpernschlag; jetzt eine gleichmäßige
+    Ausbreitung über 2,4 s, zwei Ringe um 1,2 s versetzt.
+  - **Aufgeräumt:** die Zeilen-Einblendung (`data-verborgen`) und das
+    Aktiv-Kennzeichen (`data-aktiv`) sind wieder raus — sie gehörten zur
+    Zwischenfassung. Der Bereichswechsel rechnet jetzt mit der **gemessenen**
+    Klebestrecke (Sektionshöhe minus Höhe des Rasters, HSK-PATCH 23) statt mit
+    der Bildschirmhöhe; `goArea` zielt auf dieselbe Strecke (HSK-PATCH 24).
+  - Geprüft: 9 Seiten × 4 Breiten ohne Querlauf und Konsolenfehler; Zähler
+    „03 / 03" bei 844/745/667 px Bildschirmhöhe frei von der Probetraining-Leiste;
+    Desktop unverändert nachgemessen (200 vh / 330 vh, Raster und Vorhang kleben,
+    `clip-path` unberührt, Zeilen klappen auf und zu, kein negativer Abstand);
+    Anker, Menü, FAQ, Antippen einer Zeile. Sicherheit: nichts Neues — kein
+    `innerHTML`/`eval`, CSP und Fremdziele unverändert.
+
 
 - **2026-09-07 — Sechste Rückmeldung: „der rote Balken oben fehlt komplett"** (Tolunay):
   - **Der Fehler: scroll-gesteuerte Animation stand live sofort auf „fertig".**

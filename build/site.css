@@ -54,7 +54,14 @@ html[data-menu="open"] [data-burger]::after{transform:translate(-50%,-50%) rotat
 /* Der rote Punkt sitzt in der Kartenmitte — und die Mitte ist das Studio: der
    iframe wird über `ll=` auf die Koordinaten zentriert, ohne eigene Nadel.
    Er liegt außerhalb des iframe, der Graufilter greift hier also nicht. */
-[data-map-pin]{position:absolute;left:50%;top:50%;z-index:1;pointer-events:none;line-height:0;transform:translate(-50%,-100%);filter:drop-shadow(0 2px 7px rgba(0,0,0,.6))}
+/* Nullgrosser Anker genau auf der Kartenmitte: die Nadel haengt mit ihrer
+   Spitze daran, der Puls geht konzentrisch von genau diesem Punkt aus. */
+[data-map-pin]{position:absolute;left:50%;top:50%;width:0;height:0;z-index:1;pointer-events:none}
+[data-map-pin] svg{position:absolute;left:-13px;bottom:0;display:block;filter:drop-shadow(0 2px 7px rgba(0,0,0,.6))}
+[data-map-puls]{position:absolute;left:-36px;top:-36px;width:72px;height:72px;border-radius:50%;border:1.5px solid rgba(225,6,0,.85);background:rgba(225,6,0,.14);animation:hs-puls 2.4s cubic-bezier(.2,.6,.35,1) infinite}
+/* Zwei Ringe versetzt: es geht nie ganz aus, die Stelle bleibt markiert. */
+[data-map-puls]+[data-map-puls]{animation-delay:1.2s}
+@keyframes hs-puls{0%{transform:scale(.16);opacity:0}12%{opacity:.9}100%{transform:scale(1);opacity:0}}
 /* Der Ausweg für alle, die die Karte nicht laden wollen — er braucht dieselbe
    Trefferfläche wie der Knopf daneben */
 [data-if="mapOff"] a{display:inline-flex;align-items:center;min-height:44px}
@@ -85,7 +92,7 @@ html[data-menu="open"] [data-burger]::after{transform:translate(-50%,-50%) rotat
    Sekunde neu starten (Laufschrift springt, Punkte flimmern). Hier: einmal, dann Ruhe. */
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-iteration-count:1!important;scroll-behavior:auto!important}
-  [style*="hs-mq"],[style*="hs-blink"],[style*="hs-cue"]{animation:none!important}
+  [style*="hs-mq"],[style*="hs-blink"],[style*="hs-cue"],[data-map-puls]{animation:none!important}
 }
 
 /* ---- Telefon ---- */
@@ -117,46 +124,27 @@ html[data-menu="open"] [data-burger]::after{transform:translate(-50%,-50%) rotat
   /* Bereiche-Bühne: rechts „HSK — BRILON" kollidiert auf 375 px mit dem REC-Label */
   [data-areas-stage]>div:last-child{display:none!important}
 
-  /* ---- TRAININGSBEREICHE: die Bühne klebt, die Liste läuft darunter durch ----
-     Vorher war es umgekehrt: das ganze Raster klebte eine gerechnete Strecke
-     lang. Die Sektion trug 250 svh, der Klebeblock 100 dvh. svh ist fest, dvh
-     folgt der Adressleiste — blendet Safari sie beim Scrollen aus, wächst nur
-     der Block. Der Punkt, an dem er sich löst, wandert damit nach oben, der
-     Block gibt vor dem Ende der Sektion ab und darunter steht ihr schwarzer
-     Grund. In WebKit mit iPhone-Maßen nachgestellt und gemessen: 80 px Loch.
-     Genau diese schwarze Fläche war auf dem Telefon zu sehen.
+  /* ---- TRAININGSBEREICHE: die ganze Ansicht steht still ----
+     Bild oben, darunter „Drei Flächen. Ein Anspruch." und die drei Zeilen —
+     und beim Scrollen wechselt NUR der Bereich: Kraft → Athletik →
+     Conditioning. Erst danach kommt die Ausstattung. Das ist die Choreografie
+     des Designs; die Zwischenfassung, in der die Liste unter einer klebenden
+     Bühne durchlief, war mein Missverständnis.
 
-     Jetzt trägt die Sektion die Höhe ihres Inhalts. Es gibt keine Strecke mehr,
-     die mit der Adressleiste auseinanderlaufen könnte: die Bühne klebt oben,
-     jede der drei Zeilen bekommt darunter ihre eigene Bildschirmhälfte, und der
-     aktive Bereich wird aus den Zeilen gelesen (HSK-PATCH 23). Runterscrollen
-     heißt damit: Kraft mit Bild, weiter — Athletik, weiter — Conditioning. */
-  [data-areas]{height:auto!important}
-  /* overflow:hidden würde aus dem Raster einen Scroll-Container machen — die
-     Bühne darin klebte dann an IHM statt am Bildschirm, also gar nicht. */
-  [data-areas-grid]{position:static!important;height:auto!important;overflow:visible!important;display:flex!important;flex-direction:column!important}
-  [data-areas-stage]{order:-1;position:sticky!important;top:0;height:44svh;flex:0 0 auto}
-  [data-areas-index]{justify-content:flex-start!important;padding:26px 20px calc(36px + env(safe-area-inset-bottom))!important;gap:16px!important}
-  /* Die Zeilen tragen von Haus aus 167/144/121 px — verschieden hoch und
-     zusammen nur 0,75 Bildschirmhöhen, man wischte an den drei Bereichen
-     vorbei. 40 svh (337 px) gleicht sie an und gibt jedem Bereich gut ein
-     Drittel Bildschirm Weg, damit der Wechsel Zeit hat. Leer wirkt das nicht,
-     weil der Text jeder Zeile stehen bleibt (nur der aktive ist voll da). */
-  [data-area-row]{min-height:40svh;align-content:center;transition:opacity .6s ease,transform .75s cubic-bezier(.16,1,.3,1)}
-  /* Jede Zeile steigt beim Hereinscrollen ein — Kraft, dann Athletik, dann
-     Conditioning. Das Kennzeichen setzt das Skript (HSK-PATCH 27); ohne
-     Skript trägt es keine Zeile und alle sind schlicht sichtbar. */
-  [data-area-row][data-verborgen]{opacity:0;transform:translate3d(0,26px,0)}
-  /* Der Text steht auf dem Telefon immer — eingeklappt bliebe in der Zeile nur
-     Leere, und Leere war hier bisher das Problem. Der aktive Bereich hebt sich
-     stattdessen über die Deckkraft ab (`data-aktiv`, HSK-PATCH 28), zusammen
-     mit dem weißen Namen und dem roten Strich links. */
-  [data-area-copy]{max-height:none!important;margin-top:12px!important;opacity:.4!important;transition:opacity .55s ease}
-  [data-area-row][data-aktiv] [data-area-copy]{opacity:1!important}
+     Der Fehler daran war nie das Kleben, sondern die Einheit: die Sektion stand
+     in svh (fest), der Klebeblock in dvh (folgt der Adressleiste). Blendet
+     Safari sie aus, wächst nur der Block, seine Klebestrecke schrumpft, er gibt
+     vor dem Ende der Sektion ab — und darunter stand ihr schwarzer Grund
+     (in WebKit nachgestellt: 80 px). Beide Höhen in DERSELBEN Einheit, und das
+     kann nicht mehr passieren; das steht unten im dvh-Block. */
+  /* Unten liegt die feste Probetraining-Leiste (72 px) ueber dem Inhalt — ohne
+     diesen Abstand wird der Zaehler „03 / 03“ von ihr abgeschnitten. */
+  [data-areas-index]{justify-content:center!important;padding-top:16px!important;padding-bottom:calc(88px + env(safe-area-inset-bottom))!important;gap:14px!important}
+  /* Auf kurzen Bildschirmen (iPhone SE) trug der Index mehr Inhalt als Platz —
+     der Zähler „03 / 03" wurde unten abgeschnitten. Die Bühne gibt dort ab. */
   @media (max-height:760px){
+    [data-areas-index]{gap:10px!important;padding-top:10px!important}
     [data-areas-h2]{font-size:clamp(26px,7vw,36px)!important}
-    [data-areas-stage]{height:38svh}
-    [data-area-row]{min-height:34svh}
   }
   /* Karte: 4:3 ist auf dem Telefon zu flach für das Einwilligungsfeld; der Koordinaten-Chip wandert nach unten */
   #kontakt [data-two]>div:last-child{aspect-ratio:1/1!important}
@@ -190,19 +178,23 @@ html[data-menu="open"] [data-burger]::after{transform:translate(-50%,-50%) rotat
      nur `data-wipe-auf`, siehe HSK-PATCH 19.
      `clip-path` muss weg: das Design blendet den Vorhang darüber ein, hier
      macht es die Verschiebung. */
-  [data-wipe]{will-change:transform;transform:translate3d(-101%,0,0);clip-path:none!important;transition:transform .75s cubic-bezier(.16,1,.3,1);justify-content:center!important;padding-bottom:calc(72px + env(safe-area-inset-bottom))!important}
+  [data-wipe]{will-change:transform;transform:translate3d(-101%,0,0);clip-path:none!important;transition:transform 1.15s cubic-bezier(.22,1,.36,1);justify-content:center!important;padding-bottom:calc(72px + env(safe-area-inset-bottom))!important}
   [data-wipe][data-wipe-auf]{transform:translate3d(0,0,0)}
-  /* Erst steht das Rot über der ganzen Fläche, DANN kommt die Schrift: die
-     Verzögerung ist die Dauer der Vorhangblende (0,75 s). */
-  [data-wipe]>div{opacity:0;transform:translate3d(0,30px,0);transition:opacity .55s ease .78s,transform .7s cubic-bezier(.16,1,.3,1) .78s}
+  /* Erst schiebt sich das Rot gemächlich über die ganze Fläche (1,15 s), DANN
+     kommt die Schrift — die Verzögerung ist die volle Dauer des Einschubs. */
+  [data-wipe]>div{opacity:0;transform:translate3d(0,30px,0);transition:opacity .6s ease 1.2s,transform .8s cubic-bezier(.16,1,.3,1) 1.2s}
   [data-wipe][data-wipe-auf]>div{opacity:1;transform:none}
 
   /* -- Hero: die rote Fläche sitzt unten und braucht keinen Desktop-Sockel */
   [data-red]{padding-top:22px!important;padding-bottom:calc(22px + env(safe-area-inset-bottom))!important}
-  /* Die rote Fläche fährt auch hier seitwärts aus dem Bild, wie am Rechner —
-     Bild für Bild am Scrollweg (HSK-PATCH 17), deshalb keine Blende, die
-     dagegenhielte. Der Film läuft dahinter weiter. */
-  [data-red]{will-change:transform;transition:none}
+  /* Die rote Fläche fährt seitwärts aus dem Bild, wie am Rechner — der Film
+     läuft dahinter weiter. Aber NICHT Bild für Bild: Safari reicht die
+     Scroll-Ereignisse beim Nachlauf gebündelt nach, das hat sichtbar geruckelt.
+     Stattdessen dieselbe Mechanik wie beim roten Preis-Vorhang, die sich
+     bewährt hat: das Skript setzt einen Schaltpunkt (HSK-PATCH 17), die
+     Bewegung macht der Compositor über diese Blende — unabhängig davon, wann
+     das Skript wieder drankommt, und damit nicht zu stören. */
+  [data-red]{will-change:transform;transition:transform .9s cubic-bezier(.16,1,.3,1)}
   [data-red] h1{margin-top:10px!important}
   [data-red] p{margin-top:12px!important}
   [data-red-cta]{margin-top:16px!important}
@@ -330,17 +322,20 @@ html[data-menu="open"] [data-burger]::after{transform:translate(-50%,-50%) rotat
 }
 /* iOS: 100vh ist dort die Höhe OHNE Leisten — der untere Rand des Hero (rote
    Fläche, Knopf) läge hinter der Safari-Leiste. svh ist die sichtbare Höhe. */
-/* Scroll-Strecke des Hero: am Rechner fährt die rote Fläche über eine volle
-   Bildschirmhöhe seitwärts aus dem Bild. Auf dem Telefon steht sie unten und
-   fährt nach unten weg — eine halbe Bildschirmhöhe reicht dafür.
+/* Scroll-Strecken auf dem Telefon.
 
    WICHTIG: Sektionshöhe und Klebeblock stehen in DERSELBEN Einheit. Stünde die
    Sektion in svh (fest) und der Block in dvh (folgt der Adressleiste), wanderte
    der Punkt, an dem der Block abgibt, sobald Safari die Leiste ein- oder
-   ausblendet — der Hero gäbe zu früh ab und darunter stünde ein schwarzer
-   Streifen. Genau dieser Fehler steckte hier. */
+   ausblendet — er gäbe zu früh ab und darunter stünde ein schwarzer Streifen.
+   Genau dieser Fehler steckte hier, und er ist die Ursache aller schwarzen
+   Flächen, die auf dem Telefon zu sehen waren. */
 @media (max-width:900px){
-  #top{height:150vh!important}
+  /* Der Hero trägt dieselbe Strecke wie am Rechner: der Film steht eine volle
+     Bildschirmhöhe lang, bevor die Haltung übernimmt. Am Bild ändert das
+     nichts — es wird nur länger gehalten. */
+  #top{height:200vh!important}
+  [data-areas]{height:250vh!important}
   /* Der Vorhang legt sich über das Ende der Ausstattung, statt eine eigene
      Bildschirmhöhe im Fluss zu belegen. Diese Höhe war schwarz, solange er
      noch nicht da war — und schwarze Flächen sind hier das wiederkehrende
@@ -349,8 +344,10 @@ html[data-menu="open"] [data-burger]::after{transform:translate(-50%,-50%) rotat
 }
 @supports (height:100svh){
   @media (max-width:900px){
-    #top{height:150svh!important}
+    #top{height:200svh!important}
     #top>div{height:100svh!important}
+    [data-areas]{height:250svh!important}
+    [data-areas-grid]{height:100svh!important;grid-template-rows:44svh minmax(0,1fr)!important}
     [data-wipe]{height:100svh!important;margin-top:-100svh!important}
   }
 }
@@ -429,10 +426,24 @@ html[data-menu="open"] [data-burger]::after{transform:translate(-50%,-50%) rotat
    Inhalt, da gibt es nichts, was auseinanderlaufen könnte. */
 @supports (height:100dvh){
   @media (max-width:900px){
-    #top{height:150dvh!important}
+    #top{height:200dvh!important}
     #top>div{height:100dvh!important}
+    /* 250 zu 100: die Klebestrecke ist die Differenz, also 150 dvh — eine halbe
+       Bildschirmhöhe je Bereich. Beide Werte in dvh, deshalb wandert der Punkt,
+       an dem das Raster abgibt, beim Ein- und Ausblenden der Adressleiste
+       nicht mehr. Und weil in diesem Moment ohnehin der geklebte Block den
+       ganzen Bildschirm füllt, ist von der Änderung nichts zu sehen. */
+    [data-areas]{height:250dvh!important}
+    [data-areas-grid]{height:100dvh!important;grid-template-rows:44dvh minmax(0,1fr)!important}
     [data-wipe]{height:100dvh!important;margin-top:-100dvh!important}
   }
+  @media (max-width:900px) and (max-height:760px){
+    [data-areas-grid]{grid-template-rows:36dvh minmax(0,1fr)!important}
+  }
+}
+/* Fallback ohne dvh */
+@media (max-width:900px) and (max-height:760px){
+  [data-areas-grid]{grid-template-rows:36svh minmax(0,1fr)!important}
 }
 
 

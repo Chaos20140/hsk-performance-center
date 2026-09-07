@@ -32,14 +32,6 @@
       };
       if (this._mq && this._mq.addEventListener) this._mq.addEventListener('change', this._onMq);
       const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      // HSK-PATCH 27: Jede Bereichszeile steigt beim Hereinscrollen ein. Das
-      // Kennzeichen setzt das Skript hier, weggenommen wird es in areasFx —
-      // dort liegen die Maße der Zeilen ohnehin schon vor. Ein Beobachter
-      // meldete sich unter Umständen erst eine halbe Sekunde später; hier
-      // passiert es im selben Zug wie der Bereichswechsel.
-      // Ohne Skript trägt keine Zeile das Kennzeichen — dann sind sie schlicht
-      // sichtbar, statt für immer unsichtbar zu bleiben.
-      if (this._mob) document.querySelectorAll('[data-area-row]').forEach((z) => z.setAttribute('data-verborgen', ''));
       // HSK-PATCH 2: Vorhang nur mit Vorhang-Markup, nie bei Anker-Aufruf
       const skipBoot = reduced || !document.querySelector('[data-if="booting"]') || !!location.hash;
       if (skipBoot) { this.setState({ booting: false }); this.skipIntroDelays(); }
@@ -273,14 +265,18 @@
         // volle Bildschirmhöhe lang da — er würde sichtbar einfrieren.
         this.setReelPaused((window.scrollY || 0) >= (this._heroH || window.innerHeight) || !!(this.reel && this.reel.userPaused));
         // Die rote Fläche fährt wie am Rechner seitwärts aus dem Bild, der Film
-        // läuft dahinter weiter — Bild für Bild am Scrollweg, genau wie dort.
-        // Das ist EIN Transform auf EINEM Element je Ereignis; teuer war nie das
-        // Verschieben, sondern die erzwungenen Layouts drumherum (Nr. 15/25/26).
+        // läuft dahinter weiter. Bild für Bild ging nicht: Safari reicht die
+        // Scroll-Ereignisse beim Nachlauf gebündelt nach, das ruckelte sichtbar.
+        // Also ein Schaltpunkt und eine CSS-Blende (site.css) — dieselbe Mechanik
+        // wie beim roten Preis-Vorhang. Zwei Schwellen, damit sie am Umschlag
+        // nicht flattert; die untere greift erst nach dem Scrollen zurück.
         const red = this._red || (this._red = document.querySelector('[data-red]'));
         if (red) {
-          const t = Math.min(1, p / 0.6);
-          const q = 1 - Math.pow(1 - t, 3);
-          red.style.transform = 'translate3d(' + (-q * 102).toFixed(2) + '%,0,0)';
+          const weg = this._redWeg ? p > 0.04 : p > 0.09;
+          if (this._redWeg !== weg) {
+            this._redWeg = weg;
+            red.style.transform = weg ? 'translate3d(-102%,0,0)' : 'translate3d(0,0,0)';
+          }
         }
         const afterM = document.querySelector('[data-hero-after]');
         const afterOn = p > 0.34;
@@ -316,25 +312,13 @@
         if (this._activeArea !== -1) { this._activeArea = -1; document.querySelectorAll('[data-area-media] video').forEach((v) => { if (!v.paused) v.pause(); }); }
         return;
       }
-      let idx; // HSK-PATCH 23
-      if (this._mob) {
-        const rows = this._rows && this._rows.length ? this._rows : (this._rows = document.querySelectorAll('[data-area-row]'));
-        const stage = this._stage || (this._stage = document.querySelector('[data-areas-stage]'));
-        const oben = stage ? stage.getBoundingClientRect().bottom : 0;
-        const ziel = oben + (vh - oben) / 2;
-        let naeher = Infinity; idx = 0;
-        for (let k = 0; k < rows.length; k++) {
-          const b = rows[k].getBoundingClientRect();
-          // sobald die Zeile von unten ins Bild kommt: einsteigen lassen
-          if (b.top < vh * 0.88 && rows[k].hasAttribute('data-verborgen')) rows[k].removeAttribute('data-verborgen');
-          const d = Math.abs((b.top + b.bottom) / 2 - ziel);
-          if (d < naeher) { naeher = d; idx = k; }
-        }
-      } else {
-        const span = r.height - vh;
-        const p = Math.min(0.999, Math.max(0, -r.top / Math.max(1, span)));
-        idx = Math.min(2, Math.floor(p * 3));
+      if (this._gridVh !== vh) { // HSK-PATCH 23
+        const g = document.querySelector('[data-areas-grid]');
+        this._gridVh = vh; this._gridH = g ? g.offsetHeight : 0;
       }
+      const span = r.height - (this._gridH || vh);
+      const p = Math.min(0.999, Math.max(0, -r.top / Math.max(1, span)));
+      const idx = Math.min(2, Math.floor(p * 3));
       if (idx === this._activeArea) return;
       this._activeArea = idx;
       const labels = ['03 / 10 — KREUZHEBEN', '05 / 10 — SPRINTBAHN', '07 / 10 — AUSDAUER'];
@@ -344,7 +328,6 @@
         if (name) name.style.color = on ? '#F2EFEA' : '#5A5A62';
         if (copy) { copy.style.maxHeight = on ? '160px' : '0px'; copy.style.opacity = on ? '1' : '0'; copy.style.marginTop = on ? '14px' : '0px'; }
         if (barEl) barEl.style.transform = on ? 'scaleY(1)' : 'scaleY(0)';
-        if (on) row.setAttribute('data-aktiv', ''); else row.removeAttribute('data-aktiv'); // HSK-PATCH 28
       });
       document.querySelectorAll('[data-area-media]').forEach((m, i) => {
         const on = i === idx;
@@ -413,14 +396,9 @@
           const i = parseInt(e.currentTarget.dataset.areaRow, 10);
           const sec = document.querySelector('[data-areas]');
           if (!sec) return;
-          if (this._mob) { // HSK-PATCH 24
-            const row = document.querySelector('[data-area-row="' + i + '"]');
-            const stage = document.querySelector('[data-areas-stage]');
-            if (row) window.scrollTo({ top: Math.max(0, row.getBoundingClientRect().top + window.scrollY - (stage ? stage.offsetHeight : 0) - 16), behavior: 'smooth' });
-            return;
-          }
-          const vh = window.innerHeight, top = sec.getBoundingClientRect().top + window.scrollY;
-          const span = sec.offsetHeight - vh;
+          const top = sec.getBoundingClientRect().top + window.scrollY; // HSK-PATCH 24
+          const grid = sec.querySelector('[data-areas-grid]');
+          const span = Math.max(1, sec.offsetHeight - (grid ? grid.offsetHeight : window.innerHeight));
           window.scrollTo({ top: top + span * (i / 3 + 0.08), behavior: 'smooth' });
         },
         toggleFaq: (e) => {
