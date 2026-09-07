@@ -523,7 +523,7 @@ Drei asserted Korrekturen in `legalPage()`:
 ```bash
 cd build && HSK_CANONICAL="https://chaos20140.github.io/hsk-performance-center/" node build.js   # muss "OK" sagen
 cd .. && node --check assets/js/site.js
-grep -c 'HSK-PATCH' assets/js/site.js                 # 23 (22 Marker + Kopfkommentar)
+grep -c 'HSK-PATCH' assets/js/site.js                 # 29 (28 Marker + Kopfkommentar)
 grep -ohE '(src|href)="https?://[^"]+"' *.html | sort -u   # nur maps / facebook / canonical
 ```
 
@@ -547,6 +547,51 @@ sobald ein `scrollTo` vorausging (siehe Fehler Nr. 29/30).
 ---
 
 ## 9. Änderungslog (jede Änderung, neueste oben)
+
+- **2026-09-07 — Flüssigeres Scrollen, Schlusszeile nach unten, Nadel zurück**
+  (Rückmeldung Tolunay):
+  - **Öffnungszeiten geprüft.** hsk.fitness nennt „Montag – Sonntag
+    06.00 – 00.00 Uhr" und „Persönliche Beratung vor Ort: Mo – Sa 08.00 – 12.00,
+    Mo – Fr 15.30 – 20.30". Unsere Seite trägt beides bereits identisch
+    (Anzeige „Täglich 06 — 24 Uhr", FAQ „06:00 bis 24:00 Uhr — auch samstags und
+    sonntags", Beratungszeiten im Standort-Block). Auch die Preise stimmen
+    (49,90 / 59,90 / 74,90 €). Geändert habe ich nur die **maschinenlesbare**
+    Angabe: `closes` von `24:00` auf `23:59`. Beides ist nach ISO 8601 gültig,
+    Suchmaschinen lesen 24:00 aber uneinheitlich; 23:59 ist eindeutig und meint
+    dieselbe Zeit.
+  - **„Die Halle. Täglich 06–24." sitzt jetzt unten.** Das Design stellt sie auf
+    dem Telefon nach oben (`top:78px`); auf Wunsch steht sie am unteren Rand.
+    Der Abstand (88 px + sichere Zone) hält sie über der Probetraining-Leiste;
+    die rote Fläche ist zu diesem Zeitpunkt längst weggefahren. Gemessen:
+    Unterkante 756, Leiste ab 787.
+  - **Kartenmarke: die vertraute Nadel zurück.** Das Design setzt seit der
+    Überarbeitung einen Pfeil; auf Wunsch wieder die Tropfenform in Rot. Die
+    beiden pulsierenden Ringe des Designs bleiben — die Nadel hängt mit ihrer
+    **Spitze** am Kartenmittelpunkt (Versatz um die halbe Höhe, sonst läge ihre
+    Mitte auf dem Studio). Gemessen: 0/−1 px zur Kartenmitte.
+    Der Koordinaten-Chip ist deckend statt 70 % — darunter liegt Googles eigener
+    Knopf im iframe und schien vorher durch. Position und Größe wie im Design.
+  - **Flüssigeres Scrollen — drei Eingriffe, alle ohne Wirkung aufs Bild:**
+    (a) Der Scroll-Pfad suchte seine Elemente in **jedem Bild** neu; sie werden
+    jetzt einmal gemerkt (`_q`/`_qa`, HSK-PATCH 15a). Nur dieser Abschnitt wird
+    umgestellt — die Handler in `renderVals()` greifen auf Knoten zu, die erst
+    später entstehen (der Kartenlink), die dürfen nicht gemerkt werden.
+    (b) `hpin.offsetHeight` und `grid.offsetHeight` wurden zwischen
+    Stil-Schreibvorgängen gelesen; jede solche Messung erzwingt ein neues
+    Layout. Beide hängen nur an der Bildschirmhöhe und werden nur bei deren
+    Änderung gemessen (`_h`, HSK-PATCH 15b).
+    (c) Der Parallax las und schrieb im Wechsel, Element für Element — fünf
+    erzwungene Layouts je Bild. Jetzt erst alle Messungen, dann alle
+    Schreibvorgänge (HSK-PATCH 15c). Dazu Wächter für die drei Werte, die in
+    jedem Bild geschrieben wurden, sich aber fast nie ändern (HSK-PATCH 25a–c).
+    **Gemessen über denselben Scrollweg (40 Schritte):** `querySelector`
+    328 → 1, `querySelectorAll` 28 → 5, `offsetHeight` 24 → 1.
+  - Geprüft: Design gegen Build weiterhin deckungsgleich (18,90 zu 18,92
+    Bildschirme), Rechner unverändert 15,71; 9 Seiten × 4 Breiten ohne Querlauf
+    und Konsolenfehler; Anker, Menü, FAQ, Antippen einer Bereichszeile.
+    Sicherheit: nichts Neues — kein `innerHTML`/`eval`/`fetch`, CSP und
+    Fremdziele unverändert.
+
 
 - **2026-09-07 — Design neu abgerufen und die mobile Fassung 1:1 übernommen**
   (Auftrag Tolunay). Das Design in Claude Design war seit meinem Import

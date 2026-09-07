@@ -118,10 +118,20 @@ html[data-menu="open"] [data-burger]::after{transform:translate(-50%,-50%) rotat
   [data-nav]>a:first-child{align-self:stretch!important;min-width:44px}
   footer>div:last-child a{display:inline-flex;align-items:center;min-height:44px}
 
+  /* -- „Die Halle. Taeglich 06-24." steht im Design oben, gleich unter der
+     Kopfleiste. Auf Wunsch sitzt sie am unteren Bildschirmrand: dort ist die
+     rote Flaeche zu diesem Zeitpunkt weggefahren, und der Abstand haelt sie
+     ueber der Probetraining-Leiste. */
+  [data-hero-after]{top:auto!important;bottom:calc(88px + env(safe-area-inset-bottom))!important}
+
   /* -- Karte: der Route-Link ueber die ganze Flaeche ist eine Ergaenzung, kein
      Design-Element. Der Chip nach oben rechts, damit er nicht auf dem
      Koordinaten-Feld liegt. */
   [data-map-chip]{top:14px!important;bottom:auto!important}
+  /* Der Koordinaten-Chip des Designs liegt oben links auf Googles eigenem
+     Knopf im iframe. Bei 70 % Deckkraft schien der durch — deckend deckt der
+     Chip ihn sauber ab. Position und Groesse bleiben, wie das Design sie setzt. */
+  #kontakt [data-two]>div:last-child>div:last-child{background:#050506!important}
   /* Das Einwilligungsfeld (auch eine Ergaenzung — ohne Einwilligung laedt die
      Karte nicht) braucht bei 390 px 279 px Hoehe, der 4:3-Rahmen bietet 266.
      Engeres Polster statt eines anderen Seitenverhaeltnisses: die geladene

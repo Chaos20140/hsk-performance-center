@@ -29,7 +29,7 @@
 <link rel="preload" as="font" type="font/woff2" href="assets/fonts/ibm-plex-mono-normal-400.woff2" crossorigin>
 <link rel="preload" as="font" type="font/woff2" href="assets/fonts/ibm-plex-mono-normal-500.woff2" crossorigin>
 <link rel="preload" as="font" type="font/woff2" href="assets/fonts/schibsted-grotesk-normal-400_900.woff2" crossorigin>
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"ExerciseGym","name":"HSK Performance Center","url":"https://chaos20140.github.io/hsk-performance-center/","image":"https://chaos20140.github.io/hsk-performance-center/assets/cine-rise-poster.jpg","telephone":"+49 160 90285812","email":"sb@hsk.fitness","address":{"@type":"PostalAddress","streetAddress":"Strackestraße 22","postalCode":"59929","addressLocality":"Brilon","addressCountry":"DE"},"geo":{"@type":"GeoCoordinates","latitude":51.3956,"longitude":8.5681},"openingHoursSpecification":[{"@type":"OpeningHoursSpecification","dayOfWeek":["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"],"opens":"06:00","closes":"24:00"}],"founder":{"@type":"Person","name":"Steve Brenke"},"sameAs":["https://www.facebook.com/HSKPerformancecenter/"]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"ExerciseGym","name":"HSK Performance Center","url":"https://chaos20140.github.io/hsk-performance-center/","image":"https://chaos20140.github.io/hsk-performance-center/assets/cine-rise-poster.jpg","telephone":"+49 160 90285812","email":"sb@hsk.fitness","address":{"@type":"PostalAddress","streetAddress":"Strackestraße 22","postalCode":"59929","addressLocality":"Brilon","addressCountry":"DE"},"geo":{"@type":"GeoCoordinates","latitude":51.3956,"longitude":8.5681},"openingHoursSpecification":[{"@type":"OpeningHoursSpecification","dayOfWeek":["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"],"opens":"06:00","closes":"23:59"}],"founder":{"@type":"Person","name":"Steve Brenke"},"sameAs":["https://www.facebook.com/HSKPerformancecenter/"]}</script>
 <style>
 /* --- Design-System (aus dem Claude-Design-Original) --- */
 *{box-sizing:border-box}
@@ -212,10 +212,20 @@ html[data-menu="open"] [data-burger]::after{transform:translate(-50%,-50%) rotat
   [data-nav]>a:first-child{align-self:stretch!important;min-width:44px}
   footer>div:last-child a{display:inline-flex;align-items:center;min-height:44px}
 
+  /* -- „Die Halle. Taeglich 06-24." steht im Design oben, gleich unter der
+     Kopfleiste. Auf Wunsch sitzt sie am unteren Bildschirmrand: dort ist die
+     rote Flaeche zu diesem Zeitpunkt weggefahren, und der Abstand haelt sie
+     ueber der Probetraining-Leiste. */
+  [data-hero-after]{top:auto!important;bottom:calc(88px + env(safe-area-inset-bottom))!important}
+
   /* -- Karte: der Route-Link ueber die ganze Flaeche ist eine Ergaenzung, kein
      Design-Element. Der Chip nach oben rechts, damit er nicht auf dem
      Koordinaten-Feld liegt. */
   [data-map-chip]{top:14px!important;bottom:auto!important}
+  /* Der Koordinaten-Chip des Designs liegt oben links auf Googles eigenem
+     Knopf im iframe. Bei 70 % Deckkraft schien der durch — deckend deckt der
+     Chip ihn sauber ab. Position und Groesse bleiben, wie das Design sie setzt. */
+  #kontakt [data-two]>div:last-child>div:last-child{background:#050506!important}
   /* Das Einwilligungsfeld (auch eine Ergaenzung — ohne Einwilligung laedt die
      Karte nicht) braucht bei 390 px 279 px Hoehe, der 4:3-Rahmen bietet 266.
      Engeres Polster statt eines anderen Seitenverhaeltnisses: die geladene
@@ -665,7 +675,7 @@ html[data-menu="open"] [data-burger]::after{transform:translate(-50%,-50%) rotat
         <div style="position:absolute;left:50%;top:50%;width:64px;height:64px;margin:-32px 0 0 -32px;pointer-events:none;display:flex;align-items:center;justify-content:center">
           <span style="position:absolute;width:100%;height:100%;border:1px solid rgba(225,6,0,.55);border-radius:50%;animation:hs-ping 2.4s cubic-bezier(.16,1,.3,1) infinite"></span>
           <span style="position:absolute;width:100%;height:100%;border:1px solid rgba(225,6,0,.35);border-radius:50%;animation:hs-ping 2.4s cubic-bezier(.16,1,.3,1) 1.2s infinite"></span>
-          <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true" style="position:relative;animation:hs-pin 2.4s ease-in-out infinite;filter:drop-shadow(0 3px 10px rgba(225,6,0,.65))"><path d="M12 2 L20 21 L12 16.4 L4 21 Z" fill="#FF3B33" stroke="#050506" stroke-width="1.4" stroke-linejoin="round"></path></svg>
+          <svg width="24" height="34" viewBox="0 0 24 34" aria-hidden="true" style="position:relative;top:-17px;animation:hs-pin 2.4s ease-in-out infinite;filter:drop-shadow(0 3px 10px rgba(225,6,0,.65))"><path d="M12 0C5.4 0 0 5.4 0 12c0 8.5 10.1 20.3 11.2 21.6.4.5 1.2.5 1.6 0C13.9 32.3 24 20.5 24 12 24 5.4 18.6 0 12 0z" fill="#FF3B33"/><circle cx="12" cy="12" r="4.3" fill="#050506"/></svg>
         </div>
       </div>
     </div>

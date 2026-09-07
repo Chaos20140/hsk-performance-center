@@ -307,7 +307,11 @@ function jsonLd() {
     email: 'sb@hsk.fitness',
     address: { '@type': 'PostalAddress', streetAddress: 'Strackestraße 22', postalCode: '59929', addressLocality: 'Brilon', addressCountry: 'DE' },
     geo: { '@type': 'GeoCoordinates', latitude: GEO.lat, longitude: GEO.lng },
-    openingHoursSpecification: [{ '@type': 'OpeningHoursSpecification', dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'], opens: '06:00', closes: '24:00' }],
+    // hsk.fitness nennt „Montag – Sonntag 06.00 – 00.00 Uhr". Als Schluss steht
+    // hier 23:59 statt 24:00: beides ist nach ISO 8601 zulässig, Suchmaschinen
+    // lesen 24:00 aber uneinheitlich (mancherorts als „schließt um Mitternacht
+    // des Vortags"). 23:59 ist eindeutig und meint dieselbe Öffnungszeit.
+    openingHoursSpecification: [{ '@type': 'OpeningHoursSpecification', dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'], opens: '06:00', closes: '23:59' }],
     founder: { '@type': 'Person', name: 'Steve Brenke' },
     sameAs: ['https://www.facebook.com/HSKPerformancecenter/']
   };
@@ -372,10 +376,19 @@ function build() {
     must(!/<iframe[^>]*\ssrc="https/.test(body), 'a third-party iframe still loads on view');
     // Die rote Marke sitzt in der Kartenmitte, also auf dem Studio. Sie liegt
     // außerhalb des iframe und bleibt deshalb vom Graufilter unberührt.
-    // Die pulsierende Marke in der Kartenmitte bringt das Design seit der
-    // Überarbeitung selbst mit (hs-ping/hs-pin) — hier wird nur noch dafür
-    // gesorgt, dass Google keine zweite, graue Nadel darunter setzt.
+    // Die pulsierenden Ringe in der Kartenmitte bringt das Design selbst mit
+    // (hs-ping) — hier wird nur dafür gesorgt, dass Google keine zweite, graue
+    // Nadel darunter setzt.
     must(/animation:hs-ping/.test(body), 'design map marker missing');
+    // Auf Wunsch die vertraute Nadel-Form statt des Pfeils. Sie hängt mit ihrer
+    // SPITZE am Kartenmittelpunkt, deshalb der Versatz um die halbe Höhe: im
+    // zentrierten Kasten des Designs läge sonst ihre Mitte auf dem Studio.
+    const pfeil = '<svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true" style="position:relative;animation:hs-pin 2.4s ease-in-out infinite;filter:drop-shadow(0 3px 10px rgba(225,6,0,.65))"><path d="M12 2 L20 21 L12 16.4 L4 21 Z" fill="#FF3B33" stroke="#050506" stroke-width="1.4" stroke-linejoin="round"></path></svg>';
+    must(body.indexOf(pfeil) > -1, 'map arrow not found');
+    body = body.replace(pfeil,
+      '<svg width="24" height="34" viewBox="0 0 24 34" aria-hidden="true" style="position:relative;top:-17px;animation:hs-pin 2.4s ease-in-out infinite;filter:drop-shadow(0 3px 10px rgba(225,6,0,.65))">' +
+      '<path d="M12 0C5.4 0 0 5.4 0 12c0 8.5 10.1 20.3 11.2 21.6.4.5 1.2.5 1.6 0C13.9 32.3 24 20.5 24 12 24 5.4 18.6 0 12 0z" fill="#FF3B33"/>' +
+      '<circle cx="12" cy="12" r="4.3" fill="#050506"/></svg>');
     // Das Element-Attribut würde die Seiten-Policy aufweichen (volle URL an Google)
     const rp = 'referrerpolicy="no-referrer-when-downgrade"';
     must(body.indexOf(rp) > -1, 'map referrerpolicy not found');
@@ -959,7 +972,86 @@ function patchLogic(js) {
         "      if (d >= 2) el.style.animationDelay = Math.max(0, d - 2.3).toFixed(2) + 's';\n" +
         "    });\n  }\n  bootReel() {", 'skipIntroDelays');
 
-  must(count(/HSK-PATCH/g, js) === 22, 'expected 22 HSK-PATCH markers, got ' + count(/HSK-PATCH/g, js));
+  // 15) Flüssiges Scrollen — drei Eingriffe, alle ohne jede Wirkung aufs Bild.
+  //
+  //     a) Der Scroll-Pfad (sync + heroFx/pinFx/areasFx/wipeFx) suchte seine
+  //        Elemente in JEDEM Bild neu: 35 querySelector-Aufrufe pro Frame. Sie
+  //        werden jetzt einmal gemerkt. Nur dieser Abschnitt wird umgestellt —
+  //        die Handler in renderVals() greifen auf Knoten zu, die erst später
+  //        entstehen (der Kartenlink), die dürfen nicht gemerkt werden.
+  //     b) Zwischen Stil-Schreibvorgängen wurden Höhen gelesen
+  //        (`hpin.offsetHeight`, `grid.offsetHeight`). Jede solche Messung nach
+  //        einem Schreibvorgang zwingt den Browser zu einem neuen Layout —
+  //        Bild für Bild. Beide Höhen hängen nur an der Bildschirmhöhe und
+  //        werden jetzt nur bei deren Änderung gemessen.
+  //     c) Der Parallax las und schrieb im Wechsel, Element für Element: bei
+  //        fünf Bildern fünf erzwungene Layouts je Frame. Jetzt erst alle
+  //        Messungen, dann alle Schreibvorgänge.
+  {
+    const von = js.indexOf('  sync() {');
+    const bis = js.indexOf('  renderVals() {');
+    must(von > -1 && bis > von, 'scroll path not found');
+    let teil = js.slice(von, bis);
+
+    const nQ = count(/document\.querySelector\(/g, teil);
+    const nQA = count(/document\.querySelectorAll\(/g, teil);
+    must(nQ === 22 && nQA === 5, 'expected 22 querySelector + 5 querySelectorAll in the scroll path, got ' + nQ + ' + ' + nQA);
+    teil = teil.replace(/document\.querySelectorAll\(/g, 'this._qa(')
+               .replace(/document\.querySelector\(/g, 'this._q(');
+
+    // b) Höhen nur bei geänderter Bildschirmhöhe messen
+    const hp = 'p = Math.min(1, Math.max(0, -hr.top / Math.max(1, hr.height - hpin.offsetHeight)));';
+    must(teil.indexOf(hp) > -1, 'hero pin height read not found');
+    teil = teil.replace(hp, 'p = Math.min(1, Math.max(0, -hr.top / Math.max(1, hr.height - this._h(hpin, vh))));');
+    const gh = 'const span = r.height - (grid ? grid.offsetHeight : vh);';
+    must(teil.indexOf(gh) > -1, 'areas grid height read not found');
+    teil = teil.replace(gh, 'const span = r.height - (grid ? this._h(grid, vh) : vh);');
+
+    // c) Parallax: erst messen, dann schreiben
+    const px = "    this._qa('[data-px]').forEach((el) => {\n" +
+      '      const r = el.getBoundingClientRect();\n' +
+      '      if (r.bottom < -200 || r.top > vh + 200) return;\n' +
+      '      const c = (r.top + r.height / 2) - vh / 2;\n' +
+      "      el.style.transform = 'translate3d(0,' + (c * parseFloat(el.dataset.px) / 100).toFixed(1) + 'px,0)';\n" +
+      '    });';
+    must(teil.indexOf(px) > -1, 'parallax loop not found');
+    teil = teil.replace(px,
+      "    const pxEls = this._qa('[data-px]'), pxOff = []; // HSK-PATCH 15c\n" +
+      '    for (let k = 0; k < pxEls.length; k++) {\n' +
+      '      const r = pxEls[k].getBoundingClientRect();\n' +
+      '      pxOff[k] = (r.bottom < -200 || r.top > vh + 200) ? null\n' +
+      '        : ((r.top + r.height / 2) - vh / 2) * parseFloat(pxEls[k].dataset.px) / 100;\n' +
+      '    }\n' +
+      '    for (let k = 0; k < pxEls.length; k++) {\n' +
+      "      if (pxOff[k] !== null) pxEls[k].style.transform = 'translate3d(0,' + pxOff[k].toFixed(1) + 'px,0)';\n" +
+      '    }');
+
+    js = js.slice(0, von) +
+      '  // HSK-PATCH 15a: Knoten und Höhen einmal merken statt in jedem Bild neu suchen\n' +
+      '  _q(s) { const c = this._qc || (this._qc = {}); return (s in c) ? c[s] : (c[s] = document.querySelector(s)); }\n' +
+      '  _qa(s) { const c = this._qac || (this._qac = {}); return (s in c) ? c[s] : (c[s] = document.querySelectorAll(s)); }\n' +
+      '  // HSK-PATCH 15b: Höhen hängen nur an der Bildschirmhöhe — nur dann neu messen\n' +
+      '  _h(el, vh) { const c = this._hc || (this._hc = { vh: -1, m: new Map() });\n' +
+      '    if (c.vh !== vh) { c.vh = vh; c.m = new Map(); }\n' +
+      '    if (!c.m.has(el)) c.m.set(el, el.offsetHeight);\n' +
+      '    return c.m.get(el); }\n' +
+      teil + js.slice(bis);
+  }
+
+  // 25) Werte, die sich fast nie ändern, wurden in jedem Bild geschrieben
+  //     (Leiste ein/aus, Fortschrittstext, Fortschrittsbalken). Jeder
+  //     Schreibvorgang macht die nächste Messung zu einem neuen Layout.
+  patch("    if (scrl) scrl.textContent = 'SCRL ' + String(Math.round(prog * 100)).padStart(2, '0') + '%';",
+        "    if (scrl) { const s = 'SCRL ' + String(Math.round(prog * 100)).padStart(2, '0') + '%'; if (this._scrl !== s) { this._scrl = s; scrl.textContent = s; } } // HSK-PATCH 25",
+        'scrl guard');
+  patch("    if (mbar) { const on = y > vh * 0.7; mbar.style.transform = on ? 'translate3d(0,0,0)' : 'translate3d(0,110%,0)'; mbar.style.transition = 'transform .5s cubic-bezier(.16,1,.3,1)'; }",
+        "    if (mbar) { const on = y > vh * 0.7; if (this._mbarOn !== on) { this._mbarOn = on; mbar.style.transform = on ? 'translate3d(0,0,0)' : 'translate3d(0,110%,0)'; mbar.style.transition = 'transform .5s cubic-bezier(.16,1,.3,1)'; } } // HSK-PATCH 25b",
+        'mbar guard');
+  patch("    if (bar) bar.style.transform = 'scaleX(' + prog.toFixed(4) + ')';",
+        "    if (bar) { const t = 'scaleX(' + prog.toFixed(4) + ')'; if (this._bar !== t) { this._bar = t; bar.style.transform = t; } } // HSK-PATCH 25c",
+        'progress guard');
+
+  must(count(/HSK-PATCH/g, js) === 28, 'expected 28 HSK-PATCH markers, got ' + count(/HSK-PATCH/g, js));
   return js;
 }
 

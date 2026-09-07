@@ -209,24 +209,32 @@
       if (open) { const first = document.querySelector('[data-overlay] a'); if (first) first.focus(); }
       else if (wasInOverlay && btn) btn.focus();
     }
+    // HSK-PATCH 15a: Knoten und Höhen einmal merken statt in jedem Bild neu suchen
+    _q(s) { const c = this._qc || (this._qc = {}); return (s in c) ? c[s] : (c[s] = document.querySelector(s)); }
+    _qa(s) { const c = this._qac || (this._qac = {}); return (s in c) ? c[s] : (c[s] = document.querySelectorAll(s)); }
+    // HSK-PATCH 15b: Höhen hängen nur an der Bildschirmhöhe — nur dann neu messen
+    _h(el, vh) { const c = this._hc || (this._hc = { vh: -1, m: new Map() });
+      if (c.vh !== vh) { c.vh = vh; c.m = new Map(); }
+      if (!c.m.has(el)) c.m.set(el, el.offsetHeight);
+      return c.m.get(el); }
     sync() {
       const y = window.scrollY || 0, vh = window.innerHeight || 1;
       this._mobile = window.innerWidth <= 900;
       const total = Math.max(1, document.documentElement.scrollHeight - vh);
       const prog = y / total;
-      const scrl = document.querySelector('[data-scrl]');
-      if (scrl) scrl.textContent = 'SCRL ' + String(Math.round(prog * 100)).padStart(2, '0') + '%';
-      const mbar = document.querySelector('[data-mbar]');
-      if (mbar) { const on = y > vh * 0.7; mbar.style.transform = on ? 'translate3d(0,0,0)' : 'translate3d(0,110%,0)'; mbar.style.transition = 'transform .5s cubic-bezier(.16,1,.3,1)'; }
-      const bar = document.querySelector('[data-progress]');
-      if (bar) bar.style.transform = 'scaleX(' + prog.toFixed(4) + ')';
-      const hsec = document.querySelector('[data-hero-sec]'), hpin = document.querySelector('[data-hero-pin]');
+      const scrl = this._q('[data-scrl]');
+      if (scrl) { const s = 'SCRL ' + String(Math.round(prog * 100)).padStart(2, '0') + '%'; if (this._scrl !== s) { this._scrl = s; scrl.textContent = s; } } // HSK-PATCH 25
+      const mbar = this._q('[data-mbar]');
+      if (mbar) { const on = y > vh * 0.7; if (this._mbarOn !== on) { this._mbarOn = on; mbar.style.transform = on ? 'translate3d(0,0,0)' : 'translate3d(0,110%,0)'; mbar.style.transition = 'transform .5s cubic-bezier(.16,1,.3,1)'; } } // HSK-PATCH 25b
+      const bar = this._q('[data-progress]');
+      if (bar) { const t = 'scaleX(' + prog.toFixed(4) + ')'; if (this._bar !== t) { this._bar = t; bar.style.transform = t; } } // HSK-PATCH 25c
+      const hsec = this._q('[data-hero-sec]'), hpin = this._q('[data-hero-pin]');
       let p = Math.min(1, Math.max(0, y / vh));
-      if (hsec && hpin) { const hr = hsec.getBoundingClientRect(); p = Math.min(1, Math.max(0, -hr.top / Math.max(1, hr.height - hpin.offsetHeight))); }
+      if (hsec && hpin) { const hr = hsec.getBoundingClientRect(); p = Math.min(1, Math.max(0, -hr.top / Math.max(1, hr.height - this._h(hpin, vh)))); }
       this.heroFx(p);
-      const nav = document.querySelector('[data-nav]');
+      const nav = this._q('[data-nav]');
       if (nav) { // HSK-PATCH 5
-        const on = document.querySelector('[data-hero-video]') ? p > 0.85 : y > 24;
+        const on = this._q('[data-hero-video]') ? p > 0.85 : y > 24;
         if (this._navOn !== on) {
           this._navOn = on;
           nav.style.background = on ? 'rgba(5,5,6,.72)' : 'transparent';
@@ -235,12 +243,15 @@
           nav.style.borderBottom = on ? '1px solid rgba(255,255,255,.08)' : '1px solid transparent';
         }
       }
-      document.querySelectorAll('[data-px]').forEach((el) => {
-        const r = el.getBoundingClientRect();
-        if (r.bottom < -200 || r.top > vh + 200) return;
-        const c = (r.top + r.height / 2) - vh / 2;
-        el.style.transform = 'translate3d(0,' + (c * parseFloat(el.dataset.px) / 100).toFixed(1) + 'px,0)';
-      });
+      const pxEls = this._qa('[data-px]'), pxOff = []; // HSK-PATCH 15c
+      for (let k = 0; k < pxEls.length; k++) {
+        const r = pxEls[k].getBoundingClientRect();
+        pxOff[k] = (r.bottom < -200 || r.top > vh + 200) ? null
+          : ((r.top + r.height / 2) - vh / 2) * parseFloat(pxEls[k].dataset.px) / 100;
+      }
+      for (let k = 0; k < pxEls.length; k++) {
+        if (pxOff[k] !== null) pxEls[k].style.transform = 'translate3d(0,' + pxOff[k].toFixed(1) + 'px,0)';
+      }
       this.pinFx(vh);
       this.areasFx(vh);
       this.wipeFx(vh);
@@ -249,19 +260,19 @@
       const m = this._mobile;
       const q = m ? 1 - Math.pow(1 - Math.min(1, p / 0.42), 3) : 1 - Math.pow(1 - p, 3);
       const a = m ? 1 - Math.pow(1 - Math.min(1, Math.max(0, (p - 0.5) / 0.32)), 3) : Math.min(1, Math.max(0, (p - 0.45) * 2.2));
-      const red = document.querySelector('[data-red]');
+      const red = this._q('[data-red]');
       if (red) red.style.transform = 'translate3d(' + (-q * 104).toFixed(2) + '%,0,0)';
-      const vid = document.querySelector('[data-hero-video]');
+      const vid = this._q('[data-hero-video]');
       if (vid) vid.style.transform = 'scale(' + (1.12 - (m ? Math.min(1, p / 0.7) : q) * 0.1).toFixed(3) + ')';
       this.setReelPaused(p >= 1 || !!(this.reel && this.reel.userPaused)); // HSK-PATCH 13
-      const scrim = document.querySelector('[data-hero-scrim]');
+      const scrim = this._q('[data-hero-scrim]');
       if (scrim) scrim.style.opacity = String(0.5 + (m ? Math.min(1, Math.max(0, (p - 0.35) / 0.5)) : q) * 0.5);
-      const hud = document.querySelector('[data-hero-hud]');
+      const hud = this._q('[data-hero-hud]');
       if (hud && p > 0.02 && !hud._anim) { hud._anim = 1; hud.style.animation = 'none'; }
       if (hud) hud.style.opacity = String(Math.max(0, m ? 1 - p / 0.3 : 1 - p * 2.4));
-      const after = document.querySelector('[data-hero-after]');
+      const after = this._q('[data-hero-after]');
       if (after) { after.style.opacity = String(a); after.style.transform = 'translate3d(0,' + ((1 - a) * 40).toFixed(1) + 'px,0)'; }
-      const logo = document.querySelector('[data-nav-logo]');
+      const logo = this._q('[data-nav-logo]');
       if (logo) logo.style.filter = p > (m ? 0.25 : 0.5) ? 'none' : 'brightness(0) invert(1)';
       this._overRed = p < (m ? 0.42 : 0.5);
     }
@@ -270,7 +281,7 @@
       if (this._stickyBroken === undefined) {
         for (const g of groups) {
           if (g[2] !== 'top') continue;
-          const sec = document.querySelector(g[0]), pin = document.querySelector(g[1]);
+          const sec = this._q(g[0]), pin = this._q(g[1]);
           if (!sec || !pin) continue;
           const s = sec.getBoundingClientRect();
           if (s.top < -40 && s.bottom > vh + 40) { this._stickyBroken = Math.abs(pin.getBoundingClientRect().top - s.top) < 2; break; }
@@ -278,7 +289,7 @@
       }
       if (!this._stickyBroken) return;
       groups.forEach((g) => {
-        const sec = document.querySelector(g[0]), pin = document.querySelector(g[1]);
+        const sec = this._q(g[0]), pin = this._q(g[1]);
         if (!sec || !pin) return;
         const s = sec.getBoundingClientRect(), c = pin.getBoundingClientRect(), prev = pin._pinOff || 0;
         let off;
@@ -289,29 +300,29 @@
       });
     }
     areasFx(vh) {
-      const sec = document.querySelector('[data-areas]');
+      const sec = this._q('[data-areas]');
       if (!sec) return;
       const r = sec.getBoundingClientRect();
       // HSK-PATCH 11: außerhalb des Sichtfelds kein Bereichs-Video
       if (r.top > vh || r.bottom < 0) {
-        if (this._activeArea !== -1) { this._activeArea = -1; document.querySelectorAll('[data-area-media] video').forEach((v) => { if (!v.paused) v.pause(); }); }
+        if (this._activeArea !== -1) { this._activeArea = -1; this._qa('[data-area-media] video').forEach((v) => { if (!v.paused) v.pause(); }); }
         return;
       }
-      const grid = document.querySelector('[data-areas-grid]');
-      const span = r.height - (grid ? grid.offsetHeight : vh);
+      const grid = this._q('[data-areas-grid]');
+      const span = r.height - (grid ? this._h(grid, vh) : vh);
       const p = Math.min(0.999, Math.max(0, -r.top / Math.max(1, span)));
       const idx = Math.min(2, Math.floor(p * 3));
       if (idx === this._activeArea) return;
       this._activeArea = idx;
       const labels = ['03 / 10 — KREUZHEBEN', '05 / 10 — SPRINTBAHN', '07 / 10 — AUSDAUER'];
-      document.querySelectorAll('[data-area-row]').forEach((row, i) => {
+      this._qa('[data-area-row]').forEach((row, i) => {
         const on = i === idx;
         const name = row.querySelector('[data-area-name]'), copy = row.querySelector('[data-area-copy]'), barEl = row.querySelector('[data-area-bar]');
         if (name) name.style.color = on ? '#F2EFEA' : '#5A5A62';
         if (copy) { copy.style.maxHeight = on ? '160px' : '0px'; copy.style.opacity = on ? '1' : '0'; copy.style.marginTop = on ? '14px' : '0px'; }
         if (barEl) barEl.style.transform = on ? 'scaleY(1)' : 'scaleY(0)';
       });
-      document.querySelectorAll('[data-area-media]').forEach((m, i) => {
+      this._qa('[data-area-media]').forEach((m, i) => {
         const on = i === idx;
         m.style.opacity = on ? '1' : '0';
         const v = m.querySelector('video');
@@ -319,12 +330,12 @@
         if (on) { if (!v.getAttribute('src')) v.src = v.dataset.src; v.muted = true; v.loop = true; const pr = v.play(); if (pr && pr.catch) pr.catch(() => {}); v.style.opacity = '1'; }
         else if (!v.paused) { v.pause(); }
       });
-      document.querySelectorAll('[data-area-count]').forEach((c) => { c.textContent = '0' + (idx + 1) + ' / 03'; });
-      const label = document.querySelector('[data-area-label]'); if (label) label.textContent = labels[idx];
+      this._qa('[data-area-count]').forEach((c) => { c.textContent = '0' + (idx + 1) + ' / 03'; });
+      const label = this._q('[data-area-label]'); if (label) label.textContent = labels[idx];
     }
     wipeFx(vh) {
-      const sec = document.querySelector('[data-eq]');
-      const w = document.querySelector('[data-wipe]');
+      const sec = this._q('[data-eq]');
+      const w = this._q('[data-wipe]');
       if (!sec || !w) return;
       const r = sec.getBoundingClientRect();
       const p = Math.min(1, Math.max(0, 1 - (r.bottom - vh) / vh));
