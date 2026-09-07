@@ -220,17 +220,31 @@
     sync() {
       const y = window.scrollY || 0, vh = window.innerHeight || 1;
       this._mobile = window.innerWidth <= 900;
-      const total = Math.max(1, document.documentElement.scrollHeight - vh);
+      const jetzt = performance.now(); // HSK-PATCH 31
+      if (!this._docH || this._docVh !== vh || jetzt - this._docAt > 500) {
+        this._docH = document.documentElement.scrollHeight; this._docVh = vh; this._docAt = jetzt;
+      }
+      const total = Math.max(1, this._docH - vh);
       const prog = y / total;
+      // HSK-PATCH 32: alle Messungen zuerst
+      const hsec = this._q('[data-hero-sec]'), hpin = this._q('[data-hero-pin]');
+      const hr = (hsec && hpin) ? hsec.getBoundingClientRect() : null;
+      const asec = this._q('[data-areas]'), ar = asec ? asec.getBoundingClientRect() : null;
+      const esec = this._q('[data-eq]'), er = esec ? esec.getBoundingClientRect() : null;
+      const pxEls = this._qa('[data-px]'), pxOff = [];
+      for (let k = 0; k < pxEls.length; k++) {
+        const pr = pxEls[k].getBoundingClientRect();
+        pxOff[k] = (pr.bottom < -200 || pr.top > vh + 200) ? null
+          : ((pr.top + pr.height / 2) - vh / 2) * parseFloat(pxEls[k].dataset.px) / 100;
+      }
       const scrl = this._q('[data-scrl]');
       if (scrl) { const s = 'SCRL ' + String(Math.round(prog * 100)).padStart(2, '0') + '%'; if (this._scrl !== s) { this._scrl = s; scrl.textContent = s; } } // HSK-PATCH 25
       const mbar = this._q('[data-mbar]');
       if (mbar) { const on = y > vh * 0.7; if (this._mbarOn !== on) { this._mbarOn = on; mbar.style.transform = on ? 'translate3d(0,0,0)' : 'translate3d(0,110%,0)'; mbar.style.transition = 'transform .5s cubic-bezier(.16,1,.3,1)'; } } // HSK-PATCH 25b
       const bar = this._q('[data-progress]');
       if (bar) { const t = 'scaleX(' + prog.toFixed(4) + ')'; if (this._bar !== t) { this._bar = t; bar.style.transform = t; } } // HSK-PATCH 25c
-      const hsec = this._q('[data-hero-sec]'), hpin = this._q('[data-hero-pin]');
       let p = Math.min(1, Math.max(0, y / vh));
-      if (hsec && hpin) { const hr = hsec.getBoundingClientRect(); p = Math.min(1, Math.max(0, -hr.top / Math.max(1, hr.height - this._h(hpin, vh)))); }
+      if (hr) p = Math.min(1, Math.max(0, -hr.top / Math.max(1, hr.height - this._h(hpin, vh))));
       this.heroFx(p);
       const nav = this._q('[data-nav]');
       if (nav) { // HSK-PATCH 5
@@ -243,20 +257,17 @@
           nav.style.borderBottom = on ? '1px solid rgba(255,255,255,.08)' : '1px solid transparent';
         }
       }
-      const pxEls = this._qa('[data-px]'), pxOff = []; // HSK-PATCH 15c
-      for (let k = 0; k < pxEls.length; k++) {
-        const r = pxEls[k].getBoundingClientRect();
-        pxOff[k] = (r.bottom < -200 || r.top > vh + 200) ? null
-          : ((r.top + r.height / 2) - vh / 2) * parseFloat(pxEls[k].dataset.px) / 100;
-      }
       for (let k = 0; k < pxEls.length; k++) {
         if (pxOff[k] !== null) pxEls[k].style.transform = 'translate3d(0,' + pxOff[k].toFixed(1) + 'px,0)';
       }
-      this.pinFx(vh);
-      this.areasFx(vh);
-      this.wipeFx(vh);
+      this.pinFx(vh, hr, ar); // HSK-PATCH 33
+      this.areasFx(vh, ar);
+      this.wipeFx(vh, er);
     }
     heroFx(p) {
+      const schl = p + '|' + this._mobile; // HSK-PATCH 29
+      if (this._heroP === schl) return;
+      this._heroP = schl;
       const m = this._mobile;
       const q = m ? 1 - Math.pow(1 - Math.min(1, p / 0.42), 3) : 1 - Math.pow(1 - p, 3);
       const a = m ? 1 - Math.pow(1 - Math.min(1, Math.max(0, (p - 0.5) / 0.32)), 3) : Math.min(1, Math.max(0, (p - 0.45) * 2.2));
@@ -273,17 +284,16 @@
       const after = this._q('[data-hero-after]');
       if (after) { after.style.opacity = String(a); after.style.transform = 'translate3d(0,' + ((1 - a) * 40).toFixed(1) + 'px,0)'; }
       const logo = this._q('[data-nav-logo]');
-      if (logo) logo.style.filter = p > (m ? 0.25 : 0.5) ? 'none' : 'brightness(0) invert(1)';
+      if (logo) { const f = p > (m ? 0.25 : 0.5) ? 'none' : 'brightness(0) invert(1)'; if (this._logoF !== f) { this._logoF = f; logo.style.filter = f; } } // HSK-PATCH 29b
       this._overRed = p < (m ? 0.42 : 0.5);
     }
-    pinFx(vh) {
+    pinFx(vh, hr, ar) {
       const groups = [['[data-hero-sec]', '[data-hero-pin]', 'top'], ['[data-areas]', '[data-areas-grid]', 'top'], ['[data-eq]', '[data-wipe]', 'bottom']];
-      if (this._stickyBroken === undefined) {
-        for (const g of groups) {
-          if (g[2] !== 'top') continue;
-          const sec = this._q(g[0]), pin = this._q(g[1]);
-          if (!sec || !pin) continue;
-          const s = sec.getBoundingClientRect();
+      if (this._stickyBroken === undefined) { // HSK-PATCH 33b
+        const paare = [[hr, this._q('[data-hero-pin]')], [ar, this._q('[data-areas-grid]')]];
+        for (const pa of paare) {
+          const s = pa[0], pin = pa[1];
+          if (!s || !pin) continue;
           if (s.top < -40 && s.bottom > vh + 40) { this._stickyBroken = Math.abs(pin.getBoundingClientRect().top - s.top) < 2; break; }
         }
       }
@@ -299,10 +309,10 @@
         pin.style.transform = 'translate3d(0,' + off.toFixed(1) + 'px,0)';
       });
     }
-    areasFx(vh) {
+    areasFx(vh, rIn) {
       const sec = this._q('[data-areas]');
       if (!sec) return;
-      const r = sec.getBoundingClientRect();
+      const r = rIn || sec.getBoundingClientRect();
       // HSK-PATCH 11: außerhalb des Sichtfelds kein Bereichs-Video
       if (r.top > vh || r.bottom < 0) {
         if (this._activeArea !== -1) { this._activeArea = -1; this._qa('[data-area-media] video').forEach((v) => { if (!v.paused) v.pause(); }); }
@@ -333,13 +343,16 @@
       this._qa('[data-area-count]').forEach((c) => { c.textContent = '0' + (idx + 1) + ' / 03'; });
       const label = this._q('[data-area-label]'); if (label) label.textContent = labels[idx];
     }
-    wipeFx(vh) {
+    wipeFx(vh, rIn) {
       const sec = this._q('[data-eq]');
       const w = this._q('[data-wipe]');
       if (!sec || !w) return;
-      const r = sec.getBoundingClientRect();
+      const r = rIn || sec.getBoundingClientRect();
       const p = Math.min(1, Math.max(0, 1 - (r.bottom - vh) / vh));
       const q = 1 - Math.pow(1 - p, 2);
+      const wschl = p + '|' + this._mobile; // HSK-PATCH 30
+      if (this._wipeP === wschl) return;
+      this._wipeP = wschl;
       const words = w.querySelectorAll('[data-wipe-word]'), lab = w.querySelector('[data-wipe-label]'), sub = w.querySelector('[data-wipe-sub]'), t = w.querySelector('[data-wipe-title]');
       if (this._mobile) {
         w.style.clipPath = 'inset(0 ' + ((1 - q) * 100).toFixed(2) + '% 0 0)';

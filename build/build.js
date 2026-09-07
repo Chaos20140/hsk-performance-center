@@ -515,6 +515,13 @@ function build() {
   const footer = cutBlock(body, '<footer data-screen-label="Footer"', 'footer', 'footer'); body = footer.rest;
   const mbar = cutBlock(body, '<div data-mbar', 'div', 'mbar'); body = mbar.rest;
   const grain = cutBlock(body, '<svg aria-hidden="true" style="position:fixed', 'svg', 'grain'); body = grain.rest;
+  // Die Filmkorn-Ebene liegt fix über dem ganzen Bild und mischt sich mit
+  // `mix-blend-mode:overlay` ein. Das zwingt den Browser, bei JEDEM Bild den
+  // kompletten Sichtbereich neu zu mischen — auf dem Telefon bremst das nicht
+  // eine Animation, sondern das ganze Scrollen. Sie bekommt ein Kennzeichen,
+  // damit site.css sie dort abschalten kann (siehe dort).
+  must(grain.block.indexOf('mix-blend-mode:overlay') > -1, 'grain overlay not found');
+  grain.block = grain.block.replace('<svg aria-hidden="true"', '<svg data-grain aria-hidden="true"');
   const loslegen = cutBlock(body, '<section id="loslegen"', 'section', 'loslegen');
   // (loslegen bleibt in der Startseite und wird zusätzlich als Schlussband der Unterseiten benutzt)
 
@@ -1051,7 +1058,94 @@ function patchLogic(js) {
         "    if (bar) { const t = 'scaleX(' + prog.toFixed(4) + ')'; if (this._bar !== t) { this._bar = t; bar.style.transform = t; } } // HSK-PATCH 25c",
         'progress guard');
 
-  must(count(/HSK-PATCH/g, js) === 28, 'expected 28 HSK-PATCH markers, got ' + count(/HSK-PATCH/g, js));
+  // 29) heroFx und wipeFx schrieben in JEDEM Bild ihre Werte — auch dort, wo
+  //     sich nichts mehr ändert. Unterhalb des Hero steht p dauerhaft auf 1,
+  //     trotzdem gingen sechs Stil-Zuweisungen plus ein Filter-Wechsel raus;
+  //     dasselbe beim Vorhang mit clip-path und vier Wort-Verschiebungen.
+  //     Ein Filter-Wechsel und ein clip-path zwingen den Browser jedes Mal zum
+  //     Neuzeichnen. Jetzt wird nur gerechnet, wenn sich der Fortschritt
+  //     geändert hat. Am Bild ändert das nichts — dieselben Werte, nur nicht
+  //     mehr doppelt.
+  patch("  heroFx(p) {\n    const m = this._mobile;",
+        "  heroFx(p) {\n" +
+        "    const schl = p + '|' + this._mobile; // HSK-PATCH 29\n" +
+        "    if (this._heroP === schl) return;\n" +
+        "    this._heroP = schl;\n" +
+        "    const m = this._mobile;", 'heroFx guard');
+  patch("    if (logo) logo.style.filter = p > (m ? 0.25 : 0.5) ? 'none' : 'brightness(0) invert(1)';",
+        "    if (logo) { const f = p > (m ? 0.25 : 0.5) ? 'none' : 'brightness(0) invert(1)'; if (this._logoF !== f) { this._logoF = f; logo.style.filter = f; } } // HSK-PATCH 29b",
+        'logo filter guard');
+  patch("    const q = 1 - Math.pow(1 - p, 2);\n    const words =",
+        "    const q = 1 - Math.pow(1 - p, 2);\n" +
+        "    const wschl = p + '|' + this._mobile; // HSK-PATCH 30\n" +
+        "    if (this._wipeP === wschl) return;\n" +
+        "    this._wipeP = wschl;\n" +
+        "    const words =", 'wipeFx guard');
+
+  // 31) `document.documentElement.scrollHeight` stand in jedem Bild im Weg: die
+  //     Messung zwingt den Browser zu einem neuen Layout, nur damit der
+  //     Fortschrittsbalken auf vier Nachkommastellen genau ist. Die Seitenhöhe
+  //     ändert sich fast nie — jetzt höchstens viermal je Sekunde gemessen und
+  //     sofort, wenn sich die Bildschirmhöhe ändert.
+  patch("    const total = Math.max(1, document.documentElement.scrollHeight - vh);",
+        "    const jetzt = performance.now(); // HSK-PATCH 31\n" +
+        "    if (!this._docH || this._docVh !== vh || jetzt - this._docAt > 250) {\n" +
+        "      this._docH = document.documentElement.scrollHeight; this._docVh = vh; this._docAt = jetzt;\n" +
+        "    }\n" +
+        "    const total = Math.max(1, this._docH - vh);", 'doc height cache');
+
+  // 32) Erst alle Messungen, dann alle Schreibvorgaenge.
+  //     sync() schrieb den Fortschrittsbalken, mass danach den Hero, schrieb
+  //     den Hero, mass danach den Parallax, schrieb ihn, mass die Bereiche,
+  //     mass den Vorhang. Jede Messung nach einem Schreibvorgang zwingt den
+  //     Browser zu einem neuen Layout — vier Stueck je Bild. Jetzt liegen alle
+  //     Messungen vorn: ein Layout je Bild statt vier. Die Werte sind
+  //     dieselben, nur in anderer Reihenfolge geholt.
+  patch("    const scrl = this._q('[data-scrl]');",
+        "    // HSK-PATCH 32: alle Messungen zuerst\n" +
+        "    const hsec = this._q('[data-hero-sec]'), hpin = this._q('[data-hero-pin]');\n" +
+        "    const hr = (hsec && hpin) ? hsec.getBoundingClientRect() : null;\n" +
+        "    const asec = this._q('[data-areas]'), ar = asec ? asec.getBoundingClientRect() : null;\n" +
+        "    const esec = this._q('[data-eq]'), er = esec ? esec.getBoundingClientRect() : null;\n" +
+        "    const pxEls = this._qa('[data-px]'), pxOff = [];\n" +
+        "    for (let k = 0; k < pxEls.length; k++) {\n" +
+        "      const pr = pxEls[k].getBoundingClientRect();\n" +
+        "      pxOff[k] = (pr.bottom < -200 || pr.top > vh + 200) ? null\n" +
+        "        : ((pr.top + pr.height / 2) - vh / 2) * parseFloat(pxEls[k].dataset.px) / 100;\n" +
+        "    }\n" +
+        "    const scrl = this._q('[data-scrl]');", 'sync reads first');
+  patch("    const hsec = this._q('[data-hero-sec]'), hpin = this._q('[data-hero-pin]');\n    let p = Math.min(1, Math.max(0, y / vh));\n    if (hsec && hpin) { const hr = hsec.getBoundingClientRect(); p = Math.min(1, Math.max(0, -hr.top / Math.max(1, hr.height - this._h(hpin, vh)))); }",
+        "    let p = Math.min(1, Math.max(0, y / vh));\n" +
+        "    if (hr) p = Math.min(1, Math.max(0, -hr.top / Math.max(1, hr.height - this._h(hpin, vh))));", 'hero uses hoisted rect');
+  patch("    const pxEls = this._qa('[data-px]'), pxOff = []; // HSK-PATCH 15c\n    for (let k = 0; k < pxEls.length; k++) {\n      const r = pxEls[k].getBoundingClientRect();\n      pxOff[k] = (r.bottom < -200 || r.top > vh + 200) ? null\n        : ((r.top + r.height / 2) - vh / 2) * parseFloat(pxEls[k].dataset.px) / 100;\n    }\n    for (let k = 0; k < pxEls.length; k++) {",
+        "    for (let k = 0; k < pxEls.length; k++) {", 'parallax write only');
+  patch("    this.areasFx(vh);\n    this.wipeFx(vh);",
+        "    this.areasFx(vh, ar);\n    this.wipeFx(vh, er);", 'pass rects');
+  patch("  areasFx(vh) {", "  areasFx(vh, rIn) {", 'areasFx signature');
+  patch("    const r = sec.getBoundingClientRect();\n    // HSK-PATCH 11", "    const r = rIn || sec.getBoundingClientRect();\n    // HSK-PATCH 11", 'areasFx rect');
+  patch("  wipeFx(vh) {", "  wipeFx(vh, rIn) {", 'wipeFx signature');
+  patch("    if (!sec || !w) return;\n    const r = sec.getBoundingClientRect();", "    if (!sec || !w) return;\n    const r = rIn || sec.getBoundingClientRect();", 'wipeFx rect');
+
+  // 33) pinFx prueft, ob `position:sticky` ueberhaupt greift, und mass dafuer in
+  //     JEDEM Bild zwei Rechtecke — solange, bis eine Klebesektion den ganzen
+  //     Bildschirm fuellt und die Frage beantwortet ist. Die beiden Rechtecke
+  //     liegen oben in sync() bereits vor; sie werden jetzt durchgereicht.
+  //     Steht die Antwort (auf allen heutigen Browsern: sticky greift), macht
+  //     pinFx gar nichts mehr.
+  patch("    this.pinFx(vh);", "    this.pinFx(vh, hr, ar); // HSK-PATCH 33", 'pinFx call');
+  patch("  pinFx(vh) {", "  pinFx(vh, hr, ar) {", 'pinFx signature');
+  patch("    if (this._stickyBroken === undefined) {\n      for (const g of groups) {\n        if (g[2] !== 'top') continue;\n        const sec = this._q(g[0]), pin = this._q(g[1]);\n        if (!sec || !pin) continue;\n        const s = sec.getBoundingClientRect();\n        if (s.top < -40 && s.bottom > vh + 40) { this._stickyBroken = Math.abs(pin.getBoundingClientRect().top - s.top) < 2; break; }\n      }\n    }",
+        "    if (this._stickyBroken === undefined) { // HSK-PATCH 33b\n" +
+        "      const paare = [[hr, this._q('[data-hero-pin]')], [ar, this._q('[data-areas-grid]')]];\n" +
+        "      for (const pa of paare) {\n" +
+        "        const s = pa[0], pin = pa[1];\n" +
+        "        if (!s || !pin) continue;\n" +
+        "        if (s.top < -40 && s.bottom > vh + 40) { this._stickyBroken = Math.abs(pin.getBoundingClientRect().top - s.top) < 2; break; }\n" +
+        "      }\n" +
+        "    }", 'pinFx detection');
+  patch("jetzt - this._docAt > 250", "jetzt - this._docAt > 500", 'doc height interval');
+
+  must(count(/HSK-PATCH/g, js) === 34, 'expected 34 HSK-PATCH markers, got ' + count(/HSK-PATCH/g, js));
   return js;
 }
 

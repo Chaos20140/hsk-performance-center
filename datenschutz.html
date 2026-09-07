@@ -209,6 +209,24 @@ html[data-menu="open"] [data-burger]::after{transform:translate(-50%,-50%) rotat
   /* Overlay-Menue: kein Weiterscrollen der Seite dahinter */
   [data-overlay]{overscroll-behavior:contain}
 
+  /* ---- Filmkorn: auf dem Telefon aus ----
+     Die Koernungs-Ebene liegt fix ueber dem ganzen Bild und mischt sich mit
+     `mix-blend-mode:overlay` ein. Eine bildschirmfuellende Mischebene zwingt
+     den Browser, bei JEDEM Bild den kompletten Sichtbereich neu zu mischen —
+     und nimmt dem darunter scrollenden Inhalt den schnellen Weg ueber den
+     Compositor. Das bremst nicht eine Animation, sondern das ganze Scrollen.
+     Auf einem Telefonbildschirm sind 7 % Koernung praktisch nicht zu sehen;
+     die Bremse ist es sehr wohl. Am Rechner bleibt sie unangetastet. */
+  [data-grain]{display:none!important}
+
+  /* Die drei Flaechen, die beim Scrollen wirklich bewegt werden, bekommen eine
+     eigene Compositor-Ebene. Nur diese drei — jede weitere kostet Speicher. */
+  [data-red],[data-hero-video]{will-change:transform}
+  /* Der Vorhang gibt sich ueber clip-path frei. Mit dem Hinweis kann WebKit
+     ihn auf eine eigene Ebene legen und den Schnitt beim Zusammensetzen
+     anwenden, statt die Flaeche in jedem Bild neu zu zeichnen. */
+  [data-wipe]{will-change:transform,clip-path}
+
   /* -- Trefferflaechen: ein Finger braucht 44 px, das Design rechnet mit Maus */
   [data-overlay] a[href="mitglied-werden.html"]{padding:15px 22px!important}
   [data-nav]>a:first-child{align-self:stretch!important;min-width:44px}
@@ -501,7 +519,7 @@ html[data-menu="open"] [data-burger]::after{transform:translate(-50%,-50%) rotat
     <a href="#inhalt">NACH OBEN ↑</a>
   </div>
 </footer>
-<svg aria-hidden="true" style="position:fixed;inset:0;width:100%;height:100%;z-index:60;opacity:.07;pointer-events:none;mix-blend-mode:overlay"><filter id="grainL"><feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="2" stitchTiles="stitch"></feTurbulence></filter><rect width="100%" height="100%" filter="url(#grainL)"></rect></svg>
+<svg data-grain aria-hidden="true" style="position:fixed;inset:0;width:100%;height:100%;z-index:60;opacity:.07;pointer-events:none;mix-blend-mode:overlay"><filter id="grainL"><feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="2" stitchTiles="stitch"></feTurbulence></filter><rect width="100%" height="100%" filter="url(#grainL)"></rect></svg>
 <script src="assets/js/site.js"></script>
 <script src="assets/js/marquee.js"></script>
 </body>

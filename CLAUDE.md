@@ -523,7 +523,7 @@ Drei asserted Korrekturen in `legalPage()`:
 ```bash
 cd build && HSK_CANONICAL="https://chaos20140.github.io/hsk-performance-center/" node build.js   # muss "OK" sagen
 cd .. && node --check assets/js/site.js
-grep -c 'HSK-PATCH' assets/js/site.js                 # 29 (28 Marker + Kopfkommentar)
+grep -c 'HSK-PATCH' assets/js/site.js                 # 35 (34 Marker + Kopfkommentar)
 grep -ohE '(src|href)="https?://[^"]+"' *.html | sort -u   # nur maps / facebook / canonical
 ```
 
@@ -547,6 +547,52 @@ sobald ein `scrollTo` vorausging (siehe Fehler Nr. 29/30).
 ---
 
 ## 9. Änderungslog (jede Änderung, neueste oben)
+
+- **2026-09-07 — Flüssigkeit, zweiter Anlauf: die Ursache lag nicht im Skript**
+  (Rückmeldung Tolunay: „läuft noch nicht ganz flüssig"). Diesmal erst gemessen.
+  - **Gemessen:** erzwungene Layouts je Scroll-Durchlauf — live **1,07**, also
+    schon vorher nahe am Minimum. Das Skript war nicht der Flaschenhals. Damit
+    blieb nur die Zeichen-/Compositor-Seite.
+  - **Die Ursache: die Filmkorn-Ebene.** Ein bildschirmfüllendes, fixiertes SVG
+    mit `mix-blend-mode:overlay` liegt über der ganzen Seite. Eine solche
+    Mischebene zwingt den Browser, bei JEDEM Bild den kompletten Sichtbereich
+    neu zu mischen, und nimmt dem darunter scrollenden Inhalt den schnellen Weg
+    über den Compositor. Das bremst nicht eine Animation, sondern **alles**.
+    Auf dem Telefon ist sie jetzt aus (`[data-grain]{display:none}`); 7 %
+    Körnung sind auf einem Telefonbildschirm praktisch nicht zu sehen, die
+    Bremse sehr wohl. Am Rechner bleibt sie unangetastet.
+  - Dazu, alle ohne Wirkung aufs Bild:
+    - `heroFx` und `wipeFx` rechneten in jedem Bild, auch wenn sich der
+      Fortschritt nicht geändert hatte — unterhalb des Hero steht p dauerhaft
+      auf 1, es gingen trotzdem sechs Stil-Zuweisungen plus ein Filter-Wechsel
+      raus, beim Vorhang clip-path und vier Wort-Verschiebungen. Ein
+      Filter-Wechsel und ein clip-path zwingen jedes Mal zum Neuzeichnen.
+      Jetzt: nur bei geändertem Fortschritt (HSK-PATCH 29/30).
+    - `document.documentElement.scrollHeight` wurde in jedem Bild gelesen —
+      eine Messung, die ein neues Layout erzwingt, nur für vier
+      Nachkommastellen im Fortschrittsbalken. Jetzt höchstens zweimal je
+      Sekunde und sofort bei geänderter Bildschirmhöhe (HSK-PATCH 31).
+    - `sync()` schrieb, mass, schrieb, mass — vier erzwungene Layouts je Bild.
+      Jetzt liegen alle Messungen vorn, danach alle Schreibvorgänge
+      (HSK-PATCH 32); `areasFx`/`wipeFx` bekommen ihr Rechteck übergeben.
+    - `pinFx` mass in jedem Bild zwei Rechtecke, nur um zu prüfen, ob
+      `position:sticky` greift. Es bekommt die vorhandenen Messwerte
+      durchgereicht (HSK-PATCH 33).
+    - Compositor-Hinweise: `will-change:transform` auf der roten Hero-Fläche
+      und dem Hero-Film, `will-change:transform,clip-path` auf dem Vorhang.
+  - **Ergebnis gemessen:** erzwungene Layouts je Durchlauf 1,07 → **1,00**,
+    Messungen je Durchlauf 7,07 → 6,25. Der eigentliche Gewinn liegt aber beim
+    Zeichnen und ist mit den Mitteln hier nicht zu beziffern — die Körnung war
+    die einzige Bremse, die über die ganze Seite wirkte.
+  - **Bewusst NICHT geändert:** der Weichzeichner der Kopfleiste
+    (`backdrop-filter:blur(12px)`). Er kostet auch etwas, betrifft aber nur
+    einen 72 px hohen Streifen statt der ganzen Fläche — und er ist ein
+    sichtbarer Teil des Designs. Wenn es weiter hakt, wäre er der nächste
+    Kandidat.
+  - Geprüft: 9 Seiten × 4 Breiten ohne Querlauf und Konsolenfehler; Rechner
+    unverändert (15,71 Bildschirme, Körnung dort weiter aktiv); Telefon 18,92;
+    Anker, Menü, FAQ, Antippen einer Bereichszeile. Sicherheit: nichts Neues.
+
 
 - **2026-09-07 — Flüssigeres Scrollen, Schlusszeile nach unten, Nadel zurück**
   (Rückmeldung Tolunay):
