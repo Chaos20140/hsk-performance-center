@@ -477,6 +477,16 @@ Drei asserted Korrekturen in `legalPage()`:
     Die bessere Lösung war, die Animation ganz wegzulassen: ohne `position:sticky`
     kommt er von unten ins Bild, weil die Seite scrollt. **Die flüssigste Bewegung auf
     dem Telefon ist die, die der Browser ohnehin macht.**
+35. **Hover-Füllung gemeldet, aber nicht gemalt.** Die Füllung (Verlauf als
+    `background-image`, Breite 0 % → 100 %) stand nur im Ruhezustand. Die
+    Design-Regeln `[data-hh="…"]:hover{background:… !important}` sind eine Stufe
+    spezifischer (Attribut + Pseudoklasse) und setzen mit der Kurzschreibweise
+    `background` auch Bild, Wiederholung und Position zurück. Ergebnis:
+    `getComputedStyle` meldete beim Überfahren brav `100% 100%` — gemalt wurde
+    nichts, weil kein Bild mehr da war. **Nicht die Breite prüfen, sondern ob
+    `backgroundImage` im Hover-Zustand noch den Verlauf enthält.** Und: wo das
+    Design eine Kurzschreibweise nutzt, jede Langform im selben Zustand erneut
+    setzen.
 
 ### v1-Lehren, die weiter gelten (Kurzfassung; Details in Git `588ed26:CLAUDE.md`)
 - Design-RPC `GetFile`: `content` ist **immer** Base64, `isBase64` heißt nur „binär".
@@ -547,6 +557,46 @@ sobald ein `scrollTo` vorausging (siehe Fehler Nr. 29/30).
 ---
 
 ## 9. Änderungslog (jede Änderung, neueste oben)
+
+- **2026-09-14 — Haltung-Laufband randlos, Buttons füllen sich beim Überfahren**
+  (Rückmeldung Tolunay, zwei Desktop-Screenshots: „Balken soll sich weiter über
+  die Seite erstrecken", „Buttons farblich passend ausfüllen, sobald man mit dem
+  Mauszeiger drüberfährt"). Nur `build/site.css`; kein Skript, keine Patches.
+  - **Laufband in „Haltung":** `#haltung` hat seitlich `clamp(18px,4vw,64px)`
+    Innenabstand, das Band saß deshalb eingerückt. Jetzt gleicht ein negativer
+    Außenabstand in genau dieser Größe den Abstand aus
+    (`#haltung>[data-marquee]{margin-left/right:calc(clamp(18px,4vw,64px) * -1)}`).
+    Gemessen: Abstand links/rechts **0/0 px** bei 1280, 1600 und 1920 px, kein
+    waagrechtes Überlaufen. Gilt für alle Breiten, auf dem Telefon ebenfalls 0/0.
+  - **Hover-Füllung:** statt des harten Farbwechsels des Designs fährt die Farbe
+    von links nach rechts in den Button (Verlauf als Hintergrundbild,
+    `background-size` 0 % → 100 %, 0,5 s, `cubic-bezier(.16,1,.3,1)`), Schrift
+    und Rand wechseln mit. Farblogik:
+    - **Rot** füllt dunkle und umrandete Buttons auf dunklem Grund: Kopfleiste
+      „Probetraining" (`c1`), „Halbjahr"/„Monat" in den Preiskarten (`h5`/`h6`),
+      Route-Marke der Karte, „Anrufen" nach dem Formular.
+    - **Knochenweiß** füllt rote Buttons und dunkle Buttons auf rotem Grund:
+      Hero (`h2`/`h3`), Loslegen-Band (`h4`/`h7`/`h8`), Unterseiten-Buttons (`b9`),
+      „Karte laden", Termin-Link, Formular-Absenden, „E-Mail öffnen", Menü-CTA —
+      eine rote Füllung würde dort im Untergrund verschwinden.
+    - „Karte laden", Termin-Link, Formular-Button, Bestätigungs-Links und Menü-CTA
+      hatten im Design **gar keinen** Hover-Zustand; jetzt einheitlich.
+  - Nur bei echter Maus (`@media (hover:hover) and (pointer:fine)`), damit auf dem
+    Telefon kein Zustand „kleben" bleibt; dort gemessen: kein Verlauf aktiv.
+    Bei `prefers-reduced-motion` Farbwechsel ohne Fahrt.
+  - **Fehler unterwegs** (§6 Nr. 35): Füllung wurde gemeldet, aber nicht gemalt —
+    die Design-Hover-Regeln setzen per Kurzschreibweise den ganzen Hintergrund
+    zurück. Lösung: Verlauf, Größe, Wiederholung, Position und Grundfarbe im
+    Hover-Zustand erneut setzen.
+  - **Geprüft** (Playwright WebKit, 1600×900): alle Buttons der Startseite nach
+    dem Überfahren mit Verlauf, `no-repeat`, 100 % Breite, richtiger Grund- und
+    Schriftfarbe; Unterseiten Coaching/Galerie, Termine, Mitglied werden ebenso.
+    Screenshots mit voller Füllung angesehen. Gesamt-Regression 9 Seiten × 4
+    Breiten sauber. Sicherheit: keine neuen Hosts, kein `url()`/`@import`, CSP
+    unverändert.
+  - Nebenbefund, **nicht** neu: die eingebettete Google-Karte wirft nach dem Laden
+    eine Konsolen-Meldung aus Googles eigenem Skript — tritt live schon vor dieser
+    Änderung auf.
 
 - **2026-09-07 — Flüssigkeit, zweiter Anlauf: die Ursache lag nicht im Skript**
   (Rückmeldung Tolunay: „läuft noch nicht ganz flüssig"). Diesmal erst gemessen.
