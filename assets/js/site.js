@@ -488,6 +488,59 @@
   var lastPointer = 'mouse';
   window.addEventListener('pointerdown', function (e) { lastPointer = e.pointerType || 'mouse'; }, { capture: true, passive: true });
 
+  /* Hover nur bei echter Maus. Medienabfragen taugen dafür nicht: Windows-Geräte
+     mit Touchscreen melden in Chrome/Edge hover:none, auch wenn gerade die Maus
+     benutzt wird — dort gab es gar keinen Hover-Effekt. Also zählt, was wirklich
+     passiert: eine Mausbewegung schaltet <html data-maus> ein, ein Fingertipp
+     wieder aus (sonst bliebe der Hover-Zustand nach dem Tipp stehen). Alle
+     :hover-Regeln hängen an diesem Attribut. */
+  /* Vorsicht, Scheinbewegung: WebKit auf dem iPhone schickt nach Tipp + Scrollen
+     eine echte (isTrusted) pointermove vom Typ „mouse" — am Tippunkt oder am
+     zuletzt angetippten Ziel, immer ohne Bewegung (movementX/Y 0). Die hätte den
+     Hover eingeschaltet und die Füllung am getippten Button stehen lassen.
+     Gemessen kommen alle Scheinbewegungen nach einer Berührung an EINER Stelle.
+     Nach einer Berührung zählt deshalb nur, was eine echte Maus tut: sich messbar
+     bewegen — oder, falls ein Browser keine Bewegungswerte liefert (WebKit meldet
+     teils immer 0), eine zweite, andere Stelle erreichen. Nie der Tippunkt selbst.
+     Ein Stift zählt, wenn er schwebt (buttons 0) — aufgesetzt ist er wie ein Finger. */
+  /* Stellen werden in Bildschirmpunkten verglichen, nicht in Seitenkoordinaten:
+     nach einem Zoom liegt derselbe Punkt auf dem Glas bei anderen clientX/Y — eine
+     Scheinbewegung am selben Punkt sähe sonst wie eine zweite Stelle aus
+     (Gegenprobe: Maßstab 1 → 0,325 machte aus 195,286 den Wert 600,880). */
+  var htmlEl = document.documentElement, vv = window.visualViewport;
+  var touched = false, tapX = -1e4, tapY = -1e4, seenX = null, seenY = null;
+  var glas = function (e) {
+    return vv ? [(e.clientX - vv.offsetLeft) * vv.scale, (e.clientY - vv.offsetTop) * vv.scale] : [e.clientX, e.clientY];
+  };
+  // Die Toleranz wächst mit dem Zoom: Browser runden Koordinaten auf ganze CSS-Pixel,
+  // bei Maßstab 3 wandert derselbe Punkt so um bis zu 3 Bildschirmpunkte (gemessen).
+  var near = function (p, x, y) {
+    var t = vv ? Math.max(2, vv.scale + 1) : 2;
+    return Math.abs(p[0] - x) < t && Math.abs(p[1] - y) < t;
+  };
+  window.addEventListener('pointermove', function (e) {
+    if (htmlEl.hasAttribute('data-maus')) return;
+    if (e.pointerType === 'pen' ? e.buttons !== 0 : e.pointerType !== 'mouse') return;
+    if (touched) {
+      var p = glas(e);
+      if (near(p, tapX, tapY)) return;
+      if (e.movementX === 0 && e.movementY === 0 && (seenX === null || near(p, seenX, seenY))) {
+        seenX = p[0]; seenY = p[1];
+        return;
+      }
+    }
+    htmlEl.setAttribute('data-maus', '');
+  }, { passive: true });
+  window.addEventListener('pointerdown', function (e) {
+    if (e.pointerType !== 'touch') return;
+    touched = true; seenX = null; seenY = null;
+    if (htmlEl.hasAttribute('data-maus')) htmlEl.removeAttribute('data-maus');
+  }, { capture: true, passive: true });
+  window.addEventListener('pointerup', function (e) {
+    if (e.pointerType !== 'touch') return;
+    var p = glas(e); tapX = p[0]; tapY = p[1];
+  }, { capture: true, passive: true });
+
   function wire() {
     var all = document.querySelectorAll('*');
     for (var i = 0; i < all.length; i++) {

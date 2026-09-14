@@ -557,10 +557,30 @@ function build() {
   must(/data-src="assets\/cine-rise\.mp4" data-src-mobile="assets\/m-racks\.mp4"/.test(main.html), 'hero clip sources not set');
 
   // ---------------------------------------------------------------- pages
-  const hoverCss = (rules) => rules.length ? '@media (hover:hover) and (pointer:fine){\n' + rules.join('\n') + '\n}' : '';
+  // Hover nur bei echter Maus — nicht per @media (hover:hover): Windows-Geräte mit
+  // Touchscreen melden dort hover:none, auch mit Maus (§6 Nr. 36). Der Shim setzt
+  // <html data-maus>. :where() hebt die Spezifität nicht; site.css baut darauf.
+  const hoverCss = (rules) => {
+    // genau ein Selektor und genau ein Block — sonst bekäme ein Teil keinen Vorsatz
+    must(rules.every((r) => /^\[data-hh="[^",]+"\]:hover\{[^{}]*\}$/.test(r)), 'hover rule with unexpected selector or block');
+    return rules.length ? rules.map((r) => ':where(html[data-maus]) ' + r).join('\n') : '';
+  };
 
   // „Nach oben" meint die aktuelle Seite — auf Unterseiten also nicht die Startseite
   must(chrome.footer.indexOf('href="#top">NACH OBEN') > -1, 'footer "Nach oben" link not found');
+  // Letzte Zeile der Fußzeile: wer die Seite gebaut hat (Wunsch Tolunay, 14.09.2026).
+  // Farbe der Zeile wie die Leiste darüber; der Link bekommt Knochenweiß und das
+  // Rot beim Überfahren aus der globalen a-Regel des Designs — wie Impressum daneben.
+  // Die Leiste muss das letzte Element sein: die Telefon-Regeln in site.css greifen
+  // sie als footer>div:last-of-type. Die Unterstreichung ist nötig, weil der Link
+  // mitten im Satz steht — Knochenweiß gegen Grau allein sind nur 2,44:1.
+  // &nbsp; statt Leerzeichen: auf dem Telefon ist der Link inline-flex, dort fiele
+  // ein normales Leerzeichen vor dem Pfeil weg.
+  const creditRow = /(<a href="#top">NACH OBEN ↑<\/a>\s*<\/div>)/;
+  must(count(new RegExp(creditRow.source, 'g'), chrome.footer) === 1, 'footer bottom row not found exactly once');
+  must(new RegExp(creditRow.source + '\\s*</footer>\\s*$').test(chrome.footer), 'footer bottom row is no longer the last element of <footer>');
+  chrome.footer = chrome.footer.replace(creditRow, `$1
+  <p data-credit style="max-width:1500px;margin:18px auto 0;font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.2em;line-height:1.8;color:#9A9AA2">ERSTELLT, DESIGNED &amp; GEHOSTET VON <a href="https://axion-studio.de/" target="_blank" rel="noopener" aria-label="Axion Studio (öffnet in neuem Tab)" style="text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:4px;text-decoration-color:rgba(242,239,234,.4)">AXION STUDIO&nbsp;<span aria-hidden="true">↗</span></a></p>`);
   const footerFor = (sub) => sub
     ? anchorsToIndex(chrome.footer).replace('href="./">NACH OBEN', 'href="#inhalt">NACH OBEN')
     : chrome.footer;
@@ -658,7 +678,7 @@ function build() {
     // JSON-LD wird nicht ausgeführt; jedes andere Inline-Skript wäre ein CSP-Verstoß
     must(!/<script(?![^>]*\ssrc=)(?![^>]*application\/ld\+json)/.test(out), p.file + ': inline script (CSP)');
     const ext = out.match(/(?:src|href)="https?:\/\/[^"]+"/g) || [];
-    for (const e of ext) must(/^(?:src|href)="https:\/\/(www\.google\.com\/maps|www\.facebook\.com\/HSKPerformancecenter\/)/.test(e) || e.startsWith('href="' + CANONICAL), p.file + ': unexpected external reference ' + e);
+    for (const e of ext) must(/^(?:src|href)="https:\/\/(www\.google\.com\/maps|www\.facebook\.com\/HSKPerformancecenter\/)/.test(e) || e === 'href="https://axion-studio.de/"' || e.startsWith('href="' + CANONICAL), p.file + ': unexpected external reference ' + e);
     for (const m of out.matchAll(/(?:src|href|poster|data-src|data-src-mobile|data-poster-mobile)="(assets\/[^"#?]+)"/g)) must(fs.existsSync(path.join(OUT, m[1])), p.file + ': missing asset ' + m[1]);
     for (const m of out.matchAll(/href="([a-z0-9-]+\.html)/g)) must(fs.existsSync(path.join(OUT, m[1])), p.file + ': dead page link ' + m[1]);
     must(!/href="index\.html/.test(out), p.file + ': links to index.html instead of ./');
@@ -746,12 +766,15 @@ function legalPage(srcName, h1, intro, otherHref, otherLabel) {
     inner = inner.replace(bild, '');
   } else {
     // Die Erklärung muss zur Site passen — diese Sätze stehen in der Quelle und werden hier festgenagelt
-    must(inner.indexOf('Facebook (Fußbereich, Termine) sowie auf Google Maps bzw. Apple Karten (Kartenbereich)') > -1, 'external links sentence missing');
+    const verweise = 'Facebook (Fußbereich, Termine) sowie auf Google Maps bzw. Apple Karten (Kartenbereich)';
+    must(inner.indexOf(verweise) > -1, 'external links sentence missing');
+    // Der Fußbereich verlinkt seit 14.09.2026 auch Axion Studio — die Erklärung nennt es
+    inner = inner.replace(verweise, 'Facebook (Fußbereich, Termine), auf Google Maps bzw. Apple Karten (Kartenbereich) sowie auf die Website von Axion Studio (Fußbereich)');
     must(inner.indexOf('Google kann im eingebetteten Kartenfenster eigene Cookies setzen') > -1, 'maps cookie sentence missing');
     must(inner.indexOf('Ihr Anliegen (z.&nbsp;B. Probetraining') > -1, 'form field sentence missing');
     const stand = 'Stand: 2. September 2026';
     must(inner.indexOf(stand) > -1, 'Stand not found');
-    inner = inner.replace(stand, 'Stand: 4. September 2026');
+    inner = inner.replace(stand, 'Stand: 14. September 2026');
     must(!/Platzhalter|\[ … \]/.test(inner), 'placeholder note still present');
   }
 
@@ -1226,6 +1249,59 @@ ${patchLogic(logicJs).trim().replace(/^/gm, '  ')}
      frisch geholt, damit sie immer den aktuellen Zustand sehen. */
   var lastPointer = 'mouse';
   window.addEventListener('pointerdown', function (e) { lastPointer = e.pointerType || 'mouse'; }, { capture: true, passive: true });
+
+  /* Hover nur bei echter Maus. Medienabfragen taugen dafür nicht: Windows-Geräte
+     mit Touchscreen melden in Chrome/Edge hover:none, auch wenn gerade die Maus
+     benutzt wird — dort gab es gar keinen Hover-Effekt. Also zählt, was wirklich
+     passiert: eine Mausbewegung schaltet <html data-maus> ein, ein Fingertipp
+     wieder aus (sonst bliebe der Hover-Zustand nach dem Tipp stehen). Alle
+     :hover-Regeln hängen an diesem Attribut. */
+  /* Vorsicht, Scheinbewegung: WebKit auf dem iPhone schickt nach Tipp + Scrollen
+     eine echte (isTrusted) pointermove vom Typ „mouse" — am Tippunkt oder am
+     zuletzt angetippten Ziel, immer ohne Bewegung (movementX/Y 0). Die hätte den
+     Hover eingeschaltet und die Füllung am getippten Button stehen lassen.
+     Gemessen kommen alle Scheinbewegungen nach einer Berührung an EINER Stelle.
+     Nach einer Berührung zählt deshalb nur, was eine echte Maus tut: sich messbar
+     bewegen — oder, falls ein Browser keine Bewegungswerte liefert (WebKit meldet
+     teils immer 0), eine zweite, andere Stelle erreichen. Nie der Tippunkt selbst.
+     Ein Stift zählt, wenn er schwebt (buttons 0) — aufgesetzt ist er wie ein Finger. */
+  /* Stellen werden in Bildschirmpunkten verglichen, nicht in Seitenkoordinaten:
+     nach einem Zoom liegt derselbe Punkt auf dem Glas bei anderen clientX/Y — eine
+     Scheinbewegung am selben Punkt sähe sonst wie eine zweite Stelle aus
+     (Gegenprobe: Maßstab 1 → 0,325 machte aus 195,286 den Wert 600,880). */
+  var htmlEl = document.documentElement, vv = window.visualViewport;
+  var touched = false, tapX = -1e4, tapY = -1e4, seenX = null, seenY = null;
+  var glas = function (e) {
+    return vv ? [(e.clientX - vv.offsetLeft) * vv.scale, (e.clientY - vv.offsetTop) * vv.scale] : [e.clientX, e.clientY];
+  };
+  // Die Toleranz wächst mit dem Zoom: Browser runden Koordinaten auf ganze CSS-Pixel,
+  // bei Maßstab 3 wandert derselbe Punkt so um bis zu 3 Bildschirmpunkte (gemessen).
+  var near = function (p, x, y) {
+    var t = vv ? Math.max(2, vv.scale + 1) : 2;
+    return Math.abs(p[0] - x) < t && Math.abs(p[1] - y) < t;
+  };
+  window.addEventListener('pointermove', function (e) {
+    if (htmlEl.hasAttribute('data-maus')) return;
+    if (e.pointerType === 'pen' ? e.buttons !== 0 : e.pointerType !== 'mouse') return;
+    if (touched) {
+      var p = glas(e);
+      if (near(p, tapX, tapY)) return;
+      if (e.movementX === 0 && e.movementY === 0 && (seenX === null || near(p, seenX, seenY))) {
+        seenX = p[0]; seenY = p[1];
+        return;
+      }
+    }
+    htmlEl.setAttribute('data-maus', '');
+  }, { passive: true });
+  window.addEventListener('pointerdown', function (e) {
+    if (e.pointerType !== 'touch') return;
+    touched = true; seenX = null; seenY = null;
+    if (htmlEl.hasAttribute('data-maus')) htmlEl.removeAttribute('data-maus');
+  }, { capture: true, passive: true });
+  window.addEventListener('pointerup', function (e) {
+    if (e.pointerType !== 'touch') return;
+    var p = glas(e); tapX = p[0]; tapY = p[1];
+  }, { capture: true, passive: true });
 
   function wire() {
     var all = document.querySelectorAll('*');

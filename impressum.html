@@ -80,19 +80,17 @@ footer{padding-bottom:calc(104px + env(safe-area-inset-bottom))!important}
 @media (max-height:620px) and (min-width:901px){[data-areas-h2]{display:none!important}}
 @media (prefers-reduced-motion:reduce){*{animation-duration:.001ms!important;transition-duration:.001ms!important}}
 /* --- style-hover → :hover (11) --- */
-@media (hover:hover) and (pointer:fine){
-[data-hh="c1"]:hover{background:#F2EFEA !important;color:#050506 !important}
-[data-hh="h2"]:hover{background:#F2EFEA !important;color:#050506 !important}
-[data-hh="h3"]:hover{background:#F2EFEA !important;color:#050506 !important}
-[data-hh="h4"]:hover{background:#F2EFEA !important;color:#050506 !important}
-[data-hh="h5"]:hover{background:#F2EFEA !important;color:#050506 !important;border-color:#F2EFEA !important}
-[data-hh="h6"]:hover{background:#F2EFEA !important;color:#050506 !important;border-color:#F2EFEA !important}
-[data-hh="h7"]:hover{background:#F2EFEA !important;color:#050506 !important}
-[data-hh="h8"]:hover{background:#F2EFEA !important;color:#050506 !important}
-[data-hh="b9"]:hover{background:#F2EFEA !important;color:#050506 !important}
-[data-hh="l1"]:hover{background:#F2EFEA !important;color:#050506 !important}
-[data-hh="l2"]:hover{border-color:#E10600 !important;color:#E10600 !important}
-}
+:where(html[data-maus]) [data-hh="c1"]:hover{background:#F2EFEA !important;color:#050506 !important}
+:where(html[data-maus]) [data-hh="h2"]:hover{background:#F2EFEA !important;color:#050506 !important}
+:where(html[data-maus]) [data-hh="h3"]:hover{background:#F2EFEA !important;color:#050506 !important}
+:where(html[data-maus]) [data-hh="h4"]:hover{background:#F2EFEA !important;color:#050506 !important}
+:where(html[data-maus]) [data-hh="h5"]:hover{background:#F2EFEA !important;color:#050506 !important;border-color:#F2EFEA !important}
+:where(html[data-maus]) [data-hh="h6"]:hover{background:#F2EFEA !important;color:#050506 !important;border-color:#F2EFEA !important}
+:where(html[data-maus]) [data-hh="h7"]:hover{background:#F2EFEA !important;color:#050506 !important}
+:where(html[data-maus]) [data-hh="h8"]:hover{background:#F2EFEA !important;color:#050506 !important}
+:where(html[data-maus]) [data-hh="b9"]:hover{background:#F2EFEA !important;color:#050506 !important}
+:where(html[data-maus]) [data-hh="l1"]:hover{background:#F2EFEA !important;color:#050506 !important}
+:where(html[data-maus]) [data-hh="l2"]:hover{border-color:#E10600 !important;color:#E10600 !important}
 /* --- Produktionsschicht --- */
 /* HSK Performance Center — Produktionsschicht.
    Alles, was das Design-Original nicht mitbringt: selbst gehostete Schriften,
@@ -170,10 +168,11 @@ html[data-menu="open"] [data-burger]::after{transform:translate(-50%,-50%) rotat
    wächst; der Inhalt liegt darüber, am Markup ändert sich nichts.
    Die Farbe richtet sich nach dem Untergrund:
    · ROT füllen dunkle und umrandete Buttons auf dunklem Grund (Kopfleiste,
-     Halbjahr/Monat in den Preiskarten, Route-Marke, „Anrufen").
+     Halbjahr/Monat in den Preiskarten — auch preise-2/-3 —, Route-Marke,
+     „Anrufen", der umrandete Knopf der Rechtsseiten l2).
    · KNOCHENWEISS füllen rote Buttons und dunkle Buttons auf ROTEM Grund
-     (Hero, Loslegen-Band) — dort würde eine rote Füllung im Untergrund
-     verschwinden.
+     (Hero, Loslegen-Band, die roten Knöpfe der Unterseiten preise-1,
+     coaching-1, termine-1, l1) — eine rote Füllung verschwände im Rot.
    ACHTUNG Kaskade: die Hover-Regeln des Designs ([data-hh="…"]:hover) sind eine
    Stufe spezifischer als eine reine Attribut-Regel und setzen per Kurzschreibweise
    `background` den GANZEN Hintergrund zurück — Bild, Wiederholung, Position.
@@ -181,30 +180,34 @@ html[data-menu="open"] [data-burger]::after{transform:translate(-50%,-50%) rotat
    100 % Breite, malt aber nichts: es gibt kein Bild mehr. Deshalb stehen Verlauf,
    Wiederholung und Position im Hover-Zustand noch einmal ausdrücklich, ebenso
    die Grundfarbe (sonst sprängen sie sofort auf Knochenweiß). */
-@media (hover:hover) and (pointer:fine){
+/* Wann „Hover" gilt, entscheidet NICHT @media (hover:hover): Windows-Rechner mit
+   Touchscreen melden in Chrome und Edge hover:none und pointer:coarse — auch wenn
+   gerade mit der Maus gearbeitet wird (gemessen: maxTouchPoints 10, sogar
+   any-hover:hover falsch). Dort gab es gar keinen Hover-Effekt. Stattdessen setzt
+   site.js <html data-maus>, sobald sich eine echte Maus bewegt, und nimmt es beim
+   Fingertipp wieder weg — nach einem Tipp bleibt so kein Hover-Zustand kleben.
+   :where() zählt nicht zur Spezifität: die Kaskade unten ist exakt dieselbe wie
+   zuvor unter der Medienabfrage. */
   /* Ruhezustand: Verlauf liegt schon an, nur 0 % breit */
-  [data-hh],[data-on-click="loadMap"],[data-map-chip],[data-termin-tail] a,[data-form] button,[data-sent-mail],[data-sent-call],[data-overlay] a[href="mitglied-werden.html"]{background-repeat:no-repeat!important;background-position:0 0!important;background-size:0% 100%!important;transition:background-size .5s cubic-bezier(.16,1,.3,1),color .3s ease,border-color .3s ease!important}
-  [data-hh="h2"],[data-hh="h3"],[data-hh="h4"],[data-hh="h7"],[data-hh="h8"],[data-hh="b9"],[data-on-click="loadMap"],[data-termin-tail] a,[data-form] button,[data-sent-mail],[data-overlay] a[href="mitglied-werden.html"]{background-image:linear-gradient(#F2EFEA,#F2EFEA)!important}
-  [data-hh="c1"],[data-hh="h5"],[data-hh="h6"],[data-map-chip],[data-sent-call]{background-image:linear-gradient(#E10600,#E10600)!important}
+  :where(html[data-maus]) [data-hh],:where(html[data-maus]) [data-on-click="loadMap"],:where(html[data-maus]) [data-map-chip],:where(html[data-maus]) [data-termin-tail] a,:where(html[data-maus]) [data-form] button,:where(html[data-maus]) [data-sent-mail],:where(html[data-maus]) [data-sent-call],:where(html[data-maus]) [data-overlay] a[href="mitglied-werden.html"]{background-repeat:no-repeat!important;background-position:0 0!important;background-size:0% 100%!important;transition:background-size .5s cubic-bezier(.16,1,.3,1),color .3s ease,border-color .3s ease!important}
+  :where(html[data-maus]) [data-hh="h2"],:where(html[data-maus]) [data-hh="h3"],:where(html[data-maus]) [data-hh="h4"],:where(html[data-maus]) [data-hh="h7"],:where(html[data-maus]) [data-hh="h8"],:where(html[data-maus]) [data-hh="b9"],:where(html[data-maus]) [data-on-click="loadMap"],:where(html[data-maus]) [data-termin-tail] a,:where(html[data-maus]) [data-form] button,:where(html[data-maus]) [data-sent-mail],:where(html[data-maus]) [data-overlay] a[href="mitglied-werden.html"],:where(html[data-maus]) [data-hh="preise-1"],:where(html[data-maus]) [data-hh="coaching-1"],:where(html[data-maus]) [data-hh="termine-1"],:where(html[data-maus]) [data-hh="l1"]{background-image:linear-gradient(#F2EFEA,#F2EFEA)!important}
+  :where(html[data-maus]) [data-hh="c1"],:where(html[data-maus]) [data-hh="h5"],:where(html[data-maus]) [data-hh="h6"],:where(html[data-maus]) [data-map-chip],:where(html[data-maus]) [data-sent-call],:where(html[data-maus]) [data-hh="preise-2"],:where(html[data-maus]) [data-hh="preise-3"],:where(html[data-maus]) [data-hh="l2"]{background-image:linear-gradient(#E10600,#E10600)!important}
   /* Überfahren: Füllung, Schrift und Rand */
-  [data-hh="h2"]:hover,[data-hh="h3"]:hover,[data-hh="h4"]:hover,[data-hh="h7"]:hover,[data-hh="h8"]:hover,[data-hh="b9"]:hover,[data-on-click="loadMap"]:hover,[data-termin-tail] a:hover,[data-form] button:hover,[data-sent-mail]:hover,[data-overlay] a[href="mitglied-werden.html"]:hover{background-image:linear-gradient(#F2EFEA,#F2EFEA)!important;background-size:100% 100%!important;background-repeat:no-repeat!important;background-position:0 0!important;color:#050506!important}
-  [data-hh="c1"]:hover,[data-hh="h5"]:hover,[data-hh="h6"]:hover,[data-map-chip]:hover,[data-sent-call]:hover,[data-map-open]:hover [data-map-chip]{background-image:linear-gradient(#E10600,#E10600)!important;background-size:100% 100%!important;background-repeat:no-repeat!important;background-position:0 0!important;color:#fff!important;border-color:#E10600!important}
+  :where(html[data-maus]) [data-hh="h2"]:hover,:where(html[data-maus]) [data-hh="h3"]:hover,:where(html[data-maus]) [data-hh="h4"]:hover,:where(html[data-maus]) [data-hh="h7"]:hover,:where(html[data-maus]) [data-hh="h8"]:hover,:where(html[data-maus]) [data-hh="b9"]:hover,:where(html[data-maus]) [data-on-click="loadMap"]:hover,:where(html[data-maus]) [data-termin-tail] a:hover,:where(html[data-maus]) [data-form] button:hover,:where(html[data-maus]) [data-sent-mail]:hover,:where(html[data-maus]) [data-overlay] a[href="mitglied-werden.html"]:hover,:where(html[data-maus]) [data-hh="preise-1"]:hover,:where(html[data-maus]) [data-hh="coaching-1"]:hover,:where(html[data-maus]) [data-hh="termine-1"]:hover,:where(html[data-maus]) [data-hh="l1"]:hover{background-image:linear-gradient(#F2EFEA,#F2EFEA)!important;background-size:100% 100%!important;background-repeat:no-repeat!important;background-position:0 0!important;color:#050506!important}
+  :where(html[data-maus]) [data-hh="c1"]:hover,:where(html[data-maus]) [data-hh="h5"]:hover,:where(html[data-maus]) [data-hh="h6"]:hover,:where(html[data-maus]) [data-map-chip]:hover,:where(html[data-maus]) [data-sent-call]:hover,:where(html[data-maus]) [data-map-open]:hover [data-map-chip],:where(html[data-maus]) [data-hh="preise-2"]:hover,:where(html[data-maus]) [data-hh="preise-3"]:hover,:where(html[data-maus]) [data-hh="l2"]:hover{background-image:linear-gradient(#E10600,#E10600)!important;background-size:100% 100%!important;background-repeat:no-repeat!important;background-position:0 0!important;color:#fff!important;border-color:#E10600!important}
   /* Grundfarben halten */
-  [data-hh="c1"]:hover,[data-hh="h2"]:hover,[data-hh="h8"]:hover,[data-hh="b9"]:hover,[data-map-open]:hover [data-map-chip]{background-color:#050506!important}
-  [data-hh="h3"]:hover,[data-hh="h4"]:hover,[data-hh="h7"]:hover,[data-on-click="loadMap"]:hover,[data-termin-tail] a:hover,[data-form] button:hover,[data-sent-mail]:hover,[data-overlay] a[href="mitglied-werden.html"]:hover{background-color:#E10600!important}
-  [data-hh="h5"]:hover,[data-hh="h6"]:hover,[data-sent-call]:hover{background-color:transparent!important}
-  [data-legal-body] a:hover{color:#E10600}
-}
+  :where(html[data-maus]) [data-hh="c1"]:hover,:where(html[data-maus]) [data-hh="h2"]:hover,:where(html[data-maus]) [data-hh="h8"]:hover,:where(html[data-maus]) [data-hh="b9"]:hover,:where(html[data-maus]) [data-map-open]:hover [data-map-chip]{background-color:#050506!important}
+  :where(html[data-maus]) [data-hh="h3"]:hover,:where(html[data-maus]) [data-hh="h4"]:hover,:where(html[data-maus]) [data-hh="h7"]:hover,:where(html[data-maus]) [data-on-click="loadMap"]:hover,:where(html[data-maus]) [data-termin-tail] a:hover,:where(html[data-maus]) [data-form] button:hover,:where(html[data-maus]) [data-sent-mail]:hover,:where(html[data-maus]) [data-overlay] a[href="mitglied-werden.html"]:hover,:where(html[data-maus]) [data-hh="preise-1"]:hover,:where(html[data-maus]) [data-hh="coaching-1"]:hover,:where(html[data-maus]) [data-hh="termine-1"]:hover,:where(html[data-maus]) [data-hh="l1"]:hover{background-color:#E10600!important}
+  :where(html[data-maus]) [data-hh="h5"]:hover,:where(html[data-maus]) [data-hh="h6"]:hover,:where(html[data-maus]) [data-sent-call]:hover,:where(html[data-maus]) [data-hh="preise-2"]:hover,:where(html[data-maus]) [data-hh="preise-3"]:hover,:where(html[data-maus]) [data-hh="l2"]:hover{background-color:transparent!important}
+  :where(html[data-maus]) [data-legal-body] a:hover{color:#E10600}
 /* Wer weniger Bewegung will, bekommt den Farbwechsel ohne Fahrt */
-@media (hover:hover) and (pointer:fine) and (prefers-reduced-motion:reduce){
-  [data-hh],[data-on-click="loadMap"],[data-map-chip],[data-termin-tail] a,[data-form] button,[data-sent-mail],[data-sent-call],[data-overlay] a[href="mitglied-werden.html"]{transition:none!important}
+@media (prefers-reduced-motion:reduce){
+  :where(html[data-maus]) [data-hh],:where(html[data-maus]) [data-on-click="loadMap"],:where(html[data-maus]) [data-map-chip],:where(html[data-maus]) [data-termin-tail] a,:where(html[data-maus]) [data-form] button,:where(html[data-maus]) [data-sent-mail],:where(html[data-maus]) [data-sent-call],:where(html[data-maus]) [data-overlay] a[href="mitglied-werden.html"]{transition:none!important}
 }
-/* Ein Finger hat keinen Cursor: ohne :active gibt es auf dem Telefon gar keine
+/* Ein Finger hat keinen Cursor: ohne :active gibt es beim Tippen gar keine
    Rückmeldung — das iOS-Aufblinken ist oben abgeschaltet, und jeder Hover-Zustand
-   hängt an (hover:hover), was dort nie zutrifft. */
-@media (hover:none){
-  a:active,button:active,[role="button"]:active{opacity:.6;transition:opacity .05s}
-}
+   hängt an data-maus, das ein Finger nie setzt. */
+html:not([data-maus]) a:active,html:not([data-maus]) button:active,html:not([data-maus]) [role="button"]:active{opacity:.6;transition:opacity .05s}
 
 /* Das HUD trägt eine Eintritts-Animation mit `both`. Deren Endzustand steht in der
    Kaskade ÜBER dem style-Attribut — das Skript könnte die Deckkraft danach nie mehr
@@ -267,7 +270,9 @@ html[data-menu="open"] [data-burger]::after{transform:translate(-50%,-50%) rotat
   /* -- Trefferflaechen: ein Finger braucht 44 px, das Design rechnet mit Maus */
   [data-overlay] a[href="mitglied-werden.html"]{padding:15px 22px!important}
   [data-nav]>a:first-child{align-self:stretch!important;min-width:44px}
-  footer>div:last-child a{display:inline-flex;align-items:center;min-height:44px}
+  /* last-of-type, nicht last-child: unter der Leiste steht seit 14.09.2026 die
+     Axion-Zeile (ein <p>) — last-child hätte die Leiste still verloren */
+  footer>div:last-of-type a,[data-credit] a{display:inline-flex;align-items:center;min-height:44px}
 
   /* -- „Die Halle. Taeglich 06-24." steht im Design oben, gleich unter der
      Kopfleiste. Auf Wunsch sitzt sie am unteren Bildschirmrand: dort ist die
@@ -320,7 +325,7 @@ html[data-menu="open"] [data-burger]::after{transform:translate(-50%,-50%) rotat
   body[data-sub] main h1,body[data-sub] main h2{line-height:.96!important}
   [data-legal-body] section{margin-bottom:32px!important}
   [data-toc]{margin-bottom:28px!important}
-  footer>div:last-child{margin-top:28px!important;align-items:center!important}
+  footer>div:last-of-type{margin-top:28px!important;align-items:center!important}
   /* Lange deutsche Komposita in schmalen Spalten */
   [data-legal-body] p,[data-row]>span:last-child,[data-termin] p,[data-faq-body] p{-webkit-hyphens:auto;hyphens:auto}
 }
@@ -523,6 +528,7 @@ html[data-menu="open"] [data-burger]::after{transform:translate(-50%,-50%) rotat
     <span style="display:flex;gap:22px"><a href="impressum.html">IMPRESSUM</a><a href="datenschutz.html">DATENSCHUTZ</a></span>
     <a href="#inhalt">NACH OBEN ↑</a>
   </div>
+  <p data-credit style="max-width:1500px;margin:18px auto 0;font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.2em;line-height:1.8;color:#9A9AA2">ERSTELLT, DESIGNED &amp; GEHOSTET VON <a href="https://axion-studio.de/" target="_blank" rel="noopener" aria-label="Axion Studio (öffnet in neuem Tab)" style="text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:4px;text-decoration-color:rgba(242,239,234,.4)">AXION STUDIO&nbsp;<span aria-hidden="true">↗</span></a></p>
 </footer>
 <svg data-grain aria-hidden="true" style="position:fixed;inset:0;width:100%;height:100%;z-index:60;opacity:.07;pointer-events:none;mix-blend-mode:overlay"><filter id="grainL"><feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="2" stitchTiles="stitch"></feTurbulence></filter><rect width="100%" height="100%" filter="url(#grainL)"></rect></svg>
 <script src="assets/js/site.js"></script>
